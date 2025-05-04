@@ -23,4 +23,4 @@ Awards
 
 - HKUST Scholarship Scheme for Continuing Undergraduate Students 2024
 - HKUST Chern Class Scholarship (2 academic years)
-- HKUST Dean's Lists (3 semesters)
+- HKUST Dean's List (3 semesters)
