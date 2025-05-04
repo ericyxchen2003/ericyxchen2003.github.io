@@ -8,6 +8,8 @@ redirect_from:
 ---
 
 I am currently a third-year undergraduate student pursuing a Bachelor of Science in Data Science and Technology at [The Hong Kong University of Science and Technology](https://hkust.edu.hk/) (HKUST).
+In Fall 2024, I participated in an academic exchange at the School of Computer and Communication Sciences (IC) of [École Polytechnique Fédérale de Lausanne](https://www.epfl.ch/) (EPFL), Switzerland.
+
 
 Research Interests
 ------
