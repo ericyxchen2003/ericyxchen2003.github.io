@@ -2,66 +2,52 @@
 layout: archive
 title: "Publications"
 permalink: /publications/
-author_profile: true  # 显示作者简介侧边栏
+author_profile: true
 ---
 
 {% if site.author.googlescholar %}
-  <p>🔍 Also available on <a href="{{ site.author.googlescholar }}">Google Scholar</a></p>
+  <p>Also available on <a href="{{ site.author.googlescholar }}">Google Scholar</a></p>
 {% endif %}
 
 <style>
-/* ===== 自定义出版物样式 ===== */
+/* 基础样式 - 继承主题颜色 */
 .pub-item {
-  margin-bottom: 2.5rem;  /* 条目间距 */
+  margin-bottom: 2rem;
 }
 
 .pub-title {
-  font-weight: 600;       /* 标题加粗 */
-  color: #2a2a2a;         /* 深灰色标题 */
-  margin-bottom: 0.4rem;
-}
-
-.pub-authors {
-  font-style: italic;     /* 全体作者斜体 */
-  color: #555;
+  font-weight: bold;
   margin-bottom: 0.3rem;
 }
 
+.pub-authors {
+  font-style: italic;
+  margin-bottom: 0.2rem;
+}
+
+/* 姓名高亮（不加颜色） */
 .pub-authors strong {
-  font-weight: 700;       /* 你的名字加粗 */
-  font-style: italic;     /* 保持斜体 */
-  color: #c33;            /* 红色高亮 */
+  font-weight: bold;
+  font-style: italic;
 }
 
-.pub-meta {
-  font-size: 0.92em;
-  color: #777;
-}
-
+/* 链接使用主题默认样式 */
 .pub-meta a {
-  margin-right: 1rem;     /* 链接间距 */
-  text-decoration: none;  /* 去除下划线 */
-  padding: 3px 8px;
-  border-radius: 3px;
-  background: #f5f5f5;    /* 浅灰背景 */
-}
-
-.pub-meta a:hover {
-  background: #e0e0e0;    /* 悬停效果 */
+  text-decoration: none;
+  margin-right: 1rem;
 }
 </style>
 
 {% for post in site.publications reversed %}
   <div class="pub-item">
-    
-    <!-- 论文标题 -->
+    <!-- 标题 -->
     <div class="pub-title">{{ post.title }}</div>
     
-    <!-- 作者列表处理 -->
+    <!-- 作者处理 -->
     <div class="pub-authors">
       {% assign authors = post.authors | split: ", " %}
       {% for author in authors %}
-        {% if author contains "Yixiang Chen" %}  <!-- 替换为你的姓名 -->
+        {% if author contains "Yixiang Chen" %}  <!-- 替换你的姓名 -->
           <strong>{{ author }}</strong>
         {% else %}
           {{ author }}
@@ -70,22 +56,14 @@ author_profile: true  # 显示作者简介侧边栏
       {% endfor %}
     </div>
 
-    <!-- 出版信息 -->
+    <!-- 元数据 -->
     <div class="pub-meta">
       {% if post.venue %}<em>{{ post.venue }}</em>, {% endif %}
       {{ post.year }}
       
-      <!-- 资源链接 -->
-      {% if post.pdf %}
-        <a href="{{ post.pdf }}" target="_blank">📄 PDF</a>
-      {% endif %}
-      {% if post.code %}
-        <a href="{{ post.code }}" target="_blank">💻 Code</a>
-      {% endif %}
-      {% if post.poster %}
-        <a href="{{ post.poster }}" target="_blank">📊 Poster</a>
-      {% endif %}
+      <!-- 纯文本链接 -->
+      {% if post.pdf %}[<a href="{{ post.pdf }}">PDF</a>]{% endif %}
+      {% if post.code %}[<a href="{{ post.code }}">Code</a>]{% endif %}
     </div>
-
   </div>
 {% endfor %}
