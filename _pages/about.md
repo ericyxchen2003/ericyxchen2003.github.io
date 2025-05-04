@@ -14,7 +14,7 @@ Research Interests
 
 I am generally interested in Natural Language Processing. More specifically, I focus on advancing **logical reasoning**  and **discovery & exploration** capabilities in **large language models** (LLMs). 
 
-Recently, I co-authored a paper [The Curse of CoT](https://arxiv.org/pdf/2504.05081) on LLM logical reasoning (currently under review at COLM 2025) under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/).
+Recently, I co-authored a paper ([The Curse of CoT](https://arxiv.org/pdf/2504.05081)) on LLM logical reasoning (currently under review at COLM 2025) under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/).
 
 Feel free to reach out for collaborations or discussions!
 
