@@ -1,6 +1,6 @@
 ---
 permalink: /
-title: "Yixiang Chen | 陈逸翔 | Eric"
+title: "Yixiang Chen 陈逸翔 Eric"
 author_profile: true
 redirect_from: 
   - /about/
