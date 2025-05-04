@@ -2,35 +2,90 @@
 layout: archive
 title: "Publications"
 permalink: /publications/
-author_profile: true
+author_profile: true  # 显示作者简介侧边栏
 ---
 
 {% if site.author.googlescholar %}
-  <div class="wordwrap">You can also find my articles on <a href="{{site.author.googlescholar}}">my Google Scholar profile</a>.</div>
+  <p>🔍 Also available on <a href="{{ site.author.googlescholar }}">Google Scholar</a></p>
 {% endif %}
 
-{% include base_path %}
+<style>
+/* ===== 自定义出版物样式 ===== */
+.pub-item {
+  margin-bottom: 2.5rem;  /* 条目间距 */
+}
 
-<!-- New style rendering if publication categories are defined -->
-{% if site.publication_category %}
-  {% for category in site.publication_category  %}
-    {% assign title_shown = false %}
-    {% for post in site.publications reversed %}
-      {% if post.category != category[0] %}
-        {% continue %}
+.pub-title {
+  font-weight: 600;       /* 标题加粗 */
+  color: #2a2a2a;         /* 深灰色标题 */
+  margin-bottom: 0.4rem;
+}
+
+.pub-authors {
+  font-style: italic;     /* 全体作者斜体 */
+  color: #555;
+  margin-bottom: 0.3rem;
+}
+
+.pub-authors strong {
+  font-weight: 700;       /* 你的名字加粗 */
+  font-style: italic;     /* 保持斜体 */
+  color: #c33;            /* 红色高亮 */
+}
+
+.pub-meta {
+  font-size: 0.92em;
+  color: #777;
+}
+
+.pub-meta a {
+  margin-right: 1rem;     /* 链接间距 */
+  text-decoration: none;  /* 去除下划线 */
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: #f5f5f5;    /* 浅灰背景 */
+}
+
+.pub-meta a:hover {
+  background: #e0e0e0;    /* 悬停效果 */
+}
+</style>
+
+{% for post in site.publications reversed %}
+  <div class="pub-item">
+    
+    <!-- 论文标题 -->
+    <div class="pub-title">{{ post.title }}</div>
+    
+    <!-- 作者列表处理 -->
+    <div class="pub-authors">
+      {% assign authors = post.authors | split: ", " %}
+      {% for author in authors %}
+        {% if author contains "Yixiang Chen" %}  <!-- 替换为你的姓名 -->
+          <strong>{{ author }}</strong>
+        {% else %}
+          {{ author }}
+        {% endif %}
+        {% unless forloop.last %}, {% endunless %}
+      {% endfor %}
+    </div>
+
+    <!-- 出版信息 -->
+    <div class="pub-meta">
+      {% if post.venue %}<em>{{ post.venue }}</em>, {% endif %}
+      {{ post.year }}
+      
+      <!-- 资源链接 -->
+      {% if post.pdf %}
+        <a href="{{ post.pdf }}" target="_blank">📄 PDF</a>
       {% endif %}
-      {% unless title_shown %}
-        <h2>{{ category[1].title }}</h2><hr />
-        {% assign title_shown = true %}
-      {% endunless %}
-      {% include archive-single.html %}
-    {% endfor %}
-  {% endfor %}
-{% else %}
-  {% for post in site.publications reversed %}
-    {% include archive-single.html %}
-  {% endfor %}
-{% endif %}
+      {% if post.code %}
+        <a href="{{ post.code }}" target="_blank">💻 Code</a>
+      {% endif %}
+      {% if post.poster %}
+        <a href="{{ post.poster }}" target="_blank">📊 Poster</a>
+      {% endif %}
+    </div>
 
-
-
+  </div>
+{% endfor %}
