@@ -10,6 +10,8 @@ redirect_from:
 I am currently a third-year undergraduate student pursuing a Bachelor of Science in Data Science and Technology at [The Hong Kong University of Science and Technology](https://hkust.edu.hk/) (HKUST).
 In Fall 2024, I participated in an academic exchange at the School of Computer and Communication Sciences (IC) of [École Polytechnique Fédérale de Lausanne](https://www.epfl.ch/) (EPFL), Switzerland.
 
+Currently, I am engaged in independent study under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/) and working on my final year thesis under the guidance of [Prof. Yi R. (May) Fung](https://mayrfung.github.io/).
+
 
 Research Interests
 ------
