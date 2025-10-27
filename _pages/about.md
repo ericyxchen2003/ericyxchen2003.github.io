@@ -16,9 +16,13 @@ Currently, I am engaged in independent study under the supervision of [Prof. Yan
 Research Interests
 ------
 
-I am generally interested in Natural Language Processing. More specifically, I focus on advancing **logical reasoning**  and **discovery & exploration** capabilities in **large language models** (LLMs). 
+I am generally interested in Natural Language Processing. More specifically, I focus on advancing the **logical reasoning**, **scientific discovery**, and **agentic exploration** capabilities of Large Language Models.
 
 <!-- In October this year, I published a paper titled *Self-Redraft*, aiming to elicit intrinsic exploration–exploitation balance in test-time scaling for code generation, submitted to ACL ARR 2025 (October cycle). -->
+
+Currently, under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/), I am building an interactive environment for generalizable scientific discovery.
+
+This summer, I am conducting research on AI for code generation for my Final Year Thesis under the supervision of [Prof. Yi R. (May) Fung](https://mayrfung.github.io/).
 
 In Spring 2025, I co-authored a paper ([The Curse of CoT](https://arxiv.org/pdf/2504.05081)) on LLM logical reasoning (currently under review at TMLR) under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/).
 
