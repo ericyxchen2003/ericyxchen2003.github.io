@@ -18,7 +18,7 @@ Research Interests
 
 I am generally interested in Natural Language Processing. More specifically, I focus on advancing **logical reasoning**  and **discovery & exploration** capabilities in **large language models** (LLMs). 
 
-In October this year, I published a paper titled *Self-Redraft*, aiming to elicit intrinsic exploration–exploitation balance in test-time scaling for code generation, submitted to ACL ARR 2025 (October cycle).
+<!-- In October this year, I published a paper titled *Self-Redraft*, aiming to elicit intrinsic exploration–exploitation balance in test-time scaling for code generation, submitted to ACL ARR 2025 (October cycle). -->
 
 In Spring 2025, I co-authored a paper ([The Curse of CoT](https://arxiv.org/pdf/2504.05081)) on LLM logical reasoning (currently under review at TMLR) under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/).
 

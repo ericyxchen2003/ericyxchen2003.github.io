@@ -39,6 +39,7 @@ author_profile: true
 </style>
 
 {% for post in site.publications reversed %}
+  {% if post.published != false %}
   <div class="pub-item">
     <!-- 标题 -->
     <div class="pub-title">{{ post.title }}</div>
@@ -66,4 +67,5 @@ author_profile: true
       {% if post.code %}[<a href="{{ post.code }}">Code</a>]{% endif %}
     </div>
   </div>
+  {% endif %}
 {% endfor %}
