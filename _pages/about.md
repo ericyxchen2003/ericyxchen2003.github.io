@@ -16,7 +16,9 @@ News
 ------
 
 <div style="max-height: 300px; overflow-y: auto; padding: 10px 0;">
-- *Oct 2025*: [The Curse of CoT](https://arxiv.org/pdf/2504.05081) accepted to TMLR!
+<ul>
+<li><em>Oct 2025</em>: <a href="https://arxiv.org/pdf/2504.05081">The Curse of CoT</a> accepted to TMLR!</li>
+</ul>
 </div>
 
 Research Interests
