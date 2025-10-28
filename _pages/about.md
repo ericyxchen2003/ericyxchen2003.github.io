@@ -12,6 +12,12 @@ In Fall 2024, I participated in an academic exchange at the School of Computer a
 
 Currently, I am engaged in independent study under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/) and working on my final year thesis under the guidance of [Prof. Yi R. (May) Fung](https://mayrfung.github.io/).
 
+News
+------
+
+<div style="max-height: 300px; overflow-y: auto; padding: 10px 0;">
+- *Oct 2025*: [The Curse of CoT](https://arxiv.org/pdf/2504.05081) accepted to TMLR!
+</div>
 
 Research Interests
 ------
@@ -24,7 +30,7 @@ Currently, under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/
 
 This summer, I am conducting research on AI for code generation for my Final Year Thesis under the supervision of [Prof. Yi R. (May) Fung](https://mayrfung.github.io/).
 
-In Spring 2025, I co-authored a paper ([The Curse of CoT](https://arxiv.org/pdf/2504.05081)) on LLM logical reasoning (currently under review at TMLR) under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/).
+In Spring 2025, I co-authored a paper ([The Curse of CoT](https://arxiv.org/pdf/2504.05081)) on LLM logical reasoning (accpeted to TMLR) under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/).
 
 Feel free to reach out for collaborations or discussions!
 
