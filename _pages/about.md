@@ -28,11 +28,11 @@ I am generally interested in Natural Language Processing. More specifically, I f
 
 <!-- In October this year, I published a paper titled *Self-Redraft*, aiming to elicit intrinsic exploration–exploitation balance in test-time scaling for code generation, submitted to ACL ARR 2025 (October cycle). -->
 
-Currently, under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/), I am building an interactive environment for generalizable scientific discovery.
+Currently, under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/), I am building an interactive environment for **generalizable scientific discovery**.
 
-This summer, I am conducting research on AI for code generation for my Final Year Thesis under the supervision of [Prof. Yi R. (May) Fung](https://mayrfung.github.io/). Through this experience, I gained hands-on experience in supervised fine-tuning and reinforcement learning.
+This summer, I am conducting research on **AI for code generation** for my Final Year Thesis under the supervision of [Prof. Yi R. (May) Fung](https://mayrfung.github.io/). Through this experience, I gained hands-on experience in **supervised fine-tuning** and **reinforcement learning**.
 
-In Spring 2025, I co-authored a paper [The Curse of CoT](https://arxiv.org/pdf/2504.05081) on LLM logical reasoning (accpeted to TMLR) under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/).
+In Spring 2025, I co-authored a paper [The Curse of CoT](https://arxiv.org/pdf/2504.05081) on LLM **logical reasoning** (accpeted to TMLR) under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/).
 
 Feel free to reach out for collaborations or discussions!
 
