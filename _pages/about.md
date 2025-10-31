@@ -43,6 +43,6 @@ Awards
 - HKUST Chern Class Scholarship (2 academic years)
 - HKUST Dean's List (3 semesters)
 
-<div style="width: 300px; height: 147px; overflow: hidden;">
+<div style="width: 300px; margin: 20px auto 0; overflow: hidden;">
 <script type="text/javascript" id="mapmyvisitors" src="//mapmyvisitors.com/map.js?d=_IM3g0RLo2DVUsxUfq-NdzxqxK3DuynohYMnS4yGTM0&cl=ffffff&w=a"></script>
 </div>
