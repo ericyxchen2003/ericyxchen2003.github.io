@@ -22,7 +22,7 @@ repository               : "ericyxchen2003/ericyxchen2003.github.io"
 #               Additional customization can be done by editing /_includes/author-profile.html
 author:
   # Biographic information
-  avatar           : "./profile.png"
+  avatar           : "./profile.jpg"
   name             : "Yixiang Chen"
   pronouns         : # example: "she/her"  
   bio              : "Final year undergrad at HKUST"
