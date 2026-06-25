@@ -7,11 +7,13 @@ redirect_from:
   - /about.html
 ---
 
-I am currently a final-year undergraduate student pursuing a Bachelor of Science in Data Science and Technology at [The Hong Kong University of Science and Technology](https://hkust.edu.hk/) (HKUST).
+I recently completed my Bachelor of Science in Data Science and Technology at [The Hong Kong University of Science and Technology](https://hkust.edu.hk/) (HKUST).
+
+I am an incoming Ph.D. student in the [Dual Doctoral Degree Programme in Robotics and Embodied Intelligence](https://www.polyu.edu.hk/crei/), jointly offered by [The Hong Kong Polytechnic University](https://www.polyu.edu.hk/) (PolyU) and the [University of Macau](https://www.um.edu.mo/) (UM). I will be supervised by [Prof. Wanyu Lin](https://wanyu-lin.github.io/) at PolyU and [Prof. Li Li](https://personal.fst.um.edu.mo/llili/) at UM.
 
 In Fall 2024, I participated in an academic exchange program at the School of Computer and Communication Sciences (IC) of [École Polytechnique Fédérale de Lausanne](https://www.epfl.ch/) (EPFL), Switzerland.
 
-I have been fortunate to conduct research under the guidance of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/) and [Prof. Yi R. (May) Fung](https://mayrfung.github.io/), to whom I am deeply grateful for their invaluable mentorship.
+During my undergraduate studies, I was fortunate to conduct research under the guidance of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/) and [Prof. Yi R. (May) Fung](https://mayrfung.github.io/), to whom I am deeply grateful for their invaluable mentorship.
 
 News
 ------
