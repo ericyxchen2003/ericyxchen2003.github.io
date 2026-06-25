@@ -7,16 +7,18 @@ redirect_from:
   - /about.html
 ---
 
-I am currently a final year undergraduate student pursuing a Bachelor of Science in Data Science and Technology at [The Hong Kong University of Science and Technology](https://hkust.edu.hk/) (HKUST).
-In Fall 2024, I participated in an academic exchange at the School of Computer and Communication Sciences (IC) of [École Polytechnique Fédérale de Lausanne](https://www.epfl.ch/) (EPFL), Switzerland.
+I am currently a final-year undergraduate student pursuing a Bachelor of Science in Data Science and Technology at [The Hong Kong University of Science and Technology](https://hkust.edu.hk/) (HKUST).
 
-Currently, I am engaged in independent study under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/) and working on my final year thesis under the guidance of [Prof. Yi R. (May) Fung](https://mayrfung.github.io/).
+In Fall 2024, I participated in an academic exchange program at the School of Computer and Communication Sciences (IC) of [École Polytechnique Fédérale de Lausanne](https://www.epfl.ch/) (EPFL), Switzerland.
+
+I have been fortunate to conduct research under the guidance of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/) and [Prof. Yi R. (May) Fung](https://mayrfung.github.io/), to whom I am deeply grateful for their invaluable mentorship.
 
 News
 ------
 
 <div style="max-height: 300px; overflow-y: auto; padding: 10px 0;">
 <ul>
+<li><em>May 2026</em>: Admitted to the Doctor of Philosophy (Computer Science) program at the <a href="https://www.um.edu.mo/">University of Macau</a> (UM), as an incoming Ph.D. student under the supervision of <a href="https://fst.um.edu.mo/people/llili/">Prof. Li Li</a>.</li>
 <li><em>Oct 2025</em>: <a href="https://arxiv.org/pdf/2504.05081">The Curse of CoT</a> accepted to TMLR!</li>
 </ul>
 </div>
@@ -24,13 +26,14 @@ News
 Research Interests
 ------
 
-I am generally interested in Natural Language Processing. More specifically, I focus on advancing the **logical reasoning**, **scientific discovery**, and **agentic exploration** capabilities of Large Language Models.
+I am generally interested in Natural Language Processing. More specifically, I focus on advancing the **logical reasoning** and **multi-agent collaboration** capabilities of Large Language Models.
 
-<!-- In October this year, I published a paper titled *Self-Redraft*, aiming to elicit intrinsic exploration–exploitation balance in test-time scaling for code generation, submitted to ACL ARR 2025 (October cycle). -->
 
-Currently, under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/), I am building an interactive environment for **generalizable scientific discovery**.
+<!-- In October 2025, I published a paper titled *Self-Redraft*, aiming to elicit intrinsic exploration–exploitation balance in test-time scaling for code generation, submitted to ACL ARR 2025 (October cycle). -->
 
-This summer, I am conducting research on **AI for code generation** for my Final Year Thesis under the supervision of [Prof. Yi R. (May) Fung](https://mayrfung.github.io/). Through this experience, I gained hands-on experience in **supervised fine-tuning** and **reinforcement learning**.
+<!-- Currently, under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/), I am building an interactive environment for **generalizable scientific discovery**. -->
+
+In Summer 2025, I conducted research on **AI for code generation** for my Final Year Thesis under the supervision of [Prof. Yi R. (May) Fung](https://mayrfung.github.io/). Through this experience, I gained hands-on experience in **supervised fine-tuning** and **reinforcement learning**.
 
 In Spring 2025, I co-authored a paper [The Curse of CoT](https://arxiv.org/pdf/2504.05081) on LLM **logical reasoning** (accpeted to TMLR) under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/).
 
