@@ -10,3 +10,5 @@
 main:
   - title: "Publications"
     url: /publications/
+  - title: "CV"
+    url: /files/Resume_Chen_Yixiang.pdf
