@@ -20,6 +20,7 @@ News
 
 <div style="max-height: 300px; overflow-y: auto; padding: 10px 0;">
 <ul>
+<li><em>Jul 2026</em>: Admitted to the Dual Ph.D. Degree Program at <a href="https://www.polyu.edu.hk/">The Hong Kong Polytechnic University</a> (PolyU).</li>
 <li><em>May 2026</em>: Admitted to the Doctor of Philosophy (Computer Science) program at the <a href="https://www.um.edu.mo/">University of Macau</a> (UM), as an incoming Ph.D. student under the supervision of <a href="https://fst.um.edu.mo/people/llili/">Prof. Li Li</a>.</li>
 <li><em>Oct 2025</em>: <a href="https://arxiv.org/pdf/2504.05081">The Curse of CoT</a> accepted to TMLR!</li>
 </ul>
