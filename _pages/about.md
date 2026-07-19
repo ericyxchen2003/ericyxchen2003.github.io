@@ -11,7 +11,7 @@ I am an incoming Ph.D. student in the [Dual Doctoral Degree Programme in Robotic
 
 I recently completed my Bachelor of Science in Data Science and Technology at [The Hong Kong University of Science and Technology](https://hkust.edu.hk/) (HKUST). During my undergraduate studies, I was fortunate to conduct research under the guidance of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/), with mentorship from [Tianshi Zheng](https://stonetzheng.github.io/), to whom I am deeply grateful for their invaluable guidance.
 
-I am generally interested in Natural Language Processing. More specifically, I focus on advancing the **logical reasoning** and **multi-agent collaboration** capabilities of Large Language Models. In Spring 2025, I co-authored a paper [The Curse of CoT](https://arxiv.org/pdf/2504.05081) on LLM **logical reasoning** (accepted to TMLR) with [Tianshi Zheng](https://stonetzheng.github.io/) under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/).
+I am generally interested in Natural Language Processing. More specifically, I focus on advancing the **multi-agent collaboration** capabilities in Multi-Agent LLM Systems. Previously, I focused primarily on the **logical reasoning** capabilities of large language models. In Spring 2025, I co-authored a paper [The Curse of CoT](https://arxiv.org/pdf/2504.05081) on LLM **logical reasoning** (accepted to TMLR) with [Tianshi Zheng](https://stonetzheng.github.io/) under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/).
 
 Feel free to reach out for collaborations or discussions!
 
@@ -29,6 +29,7 @@ News
 Awards
 ------
 
+- HKUST Chern Class Achievement Scholarship with Outstanding Performance 2026
 - HKUST Scholarship Scheme for Continuing Undergraduate Students 2024
 - HKUST Chern Class Scholarship (3 academic years)
 - HKUST Dean's List (3 semesters)
