@@ -1,0 +1,82 @@
+name: Build resume
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "resume/**"
+      - "scripts/validate_resume.sh"
+      - ".github/workflows/build-resume.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: build-resume-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Compile resume with XeLaTeX
+        uses: xu-cheng/latex-action@v4
+        with:
+          root_file: resume.tex
+          working_directory: resume
+          latexmk_use_xelatex: true
+
+      - name: Install PDF validation tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes poppler-utils
+
+      - name: Validate compiled PDF
+        run: ./scripts/validate_resume.sh resume/resume.pdf
+
+      - name: Update public resume
+        run: install -m 0644 resume/resume.pdf files/Resume_Chen_Yixiang.pdf
+
+      - name: Upload compiled resume
+        uses: actions/upload-artifact@v7
+        with:
+          name: Resume_Chen_Yixiang
+          path: files/Resume_Chen_Yixiang.pdf
+          if-no-files-found: error
+
+      - name: Commit updated PDF
+        id: commit
+        shell: bash
+        run: |
+          if git diff --quiet -- files/Resume_Chen_Yixiang.pdf; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "The published PDF is already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add files/Resume_Chen_Yixiang.pdf
+          git commit -m "Update generated resume PDF"
+          git push origin HEAD:master
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Request GitHub Pages rebuild
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl --fail-with-body --location --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/pages/builds"

@@ -7,9 +7,12 @@ redirect_from:
   - /about.html
 ---
 
-I am an incoming Ph.D. student in the [Dual Doctoral Degree Programme in Robotics and Embodied Intelligence](https://www.polyu.edu.hk/crei/), jointly offered by [The Hong Kong Polytechnic University](https://www.polyu.edu.hk/) (PolyU) and the [University of Macau](https://www.um.edu.mo/) (UM). I will be supervised by [Prof. Wanyu Lin](https://wanyu-lin.github.io/) at PolyU and [Prof. Li Li](https://personal.fst.um.edu.mo/llili/) at UM.
+Since 2026, I have been a Ph.D. student in the [Dual Doctoral Degree Programme in Robotics and Embodied Intelligence](https://www.polyu.edu.hk/crei/), jointly offered by [The Hong Kong Polytechnic University](https://www.polyu.edu.hk/) (PolyU) and the [University of Macau](https://www.um.edu.mo/) (UM). I am supervised by [Prof. Wanyu Lin](https://wanyu-lin.github.io/) at PolyU and [Prof. Li Li](https://personal.fst.um.edu.mo/llili/) at UM.
 
 I recently completed my Bachelor of Science in Data Science and Technology at [The Hong Kong University of Science and Technology](https://hkust.edu.hk/) (HKUST). During my undergraduate studies, I was fortunate to conduct research under the guidance of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/), with mentorship from [Tianshi Zheng](https://stonetzheng.github.io/), to whom I am deeply grateful for their invaluable guidance.
+
+Research Interests
+------------------
 
 I am generally interested in Natural Language Processing. More specifically, I focus on advancing the **multi-agent collaboration** capabilities in Multi-Agent LLM Systems. Previously, I focused primarily on the **logical reasoning** capabilities of large language models. In Spring 2025, I co-authored a paper [The Curse of CoT](https://arxiv.org/pdf/2504.05081) on LLM **logical reasoning** (accepted to TMLR) with [Tianshi Zheng](https://stonetzheng.github.io/) under the supervision of [Prof. Yangqiu Song](https://www.cse.ust.hk/~yqsong/).
 
@@ -37,4 +40,3 @@ Awards
 <div style="width: 300px; margin: 20px auto 0; overflow: hidden;">
 <script type="text/javascript" id="mapmyvisitors" src="//mapmyvisitors.com/map.js?d=_IM3g0RLo2DVUsxUfq-NdzxqxK3DuynohYMnS4yGTM0&cl=ffffff&w=a"></script>
 </div>
-

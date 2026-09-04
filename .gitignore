@@ -11,3 +11,14 @@ Gemfile.lock
 # Ingore files created by npm
 node_modules
 package-lock.json
+
+# LaTeX resume build artifacts
+resume/*.aux
+resume/*.fdb_latexmk
+resume/*.fls
+resume/*.log
+resume/*.out
+resume/*.pdf
+resume/*.synctex.gz
+resume/*.toc
+resume/*.xdv
