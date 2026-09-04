@@ -12,3 +12,5 @@ main:
     url: /publications/
   - title: "CV"
     url: /files/Resume_Chen_Yixiang.pdf
+  - title: "Misc"
+    url: /misc/
