@@ -216,6 +216,9 @@ kramdown:
 
 # These settings control the types of collections used by the template
 collections:
+  blog:
+    output: true
+    permalink: /blog/:path/
   teaching:
     output: true
     permalink: /:collection/:path/
@@ -232,6 +235,15 @@ collections:
 
 # These settings control how pages and collections are included in the site
 defaults:
+  # _blog
+  - scope:
+      path: ""
+      type: blog
+    values:
+      layout: single
+      author_profile: true
+      share: false
+      comments: false
   # _posts
   - scope:
       path: ""
