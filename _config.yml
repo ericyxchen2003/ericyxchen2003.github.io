@@ -299,6 +299,14 @@ defaults:
       share: true
 
 
+  # Encrypted share pages have no public index entries.
+  - scope:
+      path: "share"
+    values:
+      layout: null
+      sitemap: false
+      unlisted: true
+
 # Sass/SCSS
 sass:
   sass_dir: _sass
