@@ -5,3 +5,4 @@
 .overview-split{grid-template-columns:1fr}
 
 #share-lock{position:fixed;inset:0;z-index:10000;background:#f6f4ef;color:#1c3a3f;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;font-family:system-ui}
+#share-progress{margin:0 0 24px;padding:16px;border:1px solid #cbd5cc;border-radius:12px}#share-progress h2{font-size:18px;margin:0 0 8px}#share-progress p{font-size:13px}#share-progress details{padding:8px 0}#share-progress summary{cursor:pointer}#share-progress pre{white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.7 system-ui;max-height:480px;overflow:auto}

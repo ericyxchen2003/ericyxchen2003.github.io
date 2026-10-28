@@ -15,6 +15,31 @@
   gate.append(heading, message);
   document.body.append(gate);
   let bundle, lastCheck = 0, pending;
+  let renderedAt;
+  function showProgress(data) {
+    const stamp = data.checked_at || data.updated_at;
+    const format = value => new Date(value).toLocaleString('zh-CN', {timeZone: 'Asia/Hong_Kong', hour12: false});
+    const label = document.querySelector('.public-snapshot');
+    if (label) label.textContent = '只读研究快照 · 最近采集：' + format(stamp) + ' · 内容更新：' + format(data.updated_at) + '（香港时间）· HONOR 在线时每小时发布；Mac 无需在线';
+    if (!label || !data.progress || renderedAt === stamp) return;
+    renderedAt = stamp;
+    let panel = document.getElementById('share-progress');
+    if (!panel) { panel = document.createElement('section'); panel.id = 'share-progress'; label.after(panel); }
+    panel.replaceChildren();
+    const title = document.createElement('h2'); title.textContent = '团队进展（截至最近采集）';
+    const note = document.createElement('p');
+    note.textContent = 'HONOR · 已执行 ' + data.progress.turns + ' 轮。以下是团队公开回复，属于研究讨论；不代表新增已验证证据。';
+    panel.append(title, note);
+    const statuses = {RUNNING:'研究中', READY:'等待调度', CONNECTING:'连接中', RECOVERY_FAILED:'恢复失败'};
+    for (const member of data.progress.members) {
+      const detail = document.createElement('details');
+      const summary = document.createElement('summary');
+      summary.textContent = member.id + ' · ' + (statuses[member.status] || member.status) + ' · ' + member.turns + ' 轮 · 展开最新回复';
+      const content = document.createElement('pre');
+      content.textContent = member.reply || '尚无已完成的公开回复。';
+      detail.append(summary, content); panel.append(detail);
+    }
+  }
   async function readBundle(force = false) {
     if (!force && bundle && Date.now() - lastCheck < 60000) return bundle;
     if (pending) return pending;
@@ -27,8 +52,7 @@
       const plain = await crypto.subtle.decrypt({name: 'AES-GCM', iv: bytes.slice(4, 16), additionalData: new TextEncoder().encode('euler-share-v1')}, key, bytes.slice(16));
       bundle = JSON.parse(new TextDecoder().decode(plain));
       lastCheck = Date.now();
-      const label = document.querySelector('.public-snapshot');
-      if (label) label.textContent = '只读研究快照 · 最后同步：' + new Date(bundle.updated_at).toLocaleString('zh-CN', {timeZone: 'Asia/Hong_Kong', hour12: false}) + '（香港时间）· 本机在线时每小时检查更新';
+      showProgress(bundle);
       return bundle;
     })();
     try { return await pending; }
@@ -41,6 +65,7 @@
     window.EulerShareKey = secret;
     await readBundle(true);
     gate.remove();
+    setInterval(() => readBundle(true).catch(() => {}), 60000);
     document.addEventListener('click', event => {
       const anchor = event.target.closest('a[href]');
       if (!anchor) return;
