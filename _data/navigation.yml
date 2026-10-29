@@ -10,6 +10,8 @@
 main:
   - title: "Publications"
     url: /publications/
+  - title: "Teaching"
+    url: /teaching/
   - title: "CV"
     url: /files/Resume_Chen_Yixiang.pdf
   - title: "Blog"
