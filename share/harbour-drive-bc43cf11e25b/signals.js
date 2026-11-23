@@ -11,7 +11,9 @@
 
   function create(map) {
     const incoming = new Map(), neighbours = new Map(), edges = [], heads = [], groups = [], corridors = new Map();
-    const crossings = map.nodes?.crossings || [];
+    const paint = map.pedestrianCrossings;
+    const crossings = paint ? paint.filter(s=>s.kind==='yellow'||s.kind==='studs')
+      : (map.nodes?.crossings || []).map(([x,z])=>({x,z}));
     function register(a, b, road) {
       const len = dist(a, b);
       if (len < .05) return;
@@ -62,7 +64,10 @@
     // Exact road nodes determine the entering directions; a signal mapped
     // beside a footpath alone cannot create a new vehicle-controlled junction.
     const sites = [];
-    for (const p of map.nodes?.signals || []) {
+    const diagonals=map.diagonalCrossings || [], centres=new Set(diagonals.map(path=>idOf(path[1])));
+    const signalPoints = new Map((map.nodes?.signals || []).map(p=>[idOf(p),p]));
+    for(const path of diagonals)signalPoints.set(idOf(path[1]),path[1]);
+    for (const p of signalPoints.values()) {
       const ends = incoming.get(idOf(p));
       if (ends?.length) sites.push({ p, ends, central: neighbours.get(idOf(p)).size > 2 });
     }
@@ -88,11 +93,13 @@
         let setback = site.central ? Math.max(6, edge.road.w*.5+2.1) : 1.6;
         let nearestCross = Infinity;
         for (const c of crossings) {
-          const vx = c[0]-p[0], vz = c[1]-p[1];
+          if(c.dx!==undefined && Math.abs(dot(c,edge))<.74)continue;
+          const vx = c.x-p[0], vz = c.z-p[1];
           const longitudinal = vx*edge.dx+vz*edge.dz, lateral = Math.abs(vx*edge.dz-vz*edge.dx);
           if (lateral > 1.6 || longitudinal < -13 || longitudinal > 4 || Math.abs(longitudinal) >= nearestCross) continue;
           nearestCross = Math.abs(longitudinal);
-          setback = Math.max(1.35, 2.55 - longitudinal);
+          const kerbSkew = c.skew===undefined?0:Math.abs(c.skew)*edge.road.w*.5;
+          setback = Math.max(1.35, (paint?2.98:2.55) + kerbSkew - longitudinal);
         }
         const stop = upstream(edge, edge.len, setback);
         const e = stop.e, centre = point(e,stop.along), pole = point(e,stop.along+1.5,e.side+e.width/2+.62);
@@ -134,7 +141,8 @@
         if (stage < 0) { stage=group.stages.length;group.stages.push([]); }
         h.stage=stage;group.stages[stage].push(h);
       }
-      group.slots=Math.max(2,group.stages.length);
+      const scramble=cluster.some(site=>centres.has(idOf(site.p)));
+      group.slots=Math.max(2,group.stages.length+(scramble?1:0));
       group.cycle=group.slots*23;
       group.offset=(Math.abs(Math.round(cluster[0].p[0]*3+cluster[0].p[1]*5)) % group.cycle);
       groups.push(group);

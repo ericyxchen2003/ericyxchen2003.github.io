@@ -4,7 +4,7 @@
 
 | 圖層 | 遊戲收錄 | 來源及處理 |
 | --- | ---: | --- |
-| 道路 | 694 段（693 段來源道路，其中一段按實際路寬分開），78 個街名，車行道中心線合共 36.2 公里 | 保留 OSM 道路中心線、接駁點、可用的單向標記、層級及車道數。分隔車行道分開計算。服務巷、私人通道、地下道路及停車場通道等已精簡。無寬度標記時，以車道數和道路分類估算。 |
+| 道路 | 696 段（695 段來源道路，其中一段按實際路寬分開），78 個街名，車行道中心線合共 36.5 公里 | 保留 OSM 道路中心線、接駁點、可用的單向標記、層級及車道數。分隔車行道分開計算。服務巷、私人通道、地下道路及停車場通道等已精簡。無寬度標記時，以車道數和道路分類估算。 |
 | 建築形體 | 1,642 個來源多邊形 | 來自地政總署 1,641 筆建築圖徵，涵蓋塔樓、裙樓、開敞式及臨時構築物。裁切後其中一個圖徵分為兩片。1,573 個形體採用來源所列頂部與底部標高之差；69 個缺乏高度資料的開敞式或臨時構築物採用估算高度。 |
 | 地形 | 109 × 81 個基礎樣點，全區 2 米網格，公園徑局部 1.25 米 | 從香港地政總署 5 米 DTM 取樣，遊戲網格間距 20 米，每個樣點取鄰近九個原始格網的中位數，以減少孤立尖峰。海岸形狀另取自 OSM 海岸線。 |
 | 海岸與綠地 | 2 個陸地多邊形，7 片碼頭，109 片公園、花園、草地、球場等 | OSM 單一道路圖徵及多部件面圖徵經裁切。九龍公園內的球場等可與公園外圍面重疊。 |
@@ -74,3 +74,36 @@
 | 香港文物探知館、聖安德烈堂 | 前威菲路軍營 S61、S62 的兩層扁拱柱廊、百葉窗、坡瓦頂。彌敦道東側教堂的紅磚、白色窗框、尖拱、鐘樓和石門 | [古物古蹟辦事處文物探知館圖冊](https://www.amo.gov.hk/filemanager/amo/common/download-area/pamphlet/hdc.pdf) · [古物諮詢委員會教堂實景及位置圖](https://www.aab.gov.hk/filemanager/aab/common/139meeting/AAB139-22-A.pdf) |
 | 港鐵出入口 | 尖沙咀站 A1、A2、C1、C2、D1、D2、E 及尖東站 N2、N5、P1、P2。A1 是獨立的玻璃外殼與升降機模型。其他入口按各自地面輪廓設置雨棚、扶手及雙語編號牌 | [地政總署鐵路出入口點](https://ginfo.cedd.gov.hk/server/rest/services/Basemap/MapServer/377) · [港鐵 A1 水晶屋](https://www.mtr.com.hk/archive/corporate/en/press_release/PR-16-039-E.pdf) |
 | 巴士站 | 九巴站位、雙語站名及路線編號採用運輸署 2026-11-23 公開快照，以站點代碼關聯。每個牌面最多展示五條路線。其餘以 OSM 站名及通用巴士牌表示。候車亭按行人路可用空間簡化放置 | [運輸署及九巴站點和路線資料](https://data.gov.hk/en-data/dataset/hk-td-tis_21-etakmb) · [九巴車站設施資料](https://www.kmb.hk/csr_2024/KMB_SR2024.pdf) |
+
+## 行人過路標記
+
+地面過路點按 OpenStreetMap 的道路節點、相交行人徑、訊號及標記資料定位。兩排路釘與黃色橫紋用於設行人燈或有明確黃紋記錄的過路處。部分交通燈路口的警示性過路處只有路釘。無燈警示性過路處保留素面。條紋間距及白色雙語箭嘴的比例參照運輸署圖則。[地面行人過路設施實景照片](https://www.td.gov.hk/tc/transport_in_hong_kong/pedestrians/pedestrian_crossing_facilities/at_grade_pedestrian_crossings/index.html) · [《運輸策劃及設計手冊》第三冊，5.4.2.68–69、5.7.3–4](https://www.td.gov.hk/filemanager/en/content_5055/V3_08_2026.pdf)
+
+中間道有「望右」及「望左」分側記錄。科學館道及加連威老道近安全島有方向提示的地圖記錄。其餘部分單程路的提示按近側來車方向重建，字樣位置和過路處闊度按遊戲路緣估算。[中間道地圖節點](https://www.openstreetmap.org/node/5983133404) · [科學館道地圖節點](https://www.openstreetmap.org/node/2441045168)
+
+加拿分道與加連威老道交界沿已記錄的兩條行人斜線繪製，中央的黃色方框紋參考運輸署在當地拍攝的照片。[尖沙咀對角行人過路處實景](https://www.info.gov.hk/gia/general/202408/02/P2024080200191.htm)
+
+## 彌敦道地舖及街面
+
+地舖跟隨地政總署建築輪廓朝向彌敦道的外牆分隔。已記錄的地面商戶類別參考 OpenStreetMap。美麗都大廈的洋服舖與找換店、重慶大廈入口內的商戶、國際廣場門廊，以及栢麗購物大道沿公園的低層連廊分別建模。地舖的組合、商品陳列、招牌位置及尺寸按駕駛視角重建。店面與字樣為遊戲原創，租戶及舖號並未逐戶核實。[旅發局 · 尖沙咀商場及美麗都大廈](https://www.discoverhongkong.com/eng/neighbourhoods/yau-tsim-mong/tsim-sha-tsui-s-must-visit-malls.html) · [美麗都大廈找換店地址](https://firstexchange.com.hk/en/store-location.php?id=1) · [電影服務統籌科 · 栢麗購物大道實景](https://fpf.ccidahk.gov.hk/en/location/detail.php?id=364)
+
+## 歷史建築、宗教建築及海旁街景
+
+各主體使用本遊戲的地政總署建築輪廓及高程。屋頂、窗花、招牌、雕像、儀器、花架及鋪地依照片或平面圖以幾何重建，局部尺度及配色為近似值。下列照片用於比對，未用作遊戲貼圖。
+| 地點 | 建模及參考資料 |
+| --- | --- |
+| 聖安德烈堂 | 紅磚主堂、尖拱花窗、鐘樓、坡腳石門與現代生命中心。[古物諮詢委員會現場照片](https://www.aab.gov.hk/filemanager/aab/common/139meeting/AAB139-22-A.pdf#page=4) · [教堂正立面照片](https://www.standrews.org.hk/wp-content/uploads/2019/01/Wedding-bookletJan-2019_print_JD.pdf#page=1) · [生命中心建築資料](https://www.aiahk.org/portfolio-item/st-andrews-church-life-centre-by/) |
+| 九龍清真寺、玫瑰堂 | 九龍清真寺的中央圓頂、四角宣禮塔、拱廊及格柵參考[香港回教信託基金總會](https://www.islamictrusthk.org/kowloon-masjid)。玫瑰堂的山牆、拱窗與飛扶壁參考[歷史建築圖冊](https://www.heritage.gov.hk/filemanager/heritage/common/events/hf2014.pdf#page=18)。 |
+| 嘉諾撒聖瑪利書院 | 主樓巨柱門廊、聖米迦勒樓柱廊及相鄰校舍。[校方建築圖片](https://smcc.hk/School_History/SH-SB-Main.htm) · [歷史建築評估](https://www.aab.gov.hk/filemanager/aab/common/historicbuilding/en/490_Appraisal_En.pdf) |
+| 香港天文台 | 1883年大樓的雙層拱廊、百周年紀念大樓與南面觀測草坪。[古物古蹟辦事處照片](https://www.amo.gov.hk/en/historic-buildings/monuments/kowloon/monuments_24/index.html) · [天文台歷史建築圖集](https://www.hko.gov.hk/tc/abouthko/history/photos/buildings.htm) · [溫度計棚](https://www.hko.gov.hk/en/education/meteorological-instruments/automatic-weather-stations/00526-thermometers-under-the-shed.html) · [總部觀測場平面圖](https://www.hko.gov.hk/en/publica/tn/files/tn108.pdf#page=68) |
+| 鐘樓、1881 Heritage、訊號山 | 鐘樓鐘面與塔冠參考[古蹟資料](https://www.amo.gov.hk/en/historic-buildings/monuments/kowloon/monuments_43/index.html)及[用戶提供的鐘樓照片](https://commons.wikimedia.org/wiki/File:KCR_Clock_Tower.JPG)。水警總部圓屋及馬廄參考[古蹟照片](https://www.amo.gov.hk/en/historic-buildings/monuments/kowloon/monuments_51/index.html)及[規劃圖](https://www.tpb.gov.hk/en/papers/MPC/TWK/A_K1_260/A_K1_260_Plans.pdf)。訊號山的紅磚塔、圓窗和切角另參考[古蹟照片](https://www.amo.gov.hk/en/historic-buildings/monuments/kowloon/monuments_109/index.html)。 |
+| 酒店及維港文化匯 | 麗晶的銀色窗帶與臨海平台參考[酒店圖片](https://hongkong.regenthotels.com/image-video-gallery/regent-hong-kong/)。瑰麗酒店的疊落塔身與豎向分格、K11 ARTUS 的連續露台參考[KPF 酒店項目](https://www.kpf.com/project/rosewood-hong-kong)及[維港文化匯建築項目](https://www.kpf.com/project/victoria-dockside)。 |
+| 海濱及花園 | 星光大道的手印扶手、水景雕塑及遮蔭花架參考[政府綠化資料](https://www.greening.gov.hk/en/greening-landscape/landscape-corner/index_id_6.html)、[花架結構工程師](https://www.eocengineers.com/projects/avenue-of-stars-salisbury-gardens-398/)及[星光大道重開資料](https://www.info.gov.hk/gia/general/201901/30/P2019012900565.htm)。梳士巴利花園參考[園景設計團隊](https://www.fieldoperations.net/project/salisbury-garden)。尖東平台花園、換乘站和兩條行人天橋參考[場景圖庫](https://fpf.ccidahk.gov.hk/en/location/detail.php?id=1503)及[旅遊事務署交通連接圖](https://www.tourism.gov.hk/en/tourism-projects.php?project=transport_link)。 |
+| 西九文化區 | 戲曲中心位於廣東道與柯士甸道西交界。四角入口通往無柱中庭，兩側為商舖和樓座。弧形看台、扶手電梯、劇場底面與臨街基座按[西九底層平面圖](https://webmedia.westkowloon.hk/documents/xc_atrium_floorplan_202408.pdf)及[設計方實景](https://reveryarchitecture.com/projects/xiqu-centre/)近似建模。 |
+
+## 梳士巴利道隧道
+地面路口與雙向下通道分層建模。東行及西行的覆蓋段沿用 [OSM 東行線](https://www.openstreetmap.org/way/37664794) 和 [OSM 西行線](https://www.openstreetmap.org/way/37664805)。兩端引道參照地政總署高程點插值，洞內低點、淨高、燈具與擋土牆尺寸為遊戲近似值。洞口及分隔設施的外觀參考[電影服務統籌科實景照片](https://fpf.ccidahk.gov.hk/en/location/detail.php?id=1901)。
+
+## 道路與地形覆核
+現有 696 段車路對應 OSM 快照內 695 條道路要素，其中麼地道按路寬分段。遊戲保留來源單行方向。加拿分道、麼地道及康達徑的局部中心線按路寬、建築或橋台位置調整。地形烘焙分開處理車路與兩側坡地的短距離起伏，保護橋台、隧道引道及九龍公園徑接坡。橋墩間距、橫斷面與缺少測點處的坡度均為近似值。
+梳士巴利道兩條覆蓋段與[政府地下隧道輪廓](https://ginfo.cedd.gov.hk/server/rest/services/Basemap/MapServer/412)核對。高架段參照[高架路面圖層](https://ginfo.cedd.gov.hk/server/rest/services/Basemap/MapServer/403)及高程點。九龍公園徑北段的圖層覆蓋不完整，架空與接坡範圍依 OSM 和局部測點估算。圖幅邊緣的柯士甸道西、連翔道地下路網及紅磡海底隧道仍未完整開放行車。
