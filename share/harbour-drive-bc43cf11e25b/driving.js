@@ -5,6 +5,7 @@
   const magnitude = Math.hypot;
   const key = (x, z) => x + "/" + z;
   const CELL = 25;
+  const levelBit = layer => 1 << (layer < 0 ? 15 - layer : layer);
   const L = 2.27;
   const W = 0.88;
   const corners = [[L, W], [L, -W], [-L, W], [-L, -W], [L, 0], [-L, 0], [0, W], [0, -W], [0, 0]];
@@ -103,14 +104,14 @@
       return nodeIDs.get(address);
     }
     for (const road of map.roads) {
-      if (!(road.p && road.p.length > 1) || Number(road.l) < 0) continue;
+      if (!(road.p && road.p.length > 1) || (Number(road.l) < 0 && !road.underpass)) continue;
       const half = Math.max(1.6, Number(road.w || 6) / 2);
       for (let i = 1; i < road.p.length; i++) {
         const a = road.p[i - 1], b = road.p[i];
         const vx = b[0] - a[0], vz = b[1] - a[1], len = magnitude(vx, vz);
         if (len < 0.04) continue;
         const start = nodeFor(a), end = nodeFor(b), one = Number(road.one || 0);
-        const layer = Math.max(0, Number(road.l) || 0), bit = 1 << layer;
+        const layer = Number(road.l) || 0, bit = levelBit(layer);
         const s = { a, b, start, end, len, half, dx: vx / len, dz: vz / len, road, one, layer, bit };
         for (const node of [nodes[start], nodes[end]]) {
           node.levels |= bit; node.half = Math.max(node.half, half);
@@ -166,7 +167,7 @@
       return best;
     }
     function levelsAt(x, z, layer) {
-      const base = 1 << layer;
+      const base = levelBit(layer);
       let mask = base;
       for (const n of transitions.at(x, z)) {
         if ((n.mask & base) && (x - n.x) ** 2 + (z - n.z) ** 2 <= n.reach ** 2) mask |= n.mask;
@@ -216,19 +217,20 @@
       return ground.some(area => inRing(x, z, area.p) &&
         !(area.holes || []).some(hole => inRing(x, z, hole)));
     }
-    function obstructed(x, z, yaw, layer = 0, levels = 1 << layer, keepToRoad = layer > 0) {
+    function obstructed(x, z, yaw, layer = 0, levels = levelBit(layer), keepToRoad = layer !== 0) {
       const fx = Math.sin(yaw), fz = -Math.cos(yaw);
       for (const [longitudinal, lateral] of corners) {
         const cx = x + fx * longitudinal - fz * lateral;
         const cz = z + fz * longitudinal + fx * lateral;
         if (map.bounds && (cx < map.bounds[0] || cz < map.bounds[1] ||
             cx > map.bounds[2] || cz > map.bounds[3])) return "boundary";
+        if (groundHeight?.underpass?.blocks(cx,cz,layer)) return "barrier";
         if (keepToRoad) {
           if (!pavementAt(cx, cz, levels)) return "deck";
         } else if (!supportedGround(cx, cz) && !((levels & ~1) && pavementAt(cx, cz, levels & ~1))) {
           return "water";
         }
-        if(groundHeight?.overhead){
+        if(layer>=0 && groundHeight?.overhead){
           for(let upper=layer+1;upper<=2;upper++){
             if(levels&(1<<upper))continue;
             const overhead=groundHeight.overhead(cx,cz,upper);
@@ -245,7 +247,7 @@
         // A raised storey is passable only when the taxi fits underneath it.
         const base = Number(b.base) || 0;
         const floor = groundHeight?.surface?.(x,z,layer) ?? (layer*4.4+(groundHeight?groundHeight(x,z):0));
-        if ((base > 2 && bottom >= floor + 2) || top < floor) continue;
+        if (((base > 2 || layer < 0) && bottom >= floor + 2) || top < floor) continue;
         if (touchesCar(b.p, x, z, fx, fz) || (b.holes || []).some(h => touchesCar(h, x, z, fx, fz))
           || (inRing(x, z, b.p) && !(b.holes || []).some(h => inRing(x, z, h)))) return "building";
       }
@@ -267,7 +269,7 @@
     let route = null, routeLengths = [], routeProgress = 0, rerouteTime = 0;
     let collisionTime = 0, reverseDelay = 0, streetTimer = 0;
     function updateStreet() {
-      const hit = roadAtLevel(state.x, state.z, 1 << state.layer);
+      const hit = roadAtLevel(state.x, state.z, levelBit(state.layer));
       state.roadName = hit?.road.n || hit?.road.en || "無名道路";
       state.roadEn = hit?.road.en || "";
     }
@@ -337,7 +339,7 @@
     function navigate(id) {
       const target = places.find(place => place.id === id), destination = snaps.get(id);
       if (!target) return null;
-      const origin = roadAtLevel(state.x, state.z, 1 << state.layer) ||
+      const origin = roadAtLevel(state.x, state.z, levelBit(state.layer)) ||
         nearestRoad(state.x, state.z, s => s.layer === state.layer) || nearestRoad(state.x, state.z);
       const points = findPath(origin, destination);
       if (!points) { route = null; return null; }
@@ -393,13 +395,13 @@
       if (rerouteTime > 1.2) navigate(target.id);
     }
 
-    function trafficOverlap(x,z,yaw,layer,other,halfLength=L,halfWidth=W){
+    function trafficOverlap(x,z,yaw,layer,other,halfLength=L,halfWidth=W,bodyHeight=1.75){
       if(!intersects(x,z,yaw,halfLength,halfWidth,other))return false;
       const otherLayer=other.layer||0;
       if(layer===otherLayer)return true;
       if(!groundHeight?.surface)return false;
       const playerY=groundHeight.surface(x,z,layer),otherY=groundHeight.surface(other.x,other.z,otherLayer);
-      return playerY<otherY+(other.kind==='bus'?4.45:1.75)&&otherY<playerY+1.75;
+      return playerY<otherY+(other.kind==='bus'?4.45:1.75)&&otherY<playerY+bodyHeight;
     }
     function substep(dt, inputs) {
       const throttle = clamp(Number(inputs.throttle || 0), 0, 1), brake = clamp(Number(inputs.brake || 0), 0, 1);
@@ -431,10 +433,10 @@
       const x = state.x + Math.sin(middle) * v * dt, z = state.z - Math.cos(middle) * v * dt;
       const levels = levelsAt(x, z, state.layer);
       let layer = state.layer;
-      if (levels !== (1 << layer)) {
+      if (levels !== (levelBit(layer))) {
         const road = roadAtLevel(x, z, levels);
         if (road && road.distance <= road.segment.half + .28 && road.segment.layer!==layer &&
-            transitions.at(x,z).some(n=>(n.mask&(1<<layer))&&n.incident.includes(road.segment)&&
+            transitions.at(x,z).some(n=>(n.mask&(levelBit(layer)))&&n.incident.includes(road.segment)&&
               (x-n.x)**2+(z-n.z)**2<=n.reach**2)) layer = road.segment.layer;
       }
       const obstacle = obstructed(x, z, newYaw, layer, levels)
@@ -464,7 +466,7 @@
     reset();
     return { state, places, step, reset, nearestRoad, navigate, trafficOverlap,
       // Ambient traffic still follows the carriageway through bends and junctions.
-      canOccupy(x, z, yaw) { return !obstructed(x, z, yaw, 0, 1, true); },
+      canOccupy(x, z, yaw, layer = 0) { return !obstructed(x, z, yaw, layer, levelsAt(x,z,layer), true); },
       setTraffic(vehicles) { traffic = vehicles; }, cancelRoute() { route = null; }, get route() { return route; } };
   }
   global.HKDriving = { create, intersects };

@@ -580,8 +580,12 @@
     b.cylinder(0,6.45,0,3.32,3.32,.42,'#f2e6d3',24);
     b.dome(0,6.66,0,3.16,2.05,3.16,'#b7b1a2',0,28);
     b.cylinder(0,11.56,0,.073,.15,7.03,'#7c7770',10);
-    b.dome(0,12.34,0,.82,.82,.82,'#565247',0,16);
-    b.cylinder(0,11.99,0,.82,.66,.69,'#565247',16);
+    b.mesh(new T.SphereGeometry(.82,18,12),'#655449',0,12.25,0);
+    for(const a of [-1.45,1.39,Math.PI]){
+      const f=facadeFrame([-Math.cos(a)*.72+2.99*Math.sin(a),Math.sin(a)*.72+2.99*Math.cos(a)],[Math.cos(a)*.72+2.99*Math.sin(a),-Math.sin(a)*.72+2.99*Math.cos(a)]);
+      tile(b,f,0,1.44,1.22,3.23,.035,'#beaf94');tile(b,f,.12,1.32,1.35,3.11,.055,'#526958');
+      for(let k=0;k<8;k++)tile(b,f,.14,1.30,1.43+k*.196,1.49+k*.196,.065,'#89947c');
+    }
     b.box(0,1.58,3.03,1.19,2.66,.10,'#6e8077');
   }
   function palm(b,x,z,h,angle) {
@@ -730,7 +734,23 @@
         map:tex,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,toneMapped:false}));
       label.rotation.y=angle;label.position.set(x,y,z);mesh.add(label);
     };
-    if(land.id==='peninsula'){
+    if(land.id==='clock'){
+      const cv=document.createElement('canvas');cv.width=cv.height=384;
+      const c=cv.getContext('2d');c.translate(192,192);
+      const rim=(r,w,color)=>{c.beginPath();c.arc(0,0,r,0,TAU);c.strokeStyle=color;c.lineWidth=w;c.stroke();};
+      c.beginPath();c.arc(0,0,186,0,TAU);c.fillStyle='#f3eedc';c.fill();rim(178,11,'#424640');rim(116,4,'#505650');
+      const hours=['XII','I','II','III','IIII','V','VI','VII','VIII','IX','X','XI'];
+      c.strokeStyle='#4f554f';c.fillStyle='#393d39';c.lineWidth=3;c.font='bold 31px Georgia,serif';c.textAlign='center';c.textBaseline='middle';
+      for(let k=0;k<60;k++){
+        c.save();c.rotate(k*TAU/60);c.beginPath();c.moveTo(0,-171);c.lineTo(0,k%5===0?-160:-166);c.stroke();
+        if(k%5===0){c.fillText(hours[k/5],0,-143,65);c.rotate(TAU/24);c.beginPath();c.moveTo(0,-116);c.lineTo(0,-170);c.stroke();}
+        c.restore();
+      }
+      rim(14,5,'#53574e');
+      const tex=new T.CanvasTexture(cv);tex.colorSpace=T.SRGBColorSpace;tex.anisotropy=8;
+      const mat=new T.MeshBasicMaterial({map:tex,transparent:true,alphaTest:.1}),geo=new T.PlaneGeometry(3.24,3.24);
+      for(let k=0;k<4;k++){const a=k*TAU/4,face=new T.Mesh(geo,mat);face.position.set(Math.sin(a)*3.705,27.55,Math.cos(a)*3.705);face.rotation.y=a;mesh.add(face);}
+    }else if(land.id==='peninsula'){
       const p=records(270451),f=facadeFrame(p[3],p[4]),s=f.length/2;
       textPlane('T H E   P E N I N S U L A',...f.at(s,9.16,.42),16.4,1.3,f.angle,'#58462a','bold 84px Georgia, serif');
     }else if(['d1','d2','n5'].includes(land.id)){

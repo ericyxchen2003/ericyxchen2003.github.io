@@ -12,7 +12,7 @@ window.HKDetails=(()=>{
     ['peking','北京道一號',[233614,240106]],['chungking','重慶大廈',[60300,239283,319094,319095,319096,319097]],
     ['k11','K11 Art Mall',[256131,211487]],['musea','K11 MUSEA',[159627,239340]],
     ['heritage','香港文物探知館',[117847,118006,118012]],['sports','九龍公園體育館',[336462]],
-    ['church','聖安德烈堂',[148720]],['terminal','海運大廈',[205457]],
+    ...(window.HKHeritage?.sites||[]),...(window.HKHarbourPlaces?.sites||[]),['terminal','海運大廈',[205457]],
     ['ocean','海洋中心',[156367,233817]],['gateway','港威商場',[21883]],
     ...Object.entries(data.entrances).map(([code,[id]])=>[code,(code.match(/^[NP]/)?'尖東站 ':'尖沙咀站 ')+code,[id]])
   ];
@@ -50,13 +50,13 @@ window.HKDetails=(()=>{
       const gap=signedDistance(x,z,s.p),t=clamp((gap-1.4)/4.3,0,1),level=poolLevel(s.index,z);
       return (level-.62)*(1-t*t*(3-2*t))+y*t*t*(3-2*t);
     }
-    return y;
+    return window.HKHarbourPlaces?.groundLevel(x,z,y)??y;
   };}
   const play=[[-39.8,-610.4],[-13.6,-610],[-20.9,-596.8],[-23.4,-582.7],[-21.7,-568.9],[-39.3,-559.9],[-41.8,-585.6]];
   const fortCenters=[[-31,-600],[-32,-574]], pavilion=[70,-493.5], gate=[181,-271];
   const sciencePoint=(u,v)=>[802.7-.7441*u-.6681*v,-598.5+.6681*u-.7441*v];
   const scienceCourt=[[14,0],[83,0],[83,16],[14,16]].map(([u,v])=>sciencePoint(u,v));
-  const parkSolids=[{p:scienceCourt,h:5.4},{p:rect(209.17,-641.7,.76,.72),h:2.7},{p:rect(209.4,-638.6,.76,.72),h:2.7},{p:rect(...pavilion,5.6,5.6),h:5.4},...fortCenters.map(([x,z])=>({p:rect(x,z,3.5,3.5),h:3.6})),
+  const parkSolids=[...(window.HKHarbourPlaces?.solids||[]),{p:scienceCourt,h:5.4},{p:rect(209.17,-641.7,.76,.72),h:2.7},{p:rect(209.4,-638.6,.76,.72),h:2.7},{p:rect(...pavilion,5.6,5.6),h:5.4},...fortCenters.map(([x,z])=>({p:rect(x,z,3.5,3.5),h:3.6})),
     {p:rect(...gate,3.4,.52),h:2.3}];
   const isPond=(x,z)=>ponds.some(s=>near(x,z,s)&&signedDistance(x,z,s.p)<0);
   const fortAngle=k=>(-.18+k/29)*TAU;
@@ -69,6 +69,7 @@ window.HKDetails=(()=>{
   }
   parkSolids.push({p:rect(-31,-586,9.8,1.9),h:2.72});
   function clearPlanting(x,z){
+    if(window.HKHarbourPlaces?.clearPlanting(x,z))return true;
     if(x>726&&x<810&&z>-612&&z<-535&&signedDistance(x,z,scienceCourt)<10.0)return true;
     if(ponds.some(s=>near(x,z,s)&&signedDistance(x,z,s.p)<2.0))return true;
     return (x>-45&&x<-12&&z>-612&&z<-558&&signedDistance(x,z,play)<1)||Math.hypot(x-gate[0],z-gate[1])<3;
@@ -207,6 +208,35 @@ window.HKDetails=(()=>{
       edges(p,(a,c,i)=>{const f=frame(a,c),L=f.length;
         panes(f,y+.4,h-.4,3.4,['#457b86','#5d8e97','#71a3a8']);grid(f,y+.4,h-.4,3.2,4.7,steel);
         if(i===0||i===3){
+          if(i===0){
+            for(const u of [19.5,44.7]){
+              const at=f.at(u,0),sill=ground(at[0],at[2])+.035;
+              tile(b,f,u-3.65,u+3.65,sill-.25,sill+3.55,.11,'#4a5856');
+              for(let k=0;k<6;k++){
+                const left=u-3.52+k*1.18;
+                tile(b,f,left,left+1.12,sill+.07,sill+2.7,.14,k===0||k===5?'#88a8a8':'#576f71');
+                tile(b,f,left+.02,left+1.10,sill+1.1,sill+1.16,.155,'#c4ccbd');
+                tile(b,f,left+.025,left+1.10,sill+.06,sill+.15,.16,'#acb6af');
+                if(k>0&&k<5){
+                  const handle=left+(k%2?.92:.19);
+                  b.beam(f.at(handle,sill+.88,.23),f.at(handle,sill+1.5,.23),.048,'#e3dfcc');
+                }
+              }
+              b.box(...f.at(u,sill+3.58,.26),7.6,.16,.59,'#c6d0c7',f.angle);
+              sign(f,u,sill+3.08,.17,3.9,.54,'iSQUARE','國際廣場','#3e555b');
+              for(const side of [-1,1]){
+                const x=u+side*5.36;
+                tile(b,f,x-1.45,x+1.45,sill+.27,sill+3.35,.12,'#a5957e');
+                for(let k=0;k<3;k++){
+                  const s=x+(k-1)*.86;
+                  tile(b,f,s-.36,s+.36,sill+.50,sill+2.73,.136,k%2?'#7d8d85':'#858175');
+                  tile(b,f,s-.30,s+.30,sill+.64,sill+.85,.15,'#c4b495');
+                  b.box(...f.at(s,sill+1.20,.17),.30,.64,.07,k%2?'#c2a278':'#ddd4bd',f.angle);
+                }
+                tile(b,f,x-1.45,x+1.45,sill+.30,sill+.40,.165,steel);
+              }
+            }
+          }
           // The escalator flights cross the transparent atrium along Nathan Road.
           for(let j=0;j<4;j++){
             const u=L*(j%2?.72:.27),v=L*(j%2?.27:.72),lo=y+6+j*8.2,hi=lo+8.2;
@@ -261,10 +291,31 @@ window.HKDetails=(()=>{
           }
         }
         for(const v of [-.62,-2.4,-4.4])b.beam(f.at(left+.7,entryTop-.09,v),f.at(right-.7,entryTop-.09,v),.086,'#f4eabd');
-        for(let k=0;k<4;k++){
-          const u=left+1.15+k*(right-left-2.3)/3;
-          tile(b,f,u-.59,u+.59,floor+.35,floor+2.58,deep+.025,['#a8a181','#859b92','#cab188','#8b9287'][k]);
+        // Kiosks flank the central passage, recessed far enough to see their returns.
+        for(const [u,money] of [[left+2.8,true],[right-2.8,false]]){
+          const l=u-2.33,r=u+2.33,v=deep+.65;
+          tile(b,f,l,r,floor,floor+3.12,v,money?'#8a6d4e':'#566763');
+          b.box(...f.at(u,floor+.60,v+.30),4.70,1.2,.62,money?'#996d4e':'#698387',f.angle);
+          b.box(...f.at(u,floor+1.22,v+.36),4.76,.12,.8,'#d2c4ab',f.angle);
+          tile(b,f,l+.12,r-.12,floor+1.31,floor+2.48,v+.03,money?'#576b61':'#909d98');
+          if(money){
+            sign(f,u-.92,floor+1.90,v+.06,2.05,.96,(c,w,h)=>{
+              c.fillStyle='#243f35';c.fillRect(0,0,w,h);
+              for(const [i,label] of ['CURRENCY     BUY     SELL','USD               7.75     7.85','EUR               8.74     9.21','JPY            5.210   5.460'].entries())
+                lettering(c,label,16,16+i*30,'bold 25px','#e8d5a3',470,'left');
+            });
+            for(let k=0;k<8;k++)b.beam(f.at(u+.39+k*.212,floor+1.38,v+.1),f.at(u+.39+k*.212,floor+2.44,v+.1),.027,steel);
+          }else{
+            for(let row=0;row<2;row++)for(let k=0;k<10;k++){
+              const s=l+.42+k*.42,h=floor+1.38+row*.49;
+              tile(b,f,s-.10,s+.10,h,h+.33,v+.058,'#414c4b');
+              tile(b,f,s-.076,s+.076,h+.045,h+.29,v+.066,['#9db7b5','#c9ac9c','#b4b0bd'][k%3]);
+            }
+          }
+          sign(f,u,floor+2.85,v+.08,4.56,.60,money?'外幣找換':'流動通訊',money?'MONEY EXCHANGE':'MOBILE ACCESSORIES',money?'#bf8c32':'#55797b');
         }
+        tile(b,f,(left+right)/2-1.5,(left+right)/2+1.5,floor,entryTop-.5,deep+.02,'#333e3b');
+        sign(f,(left+right)/2,floor+3.15,deep+.05,2.53,.48,'商場通道','SHOPPING ARCADE','#59594d');
       });
       edges(ring(base),(a,c,i)=>{const f=frame(a,c),L=f.length;if(L<3)return;
         if(i!==8){tile(b,f,0,L,4.3,9.8,.035,'#374748');grid(f,4.3,9.8,3.1,3.0,'#c3b8a4');}
@@ -341,9 +392,18 @@ window.HKDetails=(()=>{
         }
       });
       const tower=ring(239340),base=low(239340),end=top(239340);shell(239340,'#5c7778','#a4a696');
-      edges(tower,(a,c)=>{const f=frame(a,c),L=f.length;if(L<1)return;
-        grid(f,base,end,3.4,3.8,'#918675');for(let v=base+1.6;v<end;v+=3.85){
-          strip(f,v,.48,.65,'#d0c0a2');tile(b,f,0,L,v+.26,v+.95,.22,'#8c9f98');}
+      edges(tower,(a,c,i)=>{const f=frame(a,c),L=f.length;if(L<1)return;
+        panes(f,base,end,2.55,['#485f63','#5b7476','#657b78']);
+        grid(f,base,end,3.4,3.8,'#927f69');
+        for(let y=base+1.55,level=0;y<end-.42;y+=3.85,level++){
+          const depth=.76+.27*Math.sin(i*.31+level*.39);
+          b.box(...f.at(L/2,y,depth*.44),L+.06,.35,depth*1.13,'#d3c0a1',f.angle);
+          tile(b,f,0,L,y+.18,y+.84,depth*.92,'#89938b');
+          b.box(...f.at(L/2,y+.87,depth*.92),L,.065,.079,'#b7ad96',f.angle);
+          if(L>4&&level%3===i%3){const u=L*.53;
+            b.box(...f.at(u,y+.43,depth*.76),Math.min(2.4,L*.42),.38,.31,'#a28e72',f.angle);
+            b.box(...f.at(u,y+.70,depth*.76),Math.min(2.26,L*.40),.26,.32,'#788859',f.angle);}
+        }
       });
     }
     function arcade(f,lo,n){
@@ -388,35 +448,6 @@ window.HKDetails=(()=>{
       for(let j=1;j<13;j++){
         const u=L*j/13;b.beam(f.at(u,hi-.83,-.9),f.at(u,hi,-16.6),.18,'#a1ada8');b.beam(f.at(u,hi,-16.6),f.at(u,hi-.83,-32),.18,'#a1ada8');
       }
-    }
-    function church(){
-      const id=148720,p=ring(id),lo=low(id),hi=top(id);
-      shell(id,'#a95f4c','#927469',lo,hi-3.25);
-      edges(p,(a,c)=>{const f=frame(a,c),L=f.length;if(L<2.5)return;
-        const n=Math.max(1,Math.floor(L/3.15));
-        for(let j=0;j<n;j++){
-          const u=L*(j+.5)/n,w=Math.min(1.68,L/n*.67),y=lo+2.0;
-          for(const [delta,tint,d] of [[.16,'#ece0c9',.060],[0,'#485c67',.072]]){
-            const r=w/2+delta;tile(b,f,u-r,u+r,y-delta,y+2.15,d,tint);
-            b.tri(f.at(u-r,y+2.15,d),f.at(u+r,y+2.15,d),f.at(u,y+3.57+delta,d),tint);
-          }
-          tile(b,f,u-.055,u+.055,y,y+3.27,.09,'#d8cdb8');
-          tile(b,f,u-w*.48,u+w*.48,y+1.1,y+1.19,.09,'#b9ae96');
-        }
-        strip(f,lo+.62,.3,.22,'#dacbb2');strip(f,hi-3.21,.24,.34,'#e9dcc5');
-      });
-      hip([242.3,-675.3],[269.1,-677.2],6.0,hi-3.22,hi+2.4,['#854f46','#a06350','#b88a70']);
-      const x=244,z=-682.15,base=hi-3.4;
-      b.box(x,base+2.45,z,3.8,4.9,3.6,'#a86652');
-      for(let k=0;k<4;k++){const a=k*Math.PI/2,fx=x+Math.sin(a)*1.86,fz=z+Math.cos(a)*1.86;
-        b.box(fx,base+3.3,fz,1.52,1.82,.16,'#514e44',a);for(const v of [-.6,.6])b.box(fx+v*Math.cos(a),base+4.87,fz-v*Math.sin(a),.43,.68,.33,stone,a);}
-      b.box(x,base+4.7,z,4.05,.26,3.95,stone);
-      // The street-facing stone gateway is distinct from the brick church up the slope.
-      const f=frame([209.15,-642.1],[209.45,-638.3]),L=f.length,y=ground(209.5,-640.2),s=L*.5;
-      for(const u of [.34,L-.34])b.box(...f.at(u,y+1.29,-.2),.68,2.58,.68,'#a8aa99',f.angle);
-      const crown=f.at(s,y+4.48,-.2);
-      for(const u of [.1,L-.1]){b.beam(f.at(u,y+2.5,-.2),crown,.31,'#b7b6a1');b.beam(f.at(u,y+2.5,-.2),f.at(s,y+3.85,-.2),.16,'#848b7f');}
-      b.box(...f.at(s,y+4.75,-.2),.12,.79,.12,stone);b.box(...f.at(s,y+4.82,-.2),.52,.12,.12,stone,f.angle);
     }
     function shops(f,y,h,seed){
       const L=f.length,n=Math.max(1,Math.round(L/8.2));
@@ -672,15 +703,20 @@ window.HKDetails=(()=>{
       for(let i=0;i<5;i++)b.dome(x-1.3+i*.65,y+.19,z+.22,.38,.32,.36,'#739054',0,8);
     }
     function place(id,name,x,z,make){
-      b=new Parts();g=new Parts();signs=signBatch();make();
-      const group=new T.Group();group.name=name;group.userData.landmark=id;
+      b=new Parts();g=new Parts();signs=signBatch();
+      const group=new T.Group();group.name=name;group.userData.landmark=id;make(group);
       if(b.p.length)group.add(b.finish(name));if(g.p.length){const panes=g.finish('Glass');panes.material=glassMat;panes.castShadow=false;group.add(panes);}
       signs.finish(group);scene.add(group);placed.push({id,n:name,name,en:name,x,z,mesh:group});
     }
-    const builders={science,isquare,peking,chungking,k11,musea,heritage,sports,church,terminal,ocean,gateway};
+    const builders={science,isquare,peking,chungking,k11,musea,heritage,sports,terminal,ocean,gateway};
+    const extensionBuilder=(extension,id)=>group=>extension.build(id,{b,group,frame,edges,ring,low,top,shell,sign,tile,ground});
+    for(const extension of [window.HKHeritage,window.HKHarbourPlaces]){
+      for(const [id] of extension?.sites||[])builders[id]=extensionBuilder(extension,id);
+    }
     for(const [id,name,ids] of sites)if(ids.every(k=>records.has(k))){
       const [x,z]=mean(ring(ids[0]));place(id,name,x,z,builders[id]||(()=>mtr(id)));
     }
+    for(const [id,name,x,z] of window.HKHarbourPlaces?.walks||[])place(id,name,x,z,extensionBuilder(HKHarbourPlaces,id));
     place('birdlake','九龍公園鳥湖',-30,-439,lake);place('garden','中國花園',...pavilion,garden);
     place('play','歷奇樂園',-31,-583,playground);place('parkgate','九龍公園海防道入口',...gate,parkGate);
     return placed;

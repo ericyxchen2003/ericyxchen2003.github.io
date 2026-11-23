@@ -5,7 +5,6 @@
   const count = 26;
   const key = p => p[0] + "/" + p[1];
   const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
-  const intersects = (...args) => global.HKDriving.intersects(...args);
 
   function create(map, sim, signals) {
     const edges = [], junctions = new Map(), vehicles = [], tracks = [];
@@ -15,7 +14,7 @@
       return rng / 4294967296;
     }
     for (const road of map.roads) {
-      if (Number(road.l || 0) !== 0 || road.cls === "service") continue;
+      if ((road.l && !road.underpass) || road.cls === "service") continue;
       const lanes = Math.max(1, Number(road.lanes) || (road.one ? 1 : 2));
       const half = road.w / 2;
       const laneWidth = road.w / lanes, laneCount = road.one ? lanes : Math.max(1, Math.floor(lanes / 2));
@@ -125,8 +124,8 @@
         const along = (0.2 + random() * 0.4) * edge.len, pos = lane(edge, along, vehicle);
         const yaw = Math.atan2(edge.dx, -edge.dz);
         if (distance(pos, player) < 14 || vehicles.some(v => v !== vehicle && distance(v, pos) < 14)
-          || !sim.canOccupy(pos.x, pos.z, yaw)) continue;
-        Object.assign(vehicle, { x: pos.x, z: pos.z, yaw, speed: 3.5 + 2.6 * random(), waitingForSignal: null });
+          || !sim.canOccupy(pos.x, pos.z, yaw, edge.road.l)) continue;
+        Object.assign(vehicle, { x: pos.x, z: pos.z, yaw, layer: edge.road.l, speed: 3.5 + 2.6 * random(), waitingForSignal: null });
         const track = { edge, along, points: [pos], offset: 0, index: 0, atEnd: false, stopped: 0 };
         tracks[vehicle.id] = track;
         extend(track, vehicle);
@@ -147,10 +146,11 @@
     let lastX = player.x, lastZ = player.z, recycleTimer = 0;
 
     function collide(p, vehicle, player, margin = 0) {
-      const body={x:p.x,z:p.z,yaw:p.yaw,kind:vehicle.kind,halfLength:vehicle.halfLength+margin,halfWidth:vehicle.halfWidth};
+      const level=p.edge.road.l;
+      const body={layer:level,x:p.x,z:p.z,yaw:p.yaw,kind:vehicle.kind,halfLength:vehicle.halfLength+margin,halfWidth:vehicle.halfWidth};
       if(sim.trafficOverlap(player.x,player.z,player.yaw,player.layer||0,body))return true;
-      return vehicles.some(other => other !== vehicle && intersects(p.x, p.z, p.yaw,
-        vehicle.halfLength + margin, vehicle.halfWidth, other));
+      return vehicles.some(other => other !== vehicle && sim.trafficOverlap(p.x,p.z,p.yaw,level,other,
+        vehicle.halfLength+margin,vehicle.halfWidth,vehicle.kind==='bus'?4.45:1.75));
     }
     function tryLaneChange(v, track, player) {
       // Scan early enough to move one lane before a stationary queue.
@@ -179,7 +179,7 @@
           pose.x += (v.x - anchor.x) * blend; pose.z += (v.z - anchor.z) * blend;
           const prev = points.at(-1);
           pose.yaw = Math.atan2(pose.x - prev.x, prev.z - pose.z);
-          if (collide(pose, v, player, 0.45) || !sim.canOccupy(pose.x, pose.z, pose.yaw)) break;
+          if (collide(pose, v, player, 0.45) || !sim.canOccupy(pose.x, pose.z, pose.yaw, pose.edge.road.l)) break;
           points.push(pose); end = pose;
         }
         if (points.length !== 12) continue;
@@ -208,7 +208,7 @@
         extend(track, v);
         const frontX = v.x + Math.sin(v.yaw) * v.halfLength;
         const frontZ = v.z - Math.cos(v.yaw) * v.halfLength;
-        const signal = signals?.approach(frontX, frontZ, v.yaw, 47);
+        const signal = v.layer < 0 ? null : signals?.approach(frontX, frontZ, v.yaw, 47);
         if (recycle && (!signal || signal.distance > 21)) { tryLaneChange(v, track, player); track = tracks[v.id]; }
         const speed = v.speed;
         let desired = v.cruise;
@@ -245,8 +245,8 @@
         v.speed += Math.max(-rate * dt, Math.min(rate * dt, desired - speed));
         if (stopRoom < .045) v.speed = 0;
         const pose = sample(track, Math.min(stopRoom, v.speed * dt));
-        if (pose && !collide(pose, v, player) && sim.canOccupy(pose.x, pose.z, pose.yaw)) {
-          v.x = pose.x; v.z = pose.z; v.yaw = pose.yaw;
+        if (pose && !collide(pose, v, player) && sim.canOccupy(pose.x, pose.z, pose.yaw, pose.edge.road.l)) {
+          v.x = pose.x; v.z = pose.z; v.yaw = pose.yaw; v.layer = pose.edge.road.l;
           track.index = pose.index; track.offset = pose.offset;
         } else { v.speed = 0; }
         track.stopped = v.speed < 0.3 ? track.stopped + dt : 0;
