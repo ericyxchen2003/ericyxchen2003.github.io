@@ -178,11 +178,15 @@ window.HKMongKokStreets=(()=>{
     const {Batch,flatBatch,color}=kit,buf=new Batch();
     const slab=color('#b8bab0'),soffit=color('#8e9690'),roof=color('#81a398'),rail=color('#8aaba9'),edge=color('#cdd6c9');
     const q=(a,b,c,d,shade)=>buf.quad(a,b,c,d,shade);
+    const podium=window.HKWestKowloon?.elements;
+    const integratedPaths=new Set(podium?.integratedPaths),deckBridges=new Set(podium?.deckBridges);
     for(const b of data.bridges){
+      if(integratedPaths.has(String(b.id)))continue;
+      const deck=deckBridges.has(String(b.id))?HKMAP.elementsDeck.top:undefined;
       const p=b.p,w=b.w;let run=0;
       for(let i=1;i<p.length;i++){
         const a=p[i-1],e=p[i],dx=e[0]-a[0],dz=e[1]-a[1],len=Math.hypot(dx,dz);if(len<.05)continue;
-        const nx=-dz/len,nz=dx/len,h0=height(...a)+b.h[i-1]+.18,h1=height(...e)+b.h[i]+.18;
+        const nx=-dz/len,nz=dx/len,h0=(deck??(height(...a)+b.h[i-1]))+.18,h1=(deck??(height(...e)+b.h[i]))+.18;
         const pt=(t,u,h)=>[a[0]+dx*t+nx*u,h0+(h1-h0)*t+h,a[1]+dz*t+nz*u];
         const bands=(l,r,y0,y1,c)=>q(pt(0,l,y0),pt(1,l,y0),pt(1,r,y1),pt(0,r,y1),c);
         bands(-w/2,w/2,0,0,slab);bands(w/2,-w/2,-.41,-.41,soffit);
@@ -202,7 +206,7 @@ window.HKMongKokStreets=(()=>{
         for(const [x,z] of b.posts){
           const t=((x-a[0])*dx+(z-a[1])*dz)/(len*len);
           if(t<0||t>=1||Math.abs((x-a[0])*nx+(z-a[1])*nz)>w*.55)continue;
-          const base=height(x,z),h=h0+(h1-h0)*t-.41-base;
+          const base=deck??height(x,z),h=h0+(h1-h0)*t-.41-base;
           if(h>1){props.add('box',x,base+h/2,z,.84,h,.88,'#b6b9ac',-Math.atan2(dz,dx));
             props.add('box',x,base+h-.24,z,1.08,.48,Math.min(3.2,w*.76),'#a5aba0',-Math.atan2(dz,dx));}
         }

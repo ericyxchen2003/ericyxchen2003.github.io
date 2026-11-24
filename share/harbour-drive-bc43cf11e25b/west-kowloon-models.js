@@ -12,7 +12,7 @@ window.HKCoastModels=(()=>{
     [111537,['九龍站','Kowloon Station','#1b645c']],
     [310911,['自由空間','FREESPACE','#353e41']]
   ]);
-  let atlas,surface,roofFinish;
+  let atlas,surface,roofFinish,lightFinish;
   const lettering=new Map();
   function sign(text){
     const key=text.join('|');
@@ -49,18 +49,21 @@ window.HKCoastModels=(()=>{
       const shade=shades.get(color);
       for(const p of [a,b,c]){
         positions.push(...p);colors.push(shade.r,shade.g,shade.b);
-        if(roof)uv.push((p[0]+605)/220,1-(p[2]+1050)/275);
+        if(roof==='pavers')uv.push(p[0]/12,p[2]/12);
+        else if(roof)uv.push((p[0]+605)/220,1-(p[2]+1050)/275);
       }
     }
     const quad=(a,b,c,d,col)=>{tri(a,b,c,col);tri(a,c,d,col);};
-    function finish(){
+    function finish(unlit=false){
       const g=new T.BufferGeometry();
       g.setAttribute('position',new T.Float32BufferAttribute(positions,3));
       g.setAttribute('color',new T.Float32BufferAttribute(colors,3));
       if(roof)g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));
       g.computeVertexNormals();
       surface??=new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide});
-      const m=new T.Mesh(g,roof?stationFinish():surface);m.name=name;group.add(m);
+      let material=roof==='pavers'?terrazzo():roof?stationFinish():surface;
+      if(unlit){lightFinish??=new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide});material=lightFinish;}
+      const m=new T.Mesh(g,material);m.name=name;group.add(m);
     }
     return {tri,quad,finish};
   }
@@ -205,7 +208,104 @@ window.HKCoastModels=(()=>{
     const colors=levels.slice(1).map((v,i)=>[i===2||i===4||i===6||i===8?'#566b73':i===0?'#829fa9':i===10?'#99afb5':'#6f929f','#bacdd0']);
     layered(b,group,levels,colors,'環球貿易廣場 · 收分玻璃塔身');
   }
+  let pavingMaterial;
+  function terrazzo(){
+    if(pavingMaterial)return pavingMaterial;
+    const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
+    const ctx=canvas.getContext('2d'),stone=['#d4cbb8','#ded6c4','#d9d0bf','#d7cfbd'];
+    ctx.fillStyle='#b8ae9c';ctx.fillRect(0,0,256,256);
+    for(let r=0;r<8;r++)for(let c=-1;c<5;c++){
+      const x=c*64+(r%2)*32;ctx.fillStyle=stone[(r*3+c+8)%4];ctx.fillRect(x+1,r*32+1,63,31);
+    }
+    const tex=new T.CanvasTexture(canvas);tex.wrapS=tex.wrapT=T.RepeatWrapping;
+    tex.colorSpace=T.SRGBColorSpace;tex.anisotropy=4;
+    return pavingMaterial=new T.MeshLambertMaterial({map:tex,vertexColors:true,side:T.DoubleSide});
+  }
+  function horizontal(mesh,poly,y,tint){
+    const loops=[poly.p,...(poly.holes||[])].map(r=>r.map(q=>new T.Vector2(...q)));
+    const faces=T.ShapeUtils.triangulateShape(loops[0],loops.slice(1)),flat=loops.flat();
+    for(const tri of faces){
+      const [a,b,c]=tri.map(i=>[flat[i].x,y,flat[i].y]);mesh.tri(c,b,a,tint);
+    }
+  }
+  function terrace(b,group,props){
+    const data=HKWestKowloon.elements,y=b.top,tile=shell('圓方 · 平台鋪面',group,'pavers');
+    horizontal(tile,b,y,'#ffffff');tile.finish();
+    const mesh=shell('圓方 · 平台花園及通道',group);
+    for(const [kind,regions] of Object.entries(data.roof)){
+      const lift=kind==='garden'?.30:kind==='walk'?.05:.035;
+      for(const poly of regions){
+        horizontal(mesh,poly,y+lift,{walk:'#eee4cd',drive:'#777876',garden:'#648257',pitch:'#788f82'}[kind]);
+        if(kind==='pitch'&&poly.p.length===4){
+          const corners=[...poly.p];
+          const length=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+          if(length(corners[0],corners[1])<length(corners[0],corners[3]))corners.push(corners.shift());
+          const [a,c,,d]=corners;
+          const court=(u,v,h)=>[a[0]+(c[0]-a[0])*u+(d[0]-a[0])*v,y+h,a[1]+(c[1]-a[1])*u+(d[1]-a[1])*v];
+          const mark=(u,v,r,s)=>mesh.quad(court(u,v,.067),court(r,v,.067),court(r,s,.067),court(u,s,.067),'#f1eee5');
+          for(const v of [.10,.20,.80,.90])mark(.09,v,.91,v+.008);
+          for(const u of [.09,.91])mark(u,.10,u+.004,.905);
+          for(const u of [.275,.725])mark(u,.20,u+.004,.805);
+          mark(.275,.497,.725,.505);
+          mesh.quad(court(.5,.08,.78),court(.5,.92,.78),court(.5,.92,.87),court(.5,.08,.87),'#eceadb');
+        }
+        if(kind==='garden')for(const ring of [poly.p,...(poly.holes||[])])for(const f of faces(ring))
+          mesh.quad(f.at(-f.w/2,y+.01,0),f.at(f.w/2,y+.01,0),f.at(f.w/2,y+lift,0),f.at(-f.w/2,y+lift,0),'#b6aa92');
+      }
+    }
+    for(const [x,z] of data.trees){
+      const r=1.5+Math.abs(x+z)%5*.14;
+      props.add('pole',x,y+1.45,z,.13,2.8,.13,'#806e57');
+      props.add('crown',x,y+3.35,z,r,r*.87,r,'#648356');
+    }
+    mesh.finish();
+  }
+  function elementsBlock(b,group,props,signs,height){
+    const kind=b.podiumPart,upper=kind==='upper',inside=kind==='hall',pier=kind==='pier';
+    const label={upper:'商場上蓋',hall:'車站環迴路側牆',pier:'車道支柱',plinth:'住宅塔座基座'}[kind];
+    const mesh=shell('圓方 · '+label,group),y=b.basePD,top=b.top;
+    for(const ring of [b.p,...(b.holes||[])])for(const f of faces(ring)){
+      const start=-f.w/2,end=f.w/2;
+      const strip=(u,v,lo,hi,d,c)=>mesh.quad(f.at(u,lo,d),f.at(v,lo,d),f.at(v,hi,d),f.at(u,hi,d),c);
+      const paint=upper?'#ada699':pier?'#ccc6b8':inside?'#d5cdbb':'#b8ae9b';
+      const [x,,z]=f.at(0,0,0);
+      strip(start,end,inside||pier?Math.min(y,height(x,z)-.45):y,top,0,paint);
+      if(upper){
+        strip(start,end,top-1.15,top-.82,.035,'#cfcabe');
+        strip(start,end,y+.48,y+.67,.035,'#968b7b');
+      }else if(inside||pier){
+        strip(start,end,7.18,7.39,.025,'#95805e');
+        strip(start,end,7.42,7.53,.026,'#a69c81');
+        if(inside)for(let u=start+2.8;u<end-.01;u+=2.8)
+          strip(u,Math.min(end,u+.034),7.54,top-.05,.018,'#b3a997');
+        if(inside&&f.w>48){
+          badge(f,signs,10,.08,5.6,.97,['圓方　九龍站','ELEMENTS  ·  KOWLOON STATION','#355451']);
+        }
+      }
+    }
+    if(upper){
+      horizontal(mesh,b,y,'#c9c7bd');
+      terrace(b,group,props);
+      for(const island of HKWestKowloon.elements.islands){
+        const [x,z]=island.p[0],floor=height(x,z);
+        horizontal(mesh,island,floor+.15,'#b4aa92');
+        for(const f of faces(island.p))
+          mesh.quad(f.at(-f.w/2,floor-.04,0),f.at(f.w/2,floor-.04,0),f.at(f.w/2,floor+.15,0),f.at(-f.w/2,floor+.15,0),'#ded3b9');
+      }
+      const lights=shell('圓方 · 車道照明',group);
+      for(const [i,[x,z,turn]] of HKWestKowloon.elements.lights.entries()){
+        const along=Math.cos(turn),across=Math.sin(turn);
+        const at=(u,v)=>[x+u*along-v*across,y-.25,z+u*across+v*along];
+        props.add('box',x,y-.12,z,3.95,.24,.58,'#8f9391',-turn);
+        lights.quad(at(-1.85,-.16),at(1.85,-.16),at(1.85,.16),at(-1.85,.16),'#fff3d9');
+        if(i%2===0)props.add('box',x+3.8*along,y-.19,z+3.8*across,.56,.38,9.3,'#abb0a7',-turn);
+      }
+      lights.finish(true);
+    }else if(kind==='plinth')horizontal(mesh,b,top,'#b3aa97');
+    mesh.finish();
+  }
   function building(b,props,signs,height,group){
+    if(b.podiumPart){elementsBlock(b,group,props,signs,height);return;}
     if(b.foundation||!b.p?.length||b.h<3)return;
     if(b.id===station){terminal(b,group,props,signs);return;}
     if(b.id===museum){gallery(b,group,props,signs);atriums(b,group);return;}
@@ -278,6 +378,16 @@ window.HKCoastModels=(()=>{
     }
   }
   function distant(b,batch){
+    if(b.podiumPart){
+      const tint=new T.Color(b.podiumPart==='upper'?'#c9c1ac':'#bbb2a1');
+      for(const ring of [b.p,...(b.holes||[])])for(const f of faces(ring))
+        batch.quad(f.at(-f.w/2,b.basePD,0),f.at(f.w/2,b.basePD,0),f.at(f.w/2,b.top,0),f.at(-f.w/2,b.top,0),tint);
+      if(b.podiumPart==='upper'){
+        const mesh={tri(a,c,d){const i=batch.p.length/3;for(const p of [a,c,d])batch.vert(p,0,0,tint);batch.idx.push(i,i+1,i+2);}};
+        horizontal(mesh,b,b.top);horizontal(mesh,b,b.basePD);
+      }
+      return true;
+    }
     if(!custom.has(b.id))return false;
     const p=b.p,cx=p.reduce((s,q)=>s+q[0],0)/p.length,cz=p.reduce((s,q)=>s+q[1],0)/p.length;
     const profile=b.id===museum?[[0,.76],[.23,.79],[1,1]]:
@@ -296,5 +406,5 @@ window.HKCoastModels=(()=>{
     for(const [i,j,k] of T.ShapeUtils.triangulateShape(top.map(q=>new T.Vector2(q[0],q[2])),[]))batch.idx.push(index+k,index+j,index+i);
     return true;
   }
-  return {entrance,landscape,distant,replaces:b=>!b.foundation&&custom.has(b.id),style:b=>bronzeArch.has(b.id)?6:b.id===272633?12:b.id===279107||b.id===310911?3:undefined,building};
+  return {entrance,landscape,distant,replaces:b=>!!b.podiumPart||(!b.foundation&&custom.has(b.id)),style:b=>bronzeArch.has(b.id)?6:b.id===272633?12:b.id===279107||b.id===310911?3:undefined,building};
 })();

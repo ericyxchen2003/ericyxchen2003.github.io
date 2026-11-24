@@ -44,24 +44,15 @@ window.HKTaxiRankRows=[
     [-625.9,-1060.3,-3.4],[-624,-1051,-3.5],[-619,-1044,-3.8],[-611,-1040,-4.2],
     [-540,-1036,-7.4],[-521,-1033,-8.1],[-505,-1026,-8.2],[-489,-1012,-8.2],
     [-451,-969,-8.2],[-448,-960,-8.2],[-450,-952,-8.2],[-456,-946,-8.2],
-    [-467,-943,-8.2],[-545,-940,-7.1],[-584,-937,-5.5],[-603,-929,-4.5],
-    [-617,-916,-3.9],[-623,-904,-3.5],[-625,-891.5,-3.4]
+    [-467,-943,-8.2],[-480,-945,-8.2],[-494,-951,-8.1],[-550,-993,-7.3],
+    [-575,-1010,-6.1],[-592,-1017,-5.0],[-603,-1018,-4.3],[-612,-1016,-3.85],
+    [-618,-1011,-3.48],[-622,-1005,-3.4],[-623.8,-998,-3.4],[-624.1,-991.4,-3.4]
   ];
   const road={id:'west-b2',n:'西九龍站 B2 的士通道',en:'West Kowloon Station B2 taxi lane',l:-1,w:8.6,one:1,lanes:1,cls:'service',underpass:true,covered:true,bore:true,taxiLane:true,profile,p:profile.map(([x,z])=>[x,z])};
   // Widen the passenger side of the shell alongside the official boarding point.
   road.platformWidth=(x,z,side)=>side===-1?Math.max(0,Math.min(4.2,23-Math.hypot(x+464,z+984))):0;
   map.roads.push(road);
   window.HKNorth.roads.push(road);
-  // Clip the existing bore walls over the actual width of the two junctions.
-  // The normal tunnel mesh omits wall panels where another lane overlaps.
-  for(const r of window.HKNorth.roads.filter(r=>[784464011,784464012,784464014,'west-b2'].includes(r.id))){
-    const dense=[r.profile[0]];
-    for(const [i,b] of r.profile.entries()){
-      if(!i)continue;
-      const a=r.profile[i-1],pieces=Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/2);
-      for(let j=1;j<=pieces;j++)dense.push(a.map((v,k)=>v+(b[k]-v)*j/pieces));
-    }
-    r.profile=dense;
-  }
+  // The exit meets an existing southbound graph vertex north of the open ramp.
   map.terrain.relief.decks.push({id:road.id,l:road.l,w:road.w,p:profile});
 })();

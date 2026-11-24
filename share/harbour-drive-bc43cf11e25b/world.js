@@ -156,7 +156,14 @@ window.HKWorld = (() => {
       }
       return result;
     }
-    ground.surface=(x,z,layer=0,roadId)=>layer===-2&&tunnel?tunnel.floor(x,z):layer?(deckHeight(x,z,layer,roadId)??(ground(x,z)+4.4*layer)):ground(x,z);
+    ground.surface=(x,z,layer=0,roadId)=>{
+      if (layer===-1 && window.HKWestTunnels && (roadId==null || HKWestTunnels.ids.has(roadId))) {
+        const pavement=HKWestTunnels.floorAt(x,z);
+        if (pavement!==undefined) return pavement;
+      }
+      if (layer===-2 && tunnel) return tunnel.floor(x,z);
+      return layer?(deckHeight(x,z,layer,roadId)??(ground(x,z)+4.4*layer)):ground(x,z);
+    };
     ground.maxLayer=Math.max(2,...patch.decks.map(d=>d.l));
     ground.overhead=(x,z,level)=>{
       if(level)return deckHeight(x,z,level,undefined,true);
@@ -312,6 +319,7 @@ window.HKWorld = (() => {
       for(const path of window.HKMongKokPlaces?.walks||[]){c.strokeStyle='#bcb4a3';c.lineWidth=path.w;c.beginPath();c.moveTo(...path.p[0]);for(const pt of path.p.slice(1))c.lineTo(...pt);c.stroke();}
       window.HKHarbourPlaces?.paint(c);
       window.HKFrontages?.paintPavement(c);
+      if(map.elementsDeck)polygons(c,[map.elementsDeck],'#9d9e97');
       paintRoadNetwork(c,ribbons,bounds);
       height.underpass?.cutTerrain(c);window.HKNorthWorks?.cutTerrain(c);
       c.save();c.globalCompositeOperation='destination-out';polygons(c,window.HKMongKokPlaces?.mouths,'#fff');c.restore();
@@ -394,7 +402,7 @@ window.HKWorld = (() => {
       boundary.lineTo(3250,3250);boundary.lineTo(-3250,3250);boundary.closePath();
       const hole=new T.Path();for(const [i,[x,z]] of tunnel.waterHole.entries()){if(i)hole.lineTo(x,-z);else hole.moveTo(x,-z);}
       hole.closePath();boundary.holes.push(hole);
-      for(const poly of window.HKNorthWorks?.water||[]){
+      for(const poly of window.HKWestTunnels?.water||window.HKNorthWorks?.water||[]){
         const cut=new T.Path(poly.p.map(([x,z])=>new T.Vector2(x,-z)));cut.closePath();boundary.holes.push(cut);
       }
       plane=new T.ShapeGeometry(boundary);
@@ -608,8 +616,10 @@ window.HKWorld = (() => {
         const a=p[i-1],b=p[i],dx=b[0]-a[0],dz=b[1]-a[1],len=Math.hypot(dx,dz);if(len<.08)continue;
         const ux=dx/len,uz=dz/len,na=normals[i-1],nb=normals[i],j0=pointsByKey.get(key(a))>=3,j1=pointsByKey.get(key(b))>=3;
         const side=r.l>0?.43:r.cls==='service'?.5:1.45;
-        ribbon(a,b,na,nb,-w-side,w+side,.01,curb,r.l);
-        ribbon(a,b,na,nb,-w,w,.084,r.cls==='service'?minorCol:roadCol,r.l);
+        if(!window.HKWestTunnels?.ids.has(r.id)){
+          ribbon(a,b,na,nb,-w-side,w+side,.01,curb,r.l);
+          ribbon(a,b,na,nb,-w,w,.084,r.cls==='service'?minorCol:roadCol,r.l);
+        }
         if(r.l>0&&map.terrain.relief?.decks.some(d=>d.id===r.id)){
           const edge=w+side,batch=bins.get((a[0]+b[0])/2,(a[1]+b[1])/2,0),count=Math.ceil(len/3);
           const slab=color('#848b89'),girder=color('#707977'), parapet=color('#aeb3af');
@@ -714,10 +724,12 @@ window.HKWorld = (() => {
   }
   function greenery(map,height,nearest,props,hasSpace){
     const rand=rng(489), greens=['#698451','#6e8c58','#577951','#839759','#78935e','#66865e'], tall=['#8c9f6c','#86a16d','#779b66'];
-    const trees=[];
+    const trees=[],podium=map.elementsDeck;
+    const deckBounds=podium&&new T.Box2().setFromPoints(podium.p.map(p=>new T.Vector2(...p)));
     function tree(x,z,scale,planted=false){
       if(!planted){const r=nearest(x,z);if(r&&r.dist<r.r.w*.53+.9)return;}
       const y=height(x,z),h=scale*(5+rand()*3.1),shade=greens[Math.floor(rand()*greens.length)];
+      if(deckBounds&&x>=deckBounds.min.x&&x<=deckBounds.max.x&&z>=deckBounds.min.y&&z<=deckBounds.max.y&&inside([x,z],podium.p))return;
       if(!hasSpace(x,z)||window.HKDetails?.clearPlanting(x,z))return;
       if([[-1,0],[1,0],[0,1],[0,-1],[0,0]].some(([a,b])=>(height.overhead(x+a*h*.33,z+b*h*.33)??Infinity)<y+h*1.12))return;
       props.add('pole',x,y+h*.33,z,.13*scale,h*.65,.13*scale,'#807761');props.add('crown',x,y+h*.70,z,h*.32,h*.36,h*.31,shade,rand()*TAU);
@@ -954,19 +966,26 @@ window.HKWorld = (() => {
     };
   }
   function addSky(scene){
+    // A two-colour ramp covers the first frame while the panorama decodes.
+    const ramp=new T.DataTexture(new Uint8Array([213,223,220,255,114,164,192,255]),1,2,T.RGBAFormat);
+    ramp.colorSpace=T.SRGBColorSpace;ramp.magFilter=T.LinearFilter;ramp.needsUpdate=true;
+    const panorama={value:ramp};
     const material=new T.ShaderMaterial({
-      side:T.BackSide,depthTest:false,depthWrite:false,
-      uniforms:{horizon:{value:color('#d5dfdc')},zenith:{value:color('#82adc3')}},
-      vertexShader:`varying vec3 skyDirection;
-        void main(){skyDirection=position; vec4 p=projectionMatrix*vec4(mat3(viewMatrix)*position,1.0);gl_Position=p.xyww;}`,
-      fragmentShader:`uniform vec3 horizon;uniform vec3 zenith;varying vec3 skyDirection;
-        void main(){float t=clamp(normalize(skyDirection).y,0.0,1.0);
-          gl_FragColor=vec4(mix(horizon,zenith,pow(t,.54)),1.0);
+      side:T.BackSide,depthWrite:false,uniforms:{panorama},
+      vertexShader:`varying vec2 skyUV;
+        void main(){skyUV=vec2(uv.x,2.0*uv.y-1.0);
+          vec4 p=projectionMatrix*vec4(mat3(viewMatrix)*position,1.0);gl_Position=p.xyww;}`,
+      fragmentShader:`uniform sampler2D panorama;varying vec2 skyUV;
+        void main(){gl_FragColor=texture2D(panorama,skyUV);
           #include <colorspace_fragment>
         }`
     });
+    new T.TextureLoader().load(HKScenery.url('day-sky.webp'),tex=>{
+      tex.colorSpace=T.SRGBColorSpace;tex.wrapS=T.RepeatWrapping;
+      panorama.value=tex;ramp.dispose();
+    });
     const sky=new T.Mesh(new T.SphereGeometry(1,24,14),material);
-    sky.frustumCulled=false;sky.renderOrder=-1000;scene.add(sky);
+    sky.name='維港日空';sky.frustumCulled=false;sky.renderOrder=1000;scene.add(sky);
   }
   function create(canvas,map,sim,signals,height=groundSampler(map.terrain)){
     const renderer=new T.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance',alpha:false});
@@ -1024,7 +1043,7 @@ window.HKWorld = (() => {
     },buildings=>{
       const batch=new Batch();
       for(const b of buildings){
-        if(HKModels.isReplacedBuilding(b)||b.h<6||b.foundation)continue;
+        if(HKModels.isReplacedBuilding(b)||((b.h<6||b.foundation)&&!b.podiumPart))continue;
         const p=b.p,[cx,cz]=center(p),top=b.top??(height(cx,cz)+b.h),base=(b.base||0)>2?b.basePD:Math.min(height(cx,cz)-1,b.basePD??Infinity);
         if(window.HKCoastModels?.distant(b,batch))continue;
         const shade=color(b.h>60?'#80969a':'#aea999');
@@ -1075,7 +1094,6 @@ window.HKWorld = (() => {
     const focus=new T.Vector3(sim.state.x,0,sim.state.z),look=new T.Vector3(),v=new T.Vector3(),size=new T.Vector2(),sunFocus=new T.Vector2(1e8,1e8);
     const presets=[{name:'第一身駕駛席'},{name:'近距離跟車',chase:true},{name:'斜俯跟車',height:78,dist:57,bearing:-1.39},{name:'垂直俯視',height:94,dist:0.6,bearing:0},{name:'街區鳥瞰',height:195,dist:155,bearing:-1.31}];
     let mode=0,chaseAngle=.58,zoom=1,driverZoom=1,clock=0,routeObj=null,lastPath=null,shadowTime=0,traffic=null,trafficMeshes=[];
-    if(window.HKTraffic){traffic=HKTraffic.create(map,sim,signals);trafficMeshes=traffic.vehicles.map(v=>{const mesh=HKModels.createVehicle(v.kind,v.color);addContact(mesh,v.kind==='bus');scene.add(mesh);return mesh;});}
     function roadway(x,z,level){
       return height.surface?.(x,z,level)??(height(x,z)+4.4*level);
     }
@@ -1121,6 +1139,11 @@ window.HKWorld = (() => {
     resize();window.addEventListener('resize',resize);
     let currentSignal=null,redCrossed=false,lastFront=null,forceSnap=true;
     function frame(dt,active,braking=false,glance=0){
+      // The first driving frame has the chosen rank's position and road level.
+      if(!traffic&&window.HKTraffic){
+        traffic=HKTraffic.create(map,sim,signals);
+        trafficMeshes=traffic.vehicles.map(v=>{const mesh=HKModels.createVehicle(v.kind,v.color);addContact(mesh,v.kind==='bus');scene.add(mesh);return mesh;});
+      }
       updateDropBay(sim.state.taxi);
       const state=sim.state,p=presets[mode];clock+=dt;
       if(mode!==0)playerTaxi.update(state,active?dt:0,braking);
@@ -1145,7 +1168,8 @@ window.HKWorld = (() => {
         depth.value=-1; // Street-level geometry must remain solid.
         driver.update(car,state,cam,dt,glance,forceSnap);
       }else if(p.chase){
-        const a=chaseAngle-state.yaw,range=6.8*zoom*aspectPad;
+        const a=chaseAngle-state.yaw,ideal=6.8*zoom*aspectPad;
+        const range=state.layer===-1&&window.HKWestTunnels?HKWestTunnels.chaseRange(state.x,state.z,a,ideal,height):ideal;
         look.set(car.position.x,car.position.y+.86,car.position.z);
         cam.position.set(look.x+Math.sin(a)*range,look.y+1.15*zoom,look.z+Math.cos(a)*range);
         cam.lookAt(look);cam.updateMatrixWorld();
