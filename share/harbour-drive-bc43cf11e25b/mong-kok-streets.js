@@ -25,8 +25,8 @@ window.HKMongKokStreets=(()=>{
     }));
     return labels.get(key);
   }
-  function face(signs,at,entry,y,w,h,v,u=0){
-    signs.quad(entry,[at(u-w/2,y-h/2,v),at(u+w/2,y-h/2,v),at(u+w/2,y+h/2,v),at(u-w/2,y+h/2,v)]);
+  function face(signs,at,entry,y,w,h,v,u=0,hours){
+    signs.quad(entry,[at(u-w/2,y-h/2,v),at(u+w/2,y-h/2,v),at(u+w/2,y+h/2,v),at(u-w/2,y+h/2,v)],hours);
   }
   function storefront(r,props,signs,height){
     const [x,z,a,width,kind,id]=r,at=axes(x,z,a),y=height(x,z),w=Math.min(width,10);
@@ -34,6 +34,8 @@ window.HKMongKokStreets=(()=>{
     const put=(u,h,v,ww,hh,d,col)=>props.add('box',...at(u,y+h,v),ww,hh,d,col,-a);
     put(0,1.56,.06,w,3.12,.14,'#263a3f');
     put(-w*.2,1.32,.15,w*.55,2.38,.12,kind==='fish'?'#428d89':'#526e70');
+    const hours=HKShopLights.hours(x,z);
+    props.shopPanel(at,-w*.2,y+1.38,.218,w*.53,2.16,kind==='fish'?'#749fa4':'#cbb89a',hours);
     for(const side of [-1,1])put(side*(w*.5-.07),1.52,.16,.11,3.04,.22,'#b2aca2');
     put(w*.28,1.32,.17,w*.30,2.58,.12,'#273c40');
     put(w*.30,1.22,.25,.05,.45,.055,'#cbbda2');
@@ -42,7 +44,7 @@ window.HKMongKokStreets=(()=>{
       for(let i=0;i<5;i++)put((i-2)*w/5,2.74,.91,w*.095,.18,.07,'#e5cdb0');
     }
     put(0,2.99,.27,w,.12,.57,'#c1b6a4');put(0,3.52,.13,w,1.03,.25,tint);
-    face(signs,at,label(brand,tint),y+3.54,w*.97,.95,.29);
+    face(signs,at,label(brand,tint),y+3.54,w*.97,.95,.29,0,hours);
     if(kind==='sport'){
       for(let row=0;row<3;row++){
         put(-w*.20,.68+row*.54,.24,w*.51,.055,.22,'#e0d7c1');
@@ -71,8 +73,8 @@ window.HKMongKokStreets=(()=>{
       put(-w*.37,5.94,.50,.09,.10,1,'#5b605c');
       props.add('box',...bx,.16,1.25,.92,tint,-a);
       const blade=axes(bx[0],bx[2],a+Math.PI/2);
-      face(signs,blade,label(brand,tint),bx[1],.88,.95,.09);
-      face(signs,blade,label(brand,tint),bx[1],.88,.95,-.09);
+      face(signs,blade,label(brand,tint),bx[1],.88,.95,.09,0,hours);
+      face(signs,blade,label(brand,tint),bx[1],.88,.95,-.09,0,hours);
     }
   }
   function stall(r,props,height,signs,hasSpace){
@@ -92,10 +94,12 @@ window.HKMongKokStreets=(()=>{
     const cloth=['#a84640','#447e79','#4c6d9a','#ae8057','#67806a'][i%5];
     for(const u of [-1.28,1.28])for(const v of [-.66,.66])put(u,1.11,v,.046,2.22,.046,'#a6a79a');
     put(0,2.24,0,2.85,.12,1.61,cloth);
+    const hours=HKShopLights.hours(x,z);
+    props.shopPanel(at,0,y+2.03,.56,.86,.085,'#ffe3ac',hours);
     if(i%3===0)for(let j=-2;j<=2;j++)put(j*.55,2.31,0,.17,.025,1.58,'#e5d6b9');
     if(i%4===0){
       const sign=label(i%8===0?['手袋・皮具','HANDBAGS']:['時裝・精品','FASHION'],cloth);
-      face(signs,at,sign,y+1.94,1.3,.40,.79);
+      face(signs,at,sign,y+1.94,1.3,.40,.79,0,hours);
     }put(0,2.06,.76,2.82,.34,.055,cloth);
     put(0,.83,0,2.54,.11,1.18,'#b39b7b');put(0,.44,-.04,2.45,.66,1.01,'#655d52');
     for(let j=0;j<5;j++){
@@ -134,6 +138,10 @@ window.HKMongKokStreets=(()=>{
       for(let i=0;i<13;i++){
         const x=-12+i*2,y=top+.42+4.7*Math.sqrt(Math.max(0,1-x*x/169));
         props.add('box',...at(x,y,0),1.92,.28,13,'#8eafb4',-edge.a);
+        if(i%3!==0){
+          const skylight=(u,across,offset)=>at(u,y+.149+offset,across);
+          props.litPanel(skylight,x,0,0,1.66,12.7,'#a4bdb3');
+        }
         props.add('box',...at(x,y+.18,0),.13,.19,13.4,'#d5d8cc',-edge.a);
       }
     }
@@ -145,7 +153,13 @@ window.HKMongKokStreets=(()=>{
       props.add('dome',cx,top-.15,cz,rx,capH,rz,'#83aebb');
       for(let band=1;band<6;band++){
         const phi=band*Math.PI/12,xx=rx*Math.cos(phi),zz=rz*Math.cos(phi);
-        props.add('ring',cx,top+capH*Math.sin(phi)-.15,cz,xx,.44,zz,'#d4dfda');
+        const y=top+capH*Math.sin(phi)-.15;
+        props.add('ring',cx,y,cz,xx,.44,zz,'#d4dfda');
+        if(band===2||band===4)for(let k=0;k<36;k++){
+          const a=k*Math.PI/18,c=(k+1)*Math.PI/18;
+          const at=(u,h,v)=>[cx+(xx+.065)*((1-u)*Math.sin(a)+u*Math.sin(c)),h,cz+(zz+.065)*((1-u)*Math.cos(a)+u*Math.cos(c))];
+          props.litPanel(at,.5,y,0,1,.25,'#c5d9cb');
+        }
       }
     }
     if(kind==='moko'&&area>5000){
@@ -168,6 +182,7 @@ window.HKMongKokStreets=(()=>{
     const panel=kind==='computer'?'#283d5c':kind==='sino'?'#864838':kind==='moko'?'#343c39':'#3d5361';
     props.add('box',...f.at(0,y,.28),w,1.75,.52,panel,-f.a);
     face(signs,f.at,label(names[kind],panel),y,w*.98,1.66,.56);
+    props.litPanel(f.at,0,y-.84,.55,w*.95,.085,'#f1c38b');
     if(kind==='moko'&&w>7){
       props.add('box',...f.at(0,y-1.32,.61),w,.20,1.31,'#cbd1cb',-f.a);
       for(let u=-w*.42;u<w*.49;u+=2.3)props.add('box',...f.at(u,y-1.18,.51),.13,.13,1.28,'#9faead',-f.a);

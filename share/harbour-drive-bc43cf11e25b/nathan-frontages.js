@@ -274,7 +274,7 @@ window.HKFrontages=(()=>{
       const solid=bins.get(b.x,b.z,0),images=bins.get(b.x,b.z,1);
       const labelCell=Math.floor(b.z/145);
       if(!letters.has(labelCell))letters.set(labelCell,HKDetails.signBatch());
-      const signs=letters.get(labelCell);
+      const signs=letters.get(labelCell),hours=HKShopLights.hours(b.x,b.z);
       const quad=(a,e,f,g,c)=>solid.quad(a,e,f,g,tint(c));
       const front=(l,r,y0,y1,d)=>[at(l,y0,d),at(r,y0,d),at(r,y1,d),at(l,y1,d)];
       function box(l,r,y0,y1,deep,out,col){
@@ -298,7 +298,7 @@ window.HKFrontages=(()=>{
       const e0=door-doorW/2,e1=door+doorW/2,dd=lobby?-.98:-.68;
       for(const [l,r] of [[lo+.105,e0-.07],[e1+.07,hi-.105]]){
         if(r-l<.28)continue;
-        images.quad(...front(l,r,.11,face-.06,deep+.024),white,interiors.uv[(lobby?'lobby':trade)+(seed%2)]);
+        images.quad(...front(l,r,.11,face-.06,deep+.024),white,interiors.uv[(lobby?'lobby':trade)+(seed%2)]);images.shopHours(hours);
         const dh=['jewels','watch','optics'].includes(trade)?.54:.25;
         box(l,r,-.23,dh,-.54,.055,classic?'#726c5e':'#9e9786');
         box(l,r,dh,dh+.065,-.59,.08,trim);
@@ -317,7 +317,7 @@ window.HKFrontages=(()=>{
         }
       }
       const doorBase=grounded(door,0)[1]-b.floor;
-      images.quad(...front(e0,e1,doorBase+.05,entryHigh,lobby?deep+.04:dd-.12),white,interiors.uv[trade+(seed%2)]);
+      images.quad(...front(e0,e1,doorBase+.05,entryHigh,lobby?deep+.04:dd-.12),white,interiors.uv[trade+(seed%2)]);images.shopHours(hours);
       box(e0,e1,doorBase-.07,doorBase+.11,dd-.02,dd+.05,frame);
       for(const side of [-1,1]){
         const u=door+side*doorW*.25;
@@ -339,7 +339,7 @@ window.HKFrontages=(()=>{
       box(lo,hi,H-.07,H+.035,-.12,lip,frame);
       box(lo+.025,hi-.025,face-.10,face,-.15,classic?.26:.42,trim);
       const fascia=board(zh,en,bg,quiet?'#f3e9cf':ink,trade,false,quiet);
-      signs.quad(fascia,front(lo+.09,hi-.09,face+.02,H-.095,.139));
+      signs.quad(fascia,front(lo+.09,hi-.09,face+.02,H-.095,.139),hours);
       if(classic&&trade==='cafe'){
         const stripes=Math.max(7,Math.round(w/.28));
         for(let k=0;k<stripes;k++){
@@ -366,14 +366,14 @@ window.HKFrontages=(()=>{
           for(const side of [-1,1]){
             const v=bx+side*(th+.008),l=side>0?d1-.03:d0+.03,r=side>0?d0+.03:d1-.03;
             const p=[at(v,base+.035,l),at(v,base+.035,r),at(v,base+h-.035,r),at(v,base+h-.035,l)];
-            signs.quad(tag,vertical?[p[1],p[2],p[3],p[0]]:p);
+            signs.quad(tag,vertical?[p[1],p[2],p[3],p[0]]:p,hours);
           }
           bladeInfo=[at(bx,base,d0),at(bx,base+h,d1)];
         }
       }
       records.push({id,name:zh,x:b.x,z:b.z,w,theme:b.theme,blade:bladeInfo});
     }
-    bins.build([flatBatch(),interiors.material],group,true);
+    bins.build([flatBatch(),HKShopLights.material(interiors.material)],group,true);
     for(const s of letters.values())s.finish(group);
     group.userData.bays=records;
   }

@@ -1,5 +1,32 @@
 /* Shared rank signs and kerb markings. Draw calls stay constant as ranks are added. */
 window.HKTaxiStands=(()=>{
+  // A flared entry and exit join the existing kerb. Rendered pavement and
+  // street-furniture exclusion both use this cross-section.
+  const run=10,straight=4.8;
+  function rim(rank,along){
+    const half=rank.anchor.road.w/2;
+    const blend=Math.max(0,Math.min(1,(run-Math.abs(along))/(run-straight)));
+    return half+(rank.offset+1.3-half)*blend;
+  }
+  function inApron(rank,x,z,margin=0){
+    if(rank.layer!==0)return false;
+    const {anchor:a,side}=rank,s=a.segment,dx=x-a.x,dz=z-a.z;
+    const u=dx*s.dx+dz*s.dz,v=(dx*s.dz-dz*s.dx)*side;
+    return Math.abs(u)<=run+margin&&v>=s.half-margin&&v<=rim(rank,u)+margin;
+  }
+  function paint(rank,groundMark,color){
+    if(rank.layer!==0)return;
+    const {anchor:a,side}=rank,s=a.segment,half=a.road.w/2;
+    const p=(u,v)=>[a.x+s.dx*u+s.dz*side*v,a.z+s.dz*u-s.dx*side*v];
+    // Paint over the baked straight kerb, retaining a footway around the recess.
+    const stops=[-run,-straight,straight,run];
+    for(let i=1;i<stops.length;i++){
+      const l=stops[i-1],r=stops[i],vl=rim(rank,l),vr=rim(rank,r);
+      groundMark([p(l,vl),p(r,vr),p(r,vr+.65),p(l,vl+.65)],color('#c0b9a9'),undefined,.034);
+      groundMark([p(l,half-.62),p(r,half-.62),p(r,vr),p(l,vl)],color('#555b5b'),undefined,.036);
+      groundMark([p(l,vl-.085),p(r,vr-.085),p(r,vr+.04),p(l,vl+.04)],color('#d1c6ab'),undefined,.041);
+    }
+  }
   function draw(scene,stands,height,props){
     const T=THREE,plateVerts=[],plateUV=[],paint=[],paintUV=[];
     function texture(w,h,draw){
@@ -28,7 +55,7 @@ window.HKTaxiStands=(()=>{
     function quad(verts,uv,a,b,c,d){for(const p of [a,b,c,a,c,d])verts.push(...p);uv.push(0,0,1,0,1,1,0,0,1,1,0,1);}
     for(const rank of stands){
       const {anchor:a,side,layer}=rank,s=a.segment,fx=Math.sin(rank.yaw),fz=-Math.cos(rank.yaw);
-      const nx=s.dz*side,nz=-s.dx*side,px=a.x+nx*(s.half+.32),pz=a.z+nz*(s.half+.32);
+      const nx=s.dz*side,nz=-s.dx*side,edge=layer===0?rim(rank,0)+.24:s.half+.32,px=a.x+nx*edge,pz=a.z+nz*edge;
       const surface=(x,z)=>height.surface(x,z,layer,a.road.id);
       const y=surface(px,pz);
       props.add('pole',px,y+1.53,pz,.085,3.06,.085,'#7c8685');
@@ -83,5 +110,5 @@ window.HKTaxiStands=(()=>{
       }
     };
   }
-  return {draw};
+  return {draw,inApron,paint};
 })();

@@ -165,7 +165,7 @@
         const along=vx*s.dx+vz*s.dz, lateral=Math.abs(vx*s.dz-vz*s.dx);
         if (along<-.7 || along>s.len+.7 || lateral>s.half) continue;
         const h=s.h, distance=s.downstream+s.len-clamp(along,0,s.len);
-        if (distance<.03 || distance>range) continue;
+        if (distance>range) continue;
         // With a curved approach the vehicle can be across the infinitely
         // extended line far upstream. Check the half-plane only near the line.
         if(distance<14 && (x-h.x)*h.dx+(z-h.z)*h.dz>=0) continue;

@@ -1,6 +1,8 @@
 // Special elevations share the mapped footprints and roof datums of the survey blocks.
 window.HKCoastModels=(()=>{
   const T=THREE, museum=283356, station=297176, tower=201050, mplus=311046;
+  const museumProfile=[[0,.76],[.20,.78],[.27,.79],[.68,.96],[.72,.967],[1,1]];
+  const facadeLogo=['100010000','110110010','101010010','100010111','100010010','100010010'];
   const bronzeArch=new Set([203837,203838,203839,203840,235737]);
   const museumBase=291490;
   const igcTowers=new Set([297272,297273,295992,297178]);
@@ -42,18 +44,25 @@ window.HKCoastModels=(()=>{
     signs.quad(sign(text),[f.at(-w/2,y-h/2,d),f.at(w/2,y-h/2,d),f.at(w/2,y+h/2,d),f.at(-w/2,y+h/2,d)]);
   }
   // A shared material and one indexed stream-local mesh per shell bound the number of draws.
+  let windowFinish;
   function shell(name,group,roof=false){
     const positions=[],colors=[],uv=[],shades=new Map();
-    function tri(a,b,c,color){
+    function tri(a,b,c,color,coords){
       if(!shades.has(color))shades.set(color,new T.Color(color));
       const shade=shades.get(color);
+      let vertex=0;
       for(const p of [a,b,c]){
         positions.push(...p);colors.push(shade.r,shade.g,shade.b);
-        if(roof==='pavers')uv.push(p[0]/12,p[2]/12);
+        if(roof==='rooms'){const t=coords?.[vertex++];uv.push(t?.[0]||0,t?.[1]||0);}
+        else if(roof==='pavers')uv.push(p[0]/12,p[2]/12);
         else if(roof)uv.push((p[0]+605)/220,1-(p[2]+1050)/275);
       }
     }
-    const quad=(a,b,c,d,col)=>{tri(a,b,c,col);tri(a,c,d,col);};
+    const quad=(a,b,c,d,col,rect)=>{
+      if(!rect){tri(a,b,c,col);tri(a,c,d,col);return;}
+      const [l,lo,r,hi]=rect,A=[l,lo],B=[r,lo],C=[r,hi],D=[l,hi];
+      tri(a,b,c,col,[A,B,C]);tri(a,c,d,col,[A,C,D]);
+    };
     function finish(unlit=false){
       const g=new T.BufferGeometry();
       g.setAttribute('position',new T.Float32BufferAttribute(positions,3));
@@ -61,9 +70,11 @@ window.HKCoastModels=(()=>{
       if(roof)g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));
       g.computeVertexNormals();
       surface??=new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide});
-      let material=roof==='pavers'?terrazzo():roof?stationFinish():surface;
-      if(unlit){lightFinish??=new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide});material=lightFinish;}
-      const m=new T.Mesh(g,material);m.name=name;group.add(m);
+      if(roof==='rooms'&&!windowFinish)windowFinish=HKModels.dimmable(surface.clone(),HKModels.roomMask(),.76);
+      let material=roof==='rooms'?windowFinish:roof==='pavers'?terrazzo():roof?stationFinish():surface;
+      if(unlit==='night')material=HKModels.nightMaterial;
+      else if(unlit){lightFinish??=new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide});material=lightFinish;}
+      const m=new T.Mesh(g,material);m.name=name;if(unlit==='night')m.renderOrder=-1;group.add(m);
     }
     return {tri,quad,finish};
   }
@@ -77,7 +88,8 @@ window.HKCoastModels=(()=>{
     const ctx=canvas.getContext('2d');
     // Ribbons of rooftop planting flank arched runs of glazing. Map them in one plan
     // coordinate system so both halves of the former survey-sheet seam line up.
-    const pixels=ctx.createImageData(1024,1024),palette=[[229,232,222],[114,145,94],[189,197,185],
+    const mask=canvas.cloneNode(),mc=mask.getContext('2d');
+    const pixels=ctx.createImageData(1024,1024),glow=mc.createImageData(1024,1024),palette=[[229,232,222],[114,145,94],[189,197,185],
       [145,162,153],[193,208,204],[102,138,151],[119,155,164]];
     for(let y=0;y<1024;y++){
       const t=y/1024,bend=160*Math.sin(t*2.45-.35)+145*t;
@@ -86,36 +98,53 @@ window.HKCoastModels=(()=>{
           u%25<2.8||y%38<2.5?4:(Math.floor(u/25)+Math.floor(y/38))%3===0?5:6;
         const col=palette[index],i=(y*1024+x)*4;
         pixels.data[i]=col[0];pixels.data[i+1]=col[1];pixels.data[i+2]=col[2];pixels.data[i+3]=255;
+        if(index===5||index===6){
+          const warm=index===5||Math.floor(y/38)%4===0;
+          glow.data[i]=warm?200:161;glow.data[i+1]=warm?185:178;glow.data[i+2]=warm?150:170;
+        }
+        glow.data[i+3]=255;
       }
     }
     ctx.putImageData(pixels,0,0);
     const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=4;
-    return roofFinish=new T.MeshLambertMaterial({map:texture,vertexColors:true,side:T.DoubleSide});
+    mc.putImageData(glow,0,0);
+    const apertures=new T.CanvasTexture(mask);apertures.colorSpace=T.SRGBColorSpace;apertures.anisotropy=4;
+    return roofFinish=HKModels.dimmable(new T.MeshLambertMaterial({map:texture,vertexColors:true,side:T.DoubleSide}),apertures,.64);
   }
-  function terminal(b,group,props,signs){
-    const roof=shell('香港西九龍站 · 弧形天幕',group,true),walls=shell('香港西九龍站 · 玻璃幕牆',group);
-    const shape=p=>{const [x,z]=p,t=Math.max(0,Math.min(1,(z+1048)/270)),axis=-495-23*Math.sin(t*Math.PI);
-      const arch=Math.max(0,1-((x-axis)/137)**2);
+  const stationRoofPoint=p=>{const [x,z]=p,t=Math.max(0,Math.min(1,(z+1048)/270)),axis=-495-23*Math.sin(t*Math.PI);
+    const arch=Math.max(0,1-((x-axis)/137)**2);
       // The glazed hall rises over the concourse and falls towards the public plaza.
       const spine=Math.sin(Math.PI*Math.min(1,.13+.87*t));
       return [x,7.6+spine*(13+17*arch)+1.25*spine*Math.cos((x-axis)/23+t*3),z];};
+  function stationRoof(b,group,spacing){
+    const roof=shell('香港西九龍站 · 弧形天幕',group,true);
     function patch(a,b,c){
       const edges=[[a,b,c],[b,c,a],[c,a,b]].sort((u,v)=>Math.hypot(v[0][0]-v[1][0],v[0][1]-v[1][1])-Math.hypot(u[0][0]-u[1][0],u[0][1]-u[1][1]));
       const [s,e,q]=edges[0];
-      if(Math.hypot(s[0]-e[0],s[1]-e[1])<12){roof.tri(shape(a),shape(c),shape(b),'#ffffff');return;}
+      if(Math.hypot(s[0]-e[0],s[1]-e[1])<spacing){roof.tri(stationRoofPoint(a),stationRoofPoint(c),stationRoofPoint(b),'#ffffff');return;}
       const m=[(s[0]+e[0])/2,(s[1]+e[1])/2];patch(s,m,q);patch(m,e,q);
     }
     const rings=[b.p,...(b.holes||[])],flat=rings.flat();
     for(const [a,c,d] of T.ShapeUtils.triangulateShape(rings[0].map(q=>new T.Vector2(...q)),rings.slice(1).map(r=>r.map(q=>new T.Vector2(...q)))))patch(flat[a],flat[c],flat[d]);
+    roof.finish();
+  }
+  function terminal(b,group,props,signs){
+    stationRoof(b,group,12);
+    const walls=shell('香港西九龍站 · 玻璃幕牆',group),lights=shell('西九龍站 · 大堂夜間照明',group);
+    const rings=[b.p,...(b.holes||[])];
     for(const ring of rings)for(const f of faces(ring)){
       const n=Math.ceil(f.w/4.4);
       for(let i=0;i<n;i++){
-        const u=f.w*(i/n-.5),v=f.w*((i+1)/n-.5),point=(s,d)=>{const [x,,z]=f.at(s,0,d);return shape([x,z]);};
+        const u=f.w*(i/n-.5),v=f.w*((i+1)/n-.5),point=(s,d)=>{const [x,,z]=f.at(s,0,d);return stationRoofPoint([x,z]);};
         const a=point(u,0),c=point(v,0),floor=b.basePD,band=(p,y)=>[p[0],y,p[2]];
         const af=band(a,floor),cf=band(c,floor);
         const glazing=(p,t)=>[p[0],floor+(p[1]-floor)*t,p[2]];
         walls.quad(af,cf,c,a,i%4===0?'#64838c':'#77959b');
         for(const t of [.24,.50,.74]){
+          if((i+Math.round(t*4))%5!==0){
+            const l=point(u+(v-u)*.10,.046),r=point(v-(v-u)*.09,.046);
+            lights.quad(glazing(l,t+.028),glazing(r,t+.028),glazing(r,t+.20),glazing(l,t+.20),i%3?'#aaa88c':'#92aea7');
+          }
           const s=glazing(a,t),e=glazing(c,t);
           walls.quad(s,e,band(e,e[1]+.09),band(s,s[1]+.09),'#9caeb0');
         }
@@ -129,33 +158,37 @@ window.HKCoastModels=(()=>{
     }
     const front=faces(b.p).filter(f=>f.w>19&&f.nz>.1).sort((a,b)=>b.w-a.w)[0];
     if(front&&b.p.length>20)badge(front,signs,b.basePD+5,.13,18,2.1,curbLabels.get(station));
-    roof.finish();walls.finish();
+    walls.finish();lights.finish('night');
   }
   function layered(b,group,levels,palette,name){
-    const mesh=shell(name,group),p=b.p,cx=p.reduce((s,q)=>s+q[0],0)/p.length,cz=p.reduce((s,q)=>s+q[1],0)/p.length;
+    const glazed=b.id===tower||igcTowers.has(b.id)||b.id===museumBase;
+    const mesh=shell(name,group,glazed?'rooms':false),p=b.p,cx=p.reduce((s,q)=>s+q[0],0)/p.length,cz=p.reduce((s,q)=>s+q[1],0)/p.length;
     const ring=(t,s)=>p.map(q=>[cx+(q[0]-cx)*s,b.basePD+t*b.h,cz+(q[1]-cz)*s]);
     const bands=levels.map(([t,s])=>ring(t,s));
     const mix=(a,b,t)=>a.map((x,i)=>x+(b[i]-x)*t);
     for(let j=1;j<bands.length;j++)for(let i=0;i<p.length;i++){
       const k=(i+1)%p.length,lo=bands[j-1],hi=bands[j],length=Math.hypot(p[i][0]-p[k][0],p[i][1]-p[k][1]),count=Math.ceil(length/(b.id===tower?2.65:2.1));
       for(let n=0;n<count;n++){
-        const l=n/count,r=(n+1)/count,m=l+(r-l)*(b.id===tower?.065:.12),quad=(u,v,col)=>mesh.quad(mix(lo[i],lo[k],u),mix(lo[i],lo[k],v),mix(hi[i],hi[k],v),mix(hi[i],hi[k],u),col);
-        quad(l,m,palette[j-1][1]);quad(m,r,palette[j-1][0]);
+        const l=n/count,r=(n+1)/count,m=l+(r-l)*(b.id===tower?.065:.12),quad=(u,v,col,uv)=>mesh.quad(mix(lo[i],lo[k],u),mix(lo[i],lo[k],v),mix(hi[i],hi[k],v),mix(hi[i],hi[k],u),col,uv);
+        const windows=glazed&&(b.id!==museumBase||j===2)&&hi[i][1]-lo[i][1]>3.3;
+        const phase=(i+b.id%13)/16;
+        quad(l,m,palette[j-1][1]);
+        quad(m,r,palette[j-1][0],windows?[phase+(n+.11)/16,lo[i][1]/64,phase+(n+1)/16,hi[i][1]/64]:null);
       }
     }
     cap(mesh,bands.at(-1),palette.at(-1)[1]);mesh.finish();
   }
   function gallery(b,group,props,signs){
-    layered(b,group,[[0,.76],[.20,.78],[.27,.79],[.68,.96],[.72,.967],[1,1]],
+    layered(b,group,museumProfile,
       [['#b5a080','#a58c6a'],['#455855','#9c8b6e'],['#cbb48c','#ae946d'],['#947f63','#ad9676'],['#d6c09c','#b7a07d']],'香港故宮文化博物館 · 金屬外殼');
     const p=b.p,cx=p.reduce((s,q)=>s+q[0],0)/p.length,cz=p.reduce((s,q)=>s+q[1],0)/p.length;
     const lower=faces(p.map(([x,z])=>[cx+.77*(x-cx),cz+.77*(z-cz)]));
     const f=lower.sort((a,b)=>b.w-a.w)[0];badge(f,signs,b.basePD+4,.12,Math.min(24,f.w*.64),2.1,curbLabels.get(museum));
   }
   function atriums(b,group){
-    const mesh=shell('故宮 · 三向中庭',group),p=b.p;
+    const mesh=shell('故宮 · 三向中庭',group),lights=shell('故宮 · 中庭夜間照明',group),p=b.p;
     const cx=p.reduce((s,q)=>s+q[0],0)/p.length,cz=p.reduce((s,q)=>s+q[1],0)/p.length;
-    const widths=[[0,.76],[.20,.78],[.27,.79],[.68,.96],[.72,.967],[1,1]];
+    const widths=museumProfile;
     function width(t){
       const i=widths.findIndex(q=>q[0]>=t),a=widths[i-1]||widths[0],c=widths[i];
       return a[1]+(c[1]-a[1])*(t-a[0])/(c[0]-a[0]||1);
@@ -165,16 +198,21 @@ window.HKCoastModels=(()=>{
       const face=sides.filter(f=>f.w>12&&!used.has(f)).sort((a,c)=>{
         const score=f=>{const v=f.at(0,0,1),q=f.at(0,0,0);return ((v[0]-q[0])*ax+(v[2]-q[2])*az)*Math.sqrt(f.w);};return score(c)-score(a);
       })[0];if(!face)continue;used.add(face);
-      const at=(u,t)=>{const q=face.at(u,0,.28);return [cx+(q[0]-cx)*width(t),b.basePD+b.h*t,cz+(q[2]-cz)*width(t)];};
+      const at=(u,t,d=.28)=>{const q=face.at(u,0,d);return [cx+(q[0]-cx)*width(t),b.basePD+b.h*t,cz+(q[2]-cz)*width(t)];};
       const w=face.w*.68;
       for(let i=0;i<10;i++){
         const l=w*(i/10-.5),r=l+w/10;
-        mesh.quad(at(l,lo),at(r,lo),at(r,hi),at(l,hi),i%3?'#4e6664':'#586f6b');
-        mesh.quad(at(l,lo),at(l+.15,lo),at(l+.15,hi),at(l,hi),'#a18d6f');
+        const cuts=[lo,...widths.map(q=>q[0]).filter(t=>t>lo&&t<hi),hi];
+        for(let j=1;j<cuts.length;j++){
+          const a=cuts[j-1],c=cuts[j],s=Math.max(a,lo+.014),e=Math.min(c,hi-.008);
+          mesh.quad(at(l,a),at(r,a),at(r,c),at(l,c),i%3?'#4e6664':'#586f6b');
+          if(i%4!==2&&e>s)lights.quad(at(l+.22,s,.36),at(r-.12,s,.36),at(r-.12,e,.36),at(l+.22,e,.36),'#c3a880');
+          mesh.quad(at(l,a,.30),at(l+.15,a,.30),at(l+.15,c,.30),at(l,c,.30),'#a18d6f');
+        }
       }
       mesh.quad(at(-w/2,lo),at(w/2,lo),at(w/2,lo+.014),at(-w/2,lo+.014),'#c4ac88');
     }
-    mesh.finish();
+    mesh.finish();lights.finish('night');
   }
   function mallBase(b,group,props){
     layered(b,group,[[0,1],[.12,1],[.81,1],[1,1]],
@@ -183,14 +221,14 @@ window.HKCoastModels=(()=>{
       plate(f,props,0,b.top+.28,-.1,f.w,.55,.34,'#c1b59d');
   }
   function arch(group){
-    const mesh=shell('凱旋門 · 空中會所',group);
+    const mesh=shell('凱旋門 · 空中會所',group,'rooms');
     for(const part of window.HKArchPlates||[]){
       const top=part.high+4.7,low=part.low+4.7;
       const ring=part.p.map(p=>[p[0],top,p[1]]);
       cap(mesh,ring,'#a29984');
       for(const f of faces(part.p)){
         mesh.quad(f.at(-f.w/2,low,0),f.at(f.w/2,low,0),f.at(f.w/2,top,0),f.at(-f.w/2,top,0),'#867d70');
-        for(let y=low+2;y<top;y+=3.3)mesh.quad(f.at(-f.w/2,y,.03),f.at(f.w/2,y,.03),f.at(f.w/2,y+1.4,.03),f.at(-f.w/2,y+1.4,.03),'#657a79');
+        for(let y=low+2;y<top;y+=3.3)mesh.quad(f.at(-f.w/2,y,.03),f.at(f.w/2,y,.03),f.at(f.w/2,y+1.4,.03),f.at(-f.w/2,y+1.4,.03),'#657a79',[.0625,.084,.0625+f.w/46,.108]);
       }
     }
     mesh.finish();
@@ -304,6 +342,9 @@ window.HKCoastModels=(()=>{
     }else if(kind==='plinth')horizontal(mesh,b,top,'#b3aa97');
     mesh.finish();
   }
+  const estateTrim=b=>bronzeArch.has(b.id)?['#928167','#b29679']:b.en?.startsWith('The Cullinan')?['#7898ab','#aebbc8']:b.en?.startsWith('Sorrento')?['#82998d','#c2c7b7']:b.en?.startsWith('The Harbourside')?['#76999f','#bdc9c0']:b.en?.startsWith('The Waterfront')?['#c7b8a1','#dbcebb']:null;
+  const otherSites=new Set([279107,272633,111537,81117,310911]);
+  const styled=b=>!!estateTrim(b)||otherSites.has(b.id);
   function building(b,props,signs,height,group){
     if(b.podiumPart){elementsBlock(b,group,props,signs,height);return;}
     if(b.foundation||!b.p?.length||b.h<3)return;
@@ -313,16 +354,21 @@ window.HKCoastModels=(()=>{
     if(igcTowers.has(b.id)){offices(b,group,props);return;}
     if(b.id===203839)arch(group);
     if(b.id===tower){icc(b,group);return;}
-    const estate=bronzeArch.has(b.id)?['#928167','#b29679']:b.en?.startsWith('The Cullinan')?['#7898ab','#aebbc8']:b.en?.startsWith('Sorrento')?['#82998d','#c2c7b7']:b.en?.startsWith('The Harbourside')?['#76999f','#bdc9c0']:b.en?.startsWith('The Waterfront')?['#c7b8a1','#dbcebb']:null;
-    if(!estate&&![mplus,279107,272633,111537,81117,310911].includes(b.id))return;
+    const estate=estateTrim(b);
+
+    if(!estate&&b.id!==mplus&&!otherSites.has(b.id))return;
     const f=faces(b.p),long=[...f].sort((a,b)=>b.w-a.w)[0],top=b.top,base=b.basePD;
     if(b.id===mplus){
       layered(b,group,[[0,1],[1,1]],[['#4a6765','#6e8981']],'M+ · 海港幕牆');
       for(const face of f)for(let y=base+.8;y<top;y+=1.22)plate(face,props,0,y,.12,face.w,.24,.35,'#6e8178');
       const south=f.filter(s=>s.nz>.7).sort((a,b)=>b.w-a.w)[0];
       if(south){
-        const pattern=['100010000','110110010','101010010','100010111','100010010','100010010'];
-        pattern.forEach((row,j)=>[...row].forEach((cell,i)=>{if(cell==='1')plate(south,props,(i-4)*2.15,base+39-j*2.15,.42,2.06,1.82,.12,'#cddacb');}));
+        facadeLogo.forEach((row,j)=>[...row].forEach((cell,i)=>{
+          if(cell!=='1')return;
+          const u=(i-4)*2.15,y=base+39-j*2.15;
+          plate(south,props,u,y,.42,2.06,1.82,.12,'#cddacb');
+          props.litPanel(south.at,u,y,.489,2.02,1.78,'#e0efca');
+        }));
       }
     }else if(estate){
       for(const face of f.filter(s=>s.w>7)){
@@ -341,7 +387,11 @@ window.HKCoastModels=(()=>{
         if(b.slice)continue;
         for(let u=-face.w*.46;u<face.w*.48;u+=6.8)plate(face,props,u,base+b.h*.5,.08,.28,b.h*.83,.32,colour);
       }
-      if(curbLabels.has(b.id)&&long?.w>20&&!b.slice&&b.h>9)badge(long,signs,base+Math.min(7,b.h*.5),.32,Math.min(18,long.w*.58),1.8,curbLabels.get(b.id));
+      if(curbLabels.has(b.id)&&long?.w>20&&!b.slice&&b.h>9){
+        const y=base+Math.min(7,b.h*.5),w=Math.min(18,long.w*.58);
+        badge(long,signs,y,.32,w,1.8,curbLabels.get(b.id));
+        props.litPanel(long.at,0,y-.99,.33,w,.095,'#d2bc96');
+      }
     }
   }
   function entrance(props,signs,x,y,z,ref,station){
@@ -377,11 +427,11 @@ window.HKCoastModels=(()=>{
       for(const dz of [-.63,.63])props.add('box',x,y+.46,z+dz,2.3,.14,.4,'#9f8062');
     }
   }
-  function distant(b,batch){
+  function distant(b,batch,group){
     if(b.podiumPart){
       const tint=new T.Color(b.podiumPart==='upper'?'#c9c1ac':'#bbb2a1');
       for(const ring of [b.p,...(b.holes||[])])for(const f of faces(ring))
-        batch.quad(f.at(-f.w/2,b.basePD,0),f.at(f.w/2,b.basePD,0),f.at(f.w/2,b.top,0),f.at(-f.w/2,b.top,0),tint);
+        batch.quad(f.at(-f.w/2,b.basePD,0),f.at(f.w/2,b.basePD,0),f.at(f.w/2,b.top,0),f.at(-f.w/2,b.top,0),tint,[0,0,0,0]);
       if(b.podiumPart==='upper'){
         const mesh={tri(a,c,d){const i=batch.p.length/3;for(const p of [a,c,d])batch.vert(p,0,0,tint);batch.idx.push(i,i+1,i+2);}};
         horizontal(mesh,b,b.top);horizontal(mesh,b,b.basePD);
@@ -390,21 +440,34 @@ window.HKCoastModels=(()=>{
     }
     if(!custom.has(b.id))return false;
     const p=b.p,cx=p.reduce((s,q)=>s+q[0],0)/p.length,cz=p.reduce((s,q)=>s+q[1],0)/p.length;
-    const profile=b.id===museum?[[0,.76],[.23,.79],[1,1]]:
+    const profile=b.id===museum?museumProfile:
       b.id===tower?[[0,.89],[.045,1],[.97,.898],[1,.84]]:[[0,1],[1,1]];
     const tint=new T.Color(b.id===museum?'#c9ad86':b.id===mplus?'#526e6b':b.id===museumBase?'#bbaa8d':'#8ba7ac');
     const rings=profile.map(([t,s])=>p.map(([x,z])=>{
       let y=b.basePD+t*b.h;
-      if(b.id===station&&t){const along=Math.max(0,Math.min(1,(z+1048)/270));y=7.6+Math.sin(Math.PI*(.13+.87*along))*24;}
+      if(b.id===station&&t)y=stationRoofPoint([x,z])[1];
       return [cx+(x-cx)*s,y,cz+(z-cz)*s];
     }));
     for(let j=1;j<rings.length;j++)for(let i=0;i<p.length;i++){
-      const k=(i+1)%p.length;batch.quad(rings[j-1][i],rings[j-1][k],rings[j][k],rings[j][i],tint);
+      const k=(i+1)%p.length,a=rings[j-1][i],c=rings[j-1][k],d=rings[j][k],e=rings[j][i];
+      const visibleRooms=b.id===tower||igcTowers.has(b.id)||b.id===station||b.id===museumBase;
+      const u=(i%13)/16,uv=visibleRooms?[u,a[1]/64,u+Math.hypot(a[0]-c[0],a[2]-c[2])/45,e[1]/64]:[0,0,0,0];
+      batch.quad(a,c,d,e,tint,uv);
     }
+    if(b.id===mplus){
+      const south=faces(p).filter(f=>f.nz>.7).sort((a,c)=>c.w-a.w)[0];
+      if(south)for(const [j,row] of facadeLogo.entries())for(let i=0;i<row.length;i++){
+        if(row[i]!=='1')continue;
+        const u=(i-4)*2.15,y=b.basePD+39-j*2.15;
+        batch.quad(south.at(u-1,y-.9,.49),south.at(u+1,y-.9,.49),south.at(u+1,y+.9,.49),south.at(u-1,y+.9,.49),tint,[.966,.034,.966,.034]);
+      }
+    }
+    if(b.id===station){stationRoof(b,group,40);return true;}
+    if(b.id===museum)atriums(b,group);
     const top=rings.at(-1),index=batch.p.length/3;
     for(const q of top)batch.vert(q,0,0,tint);
     for(const [i,j,k] of T.ShapeUtils.triangulateShape(top.map(q=>new T.Vector2(q[0],q[2])),[]))batch.idx.push(index+k,index+j,index+i);
     return true;
   }
-  return {entrance,landscape,distant,replaces:b=>!!b.podiumPart||(!b.foundation&&custom.has(b.id)),style:b=>bronzeArch.has(b.id)?6:b.id===272633?12:b.id===279107||b.id===310911?3:undefined,building};
+  return {entrance,landscape,distant,styled,replaces:b=>!!b.podiumPart||(!b.foundation&&custom.has(b.id)),style:b=>bronzeArch.has(b.id)?6:b.id===272633?12:b.id===279107||b.id===310911?3:undefined,building};
 })();

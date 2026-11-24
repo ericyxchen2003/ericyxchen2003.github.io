@@ -45,7 +45,7 @@ window.HKHarbourPlaces=(()=>{
     path([[-53,294],[-20,316],[3,323],[46,321],[106,317],[185,311],[268,306],[291,300.6]],5.1,'#c7c1b4');
     c.restore();
   }
-  function build(id,{b,frame,edges,ring,low,top,shell,tile,sign,ground}){
+  function build(id,{b,frame,edges,ring,low,top,shell,tile,sign,ground,nightWindows}){
     const white='#eee9da',bronze='#998570',glass='#58747a',green='#758c67',wood='#a38a65';
     const box=(f,x,y,d,w,h,v,col)=>b.box(...f.at(x,y,d),w,h,v,col,f.angle);
     const face=(f,l,r,y,h,d,col)=>tile(b,f,l,r,y,h,d,col);
@@ -65,8 +65,10 @@ window.HKHarbourPlaces=(()=>{
           if(L<.8)return;
           const base=key===310925?lo+6.45:lo+.22,pitch=3.35;
           face(f,0,L,lo+.27,hi-.10,.04,'#415b63');
+          nightWindows(b,f,base,hi-.25,3.55,pitch,.047,'hotel');
           if(key===310925){
             face(f,0,L,lo+1.0,lo+5.45,.074,'#678b89');
+            nightWindows(b,f,lo+1,lo+5.45,3.4,4.45,.080,'retail');
             for(let u=.31;u<L;u+=3.40)box(f,u,lo+3.12,.095,.23,5.73,.30,'#b9bbb1');
           }
           for(let y=base;y<hi-1;y+=pitch){
@@ -90,6 +92,7 @@ window.HKHarbourPlaces=(()=>{
       shell(base,'#9e9383','#9da28b');
       edges(ring(base),(a,c)=>{const f=frame(a,c),L=f.length;if(L<1)return;
         face(f,0,L,low(base)+.38,top(base)-.30,.03,'#597678');
+        nightWindows(b,f,low(base)+.38,top(base)-.30,3.96,4.6,.038,'retail');
         for(let y=low(base)+4.6;y<top(base);y+=4.60)box(f,L/2,y,.10,L,.43,.49,bronze);
         for(let u=.5;u<L;u+=3.96)box(f,u,(low(base)+top(base))/2,.10,.24,top(base)-low(base),.38,'#b1a38d');
       });
@@ -101,6 +104,7 @@ window.HKHarbourPlaces=(()=>{
         b.prism(p,lo,hi,'#607880','#baae96');
         edges(p,(a,c,i)=>{const f=frame(a,c),L=f.length;if(L<1)return;
         const n=Math.max(1,Math.round(L/2.34));
+        nightWindows(b,f,lo+.22,hi-1.8,2.34,3.77,.063,'hotel');
         for(let j=0;j<n;j++){
           const l=L*j/n,r=L*(j+1)/n;
           face(f,l+.03,r-.03,lo+.22,hi-.28,.055,['#536e77','#627e84','#6d8586'][(i+j)%3]);
@@ -171,6 +175,7 @@ window.HKHarbourPlaces=(()=>{
             for(let k=0;k<count;k++){
               const l=(k+.018)/count,r=(k+.982)/count,tint=['#717c76','#887e6a','#607574','#a1947e'][(i+j+k)%4];
               b.quad(at(l,floor+.19,.03),at(r,floor+.19,.03),at(r,hi,.03),at(l,hi,.03),tint);
+              if((i+j+k)%4!==0)b.lights.quad(at(l,floor+.35,.037),at(r,floor+.35,.037),at(r,hi-.12,.037),at(l,hi-.12,.037),'#c5a079');
               b.quad(at(l,hi-.66,.045),at(r,hi-.66,.045),at(r,hi-.58,.045),at(l,hi-.58,.045),'#b5b2a2');
             }
           }
@@ -251,6 +256,7 @@ window.HKHarbourPlaces=(()=>{
         for(let j=0;j<60;j++){
           const a=j*2*Math.PI/60,c=(j+1)*2*Math.PI/60;
           b.quad(canopy(r,a,-.20),canopy(r,c,-.20),canopy(R,c),canopy(R,a),'#cacdc6');
+          if(k===3||k===13||k===23)b.lights.quad(canopy(r,a,-.215),canopy(r,c,-.215),canopy(r+.011,c,-.155),canopy(r+.011,a,-.155),'#c5ab81');
           b.quad(canopy(r,a,.02),canopy(r,c,.02),canopy(r,c,-.20),canopy(r,a,-.20),'#8b9591');
         }
       }
@@ -289,8 +295,17 @@ window.HKHarbourPlaces=(()=>{
             const dr=(v)=>.16+.18*Math.sin((arc+v)*.49+k*.43);
             const high=.63*(h-y)/54;
             b.quad(f.at(s,ay0,dr(s)),f.at(t,cy0,dr(t)),f.at(t,cy0+high*.62,.34),f.at(s,ay0+high*.62,.34),'#c6c2ad');
+            if(k<32&&k%2===0){
+              const strength=.55*(1-k/34)**2;
+              b.wash(f.at(s,ay0,dr(s)+.018),f.at(t,cy0,dr(t)+.018),f.at(t,cy0+high*.62,.36),f.at(s,ay0+high*.62,.36),
+                '#dec695',[strength*.62,strength*.62,strength,strength]);
+            }
             b.quad(f.at(s,ay0+high*.62,.34),f.at(t,cy0+high*.62,.34),f.at(t,cy0+high,.10),f.at(s,ay0+high,.10),'#dad3bd');
           }
+          // Graze the metal from the curved entry soffit up through the first fins.
+          // Place the tint on the same slats so the dark gaps remain visible.
+          if(Math.max(ay,cy)>plaza+1.6)
+            b.lights.beam(f.at(s,ay,.08),f.at(t,cy,.08),.145,'#f2cd91');
           b.beam(f.at(s,ay,.06),f.at(t,cy,.06),.13,white);
         }
         arc+=L;
@@ -308,7 +323,7 @@ window.HKHarbourPlaces=(()=>{
         for(const [y,h,w] of [[lo+.35,3.15,1.67],[lo+6.1,3.07,1.48],[lo+11.1,1.89,1.31]]){
           face(f,u-w*.58,u+w*.58,y,y+h,.10,'#d1bfa0');
           face(f,u-w*.47,u+w*.47,y+.07,y+h-.13,.145,'#524d40');
-          if(y>lo+1){box(f,u,y+h*.48,.16,.062,h-.16,.07,'#997e5f');box(f,u,y+h*.66,.16,w*.90,.068,.07,'#997e5f');}
+          if(y>lo+1){tile(b.lights,f,u-w*.44,u+w*.44,y+.11,y+h-.17,.15,'#b19570');box(f,u,y+h*.48,.16,.062,h-.16,.07,'#997e5f');box(f,u,y+h*.66,.16,w*.90,.068,.07,'#997e5f');}
           for(let j=0;j<5;j++)for(const side of [-1,1])box(f,u+side*w*.59,y+h*(j+.5)/5,.16,j%2?.18:.32,h/5-.019,.25,'#dbc9a9');
         }
         const by=hi-3.10;
@@ -333,6 +348,7 @@ window.HKHarbourPlaces=(()=>{
         for(let j=0;j<n;j++){const u=(j+.5)*L/n;
           face(f,u-.72,u+.72,lo+.12,lo+2.75,.075,'#647c75');
           face(f,u-.54,u+.54,lo+3.86,lo+5.72,.075,'#485c58');
+          if(j%3!==1)tile(b.lights,f,u-.49,u+.49,lo+3.93,lo+5.67,.080,'#bca881');
           for(let k=0;k<5;k++)face(f,u-.52,u+.52,lo+4.02+k*.30,lo+4.08+k*.30,.09,'#8c9988');
         }
         box(f,L/2,hi-1.32,.05,L+.15,.19,.32,'#e1d9bf');
@@ -436,6 +452,7 @@ window.HKHarbourPlaces=(()=>{
       for(let j=0;j<5;j++){const x=593+j*5,z=-30-j*4.6;
         b.cylinder(x,y+1.47,z,.097,.12,2.94,'#c0c6bc',8);
         b.cylinder(x,y+3.11,z,.11,.11,.34,'#ebeedb',8);
+        b.lights.cylinder(x,y+3.11,z,.116,.116,.32,'#f4deb0',8);
       }
     }
     function railWalk(path,wooden){
@@ -460,6 +477,11 @@ window.HKHarbourPlaces=(()=>{
         }else b.beam(at(a,edge,1.06),at(c,edge,1.06),.071,'#a9b4ab');
         const n=Math.ceil(length/2.45);
         for(let j=0;j<n;j++)b.beam(interp(edge,j/n,.01),interp(edge,j/n,1.05),.043,'#81918a');
+        const lamps=Math.max(1,Math.round(length/14));
+        for(let j=0;j<lamps;j++){
+          const t=(j+.5)/lamps,span=Math.min(.32/length,.08);
+          b.lights.beam(interp(edge-.055,t-span,.91),interp(edge-.055,t+span,.91),.048,'#dab783');
+        }
         if(!wooden)continue;
         // The western deck crosses a real tidal pocket in front of the Regent.
         // Close both fascias and carry the suspended walkway on pairs of piers.
@@ -499,6 +521,10 @@ window.HKHarbourPlaces=(()=>{
         return f.at(Math.sin(a)*w,y+h*(1-(1-t)**2.65)+.14*scale*Math.cos(a),
           -1.9*scale+(1.13+6.5*t*t)*Math.cos(a)*scale);
       };
+      for(const rib of [-.56,.56])for(let j=5;j<9;j++){
+        const a=pos(rib,j/9),c=pos(rib,(j+1)/9);a[1]-=.08;c[1]-=.08;
+        b.lights.beam(a,c,.048*scale,'#c7a779');
+      }
       const bed=Array.from({length:20},(_,k)=>{const a=k*Math.PI/10,q=f.at(Math.cos(a)*2.5*scale,0,(-1.1+1.2*Math.sin(a))*scale);return [q[0],q[2]];});
       b.prism(bed,y-.03,y+.51*scale,'#cbc7b3','#768454');
       for(let k=0;k<=8;k++){const rib=(k-4)/4;

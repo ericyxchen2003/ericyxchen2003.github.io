@@ -1,7 +1,9 @@
 /* Stand detection, automatic dispatch and the two-rate Hong Kong urban taximeter. */
 window.HKTaxiService=(()=>{
   'use strict';
-  const stopped=.12, maxWaitSeconds=120;
+  const stopped=.12;
+  const earliestPickup=10; // Real seconds continuously stopped in the bay.
+  const daytime={mean:20,max:60},overnight={mean:40,max:120};
   function fareCents(fastMetres,slowSeconds){
     // Distance starts its next band just beyond the included distance. A minute
     // of low-speed operation contributes one increment, including in the flagfall.
@@ -12,20 +14,19 @@ window.HKTaxiService=(()=>{
   }
   function create(map,sim,random=Math.random){
     const car=sim.state,stands=[],buildings=[],seen=new Set();
-    for(const [id,title,alias,en,rawX,rawZ,roadId] of HKTaxiRankRows){
-      const anchor=sim.nearestRoad(rawX,rawZ,s=>s.road.id===roadId&&(s.forward||s.reverse));
+    for(const [id,title,alias,en,,,roadId,layout] of HKTaxiRankRows){
+      const road=map.roads.find(r=>r.id===roadId);
+      if(!road||!layout)continue;
+      const [index,along,side,offset]=layout,a=road.p[index-1],b=road.p[index];
+      if(!a||!b)continue;
+      const len=Math.hypot(b[0]-a[0],b[1]-a[1]);
+      const anchor=sim.nearestRoad(a[0]+(b[0]-a[0])*along/len,a[1]+(b[1]-a[1])*along/len,
+        s=>s.road===road&&(s.forward||s.reverse));
       if(!anchor)continue;
-      const s=anchor.segment,side=((rawX-anchor.x)*s.dz-(rawZ-anchor.z)*s.dx)>=0?1:-1;
-      const dir=s.one||side, yaw=Math.atan2(s.dx*dir,-s.dz*dir);
-      // In a one-way street the boarding kerb may be on either side.
-      const edge=Math.max(0,s.half-1.3);
-      let offset=null;
-      for(const distance of [edge,edge*.6,0]){
-        if(sim.canOccupy(anchor.x+s.dz*side*distance,anchor.z-s.dx*side*distance,yaw,s.layer)){offset=distance;break;}
-      }
-      if(offset===null)continue;
+      const s=anchor.segment,dir=s.one||side,yaw=Math.atan2(s.dx*dir,-s.dz*dir);
       const x=anchor.x+s.dz*side*offset,z=anchor.z-s.dx*side*offset;
-      stands.push({id:'rank-'+id,name:title+'的士站',alias,en:en+' · Taxi Stand',x,z,anchor,yaw,side,layer:s.layer,parking:{x,z,yaw,layer:s.layer}});
+      stands.push({id:'rank-'+id,name:title+'的士站',alias,en:en+' · Taxi Stand',x,z,anchor,yaw,side,offset,
+        layer:s.layer,parking:{x,z,yaw,layer:s.layer}});
     }
     for(const b of map.buildings){
       const name=(b.n||b.en||'').trim();
@@ -55,32 +56,43 @@ window.HKTaxiService=(()=>{
       const best=options.sort((a,b)=>a.score-b.score)[0]||null;
       frontages.set(b,best);return best;
     }
-    const state={phase:'vacant',origin:null,target:null,wait:0,fare:0,metres:0,slow:0,fast:0};
-    let due=0,lastOdo=0,lastTarget=null,retry=0,receiptAge=0;
-    function targetFromHere(){
+    const vacant={phase:'vacant',origin:null,target:null,wait:0,expectedWaitSeconds:0,fare:0,referenceFare:0,fine:0,metres:0,slow:0,fast:0};
+    const state={...vacant};
+    let arrivalFactor=0,lastOdo=0,lastTarget=null,retry=0,receiptAge=0;
+    function dispatch(rank){
       const start=Math.min(buildings.length-1,Math.floor(random()*buildings.length));
       for(let i=0;i<buildings.length;i++){
         const b=buildings[(i+start)%buildings.length];
         if(b===lastTarget||Math.hypot(b.p[0][0]-car.x,b.p[0][1]-car.z)<180)continue;
         const p=frontage(b);
-        if(p&&sim.previewRoute(p)){lastTarget=b;return p;}
+        if(!p)continue;
+        const metres=sim.shortestRoadDistance(rank.anchor,p.anchor);
+        if(metres===null||!sim.navigate(p,rank.anchor))continue;
+        // At the 40/70 km/h limits the meter bills distance on every road.
+        // With no waiting, the shortest legal route therefore minimizes the fare.
+        state.referenceFare=Math.round(fareCents(metres,0)*1.5);
+        state.target=p;lastTarget=b;return true;
       }
-      return null;
+      return false;
     }
     function withinBay(bay){
       if(car.layer!==bay.layer)return false;
       const dx=car.x-bay.x,dz=car.z-bay.z,s=bay.anchor.segment;
-      return Math.abs(dx*s.dx+dz*s.dz)<=9&&Math.abs(dx*s.dz-dz*s.dx)<=2.15;
+      const lateral=(dx*s.dz-dz*s.dx)*bay.side,angle=car.yaw-bay.yaw;
+      const through=s.road.w/2-s.road.w/(2*(s.road.lanes||1));
+      const body=.94*Math.abs(Math.cos(angle))+2.4*Math.abs(Math.sin(angle));
+      return Math.abs(dx*s.dx+dz*s.dz)<=2.2&&Math.abs(lateral)<=.45&&Math.abs(Math.cos(angle))>.95&&
+        bay.offset+lateral-through>=body+1.29+.2;
     }
     function clear(){
-      Object.assign(state,{phase:'vacant',origin:null,target:null,wait:0,fare:0,metres:0,slow:0,fast:0});
+      Object.assign(state,vacant);
     }
     function nearDrop(){
       const p=state.target;if(!p||car.layer!==p.layer)return false;
       const s=p.anchor.segment,dx=car.x-p.x,dz=car.z-p.z;
       return Math.abs(dx*s.dx+dz*s.dz)<=11&&Math.abs(dx*s.dz-dz*s.dx)<=2.8;
     }
-    function step(seconds){
+    function step(seconds,gameMinutes=12*60){
       if(state.phase==='receipt'){
         receiptAge+=seconds;if(receiptAge<8)return;
         clear();
@@ -92,6 +104,7 @@ window.HKTaxiService=(()=>{
         else state.fast+=delta;
         state.fare=fareCents(state.fast,state.slow);
         if(nearDrop()&&Math.abs(car.speed)<=stopped){
+          if(state.fare>state.referenceFare&&random()<.5)state.fine=20000;
           state.phase='receipt';receiptAge=0;sim.cancelRoute();return 'complete';
         }
         retry-=seconds;
@@ -102,19 +115,22 @@ window.HKTaxiService=(()=>{
       if(!rank){if(state.phase==='waiting')clear();return;}
       if(state.phase!=='waiting'||rank!==state.origin){
         clear();state.origin=rank;
-        state.target=targetFromHere();if(!state.target){clear();return;}
-        // Rayleigh arrivals give an increasing conditional chance per second.
-        due=Math.min(maxWaitSeconds,Math.max(1,38*Math.sqrt(-Math.log1p(-random()))));
+        // One Rayleigh draw per visit. Its mean is one before scaling to
+        // real seconds, so a change of shift can reuse the same draw.
+        arrivalFactor=2/Math.sqrt(Math.PI)*Math.sqrt(-Math.log1p(-random()));
         state.phase='waiting';
       }
-      state.wait=Math.min(maxWaitSeconds,state.wait+seconds);
+      const period=gameMinutes<6*60?overnight:daytime;
+      state.expectedWaitSeconds=period.mean;
+      const due=Math.min(period.max,earliestPickup+(period.mean-earliestPickup)*arrivalFactor);
+      state.wait+=seconds;
       if(state.wait>=due){
-        if(!sim.navigate(state.target)){state.target=targetFromHere();if(!state.target||!sim.navigate(state.target))return;}
+        if(!dispatch(rank)){clear();return;}
         state.phase='hired';state.fare=2900;lastOdo=car.odometer;retry=3;
         return 'pickup';
       }
     }
     return {state,stands,step,nearDrop,clear};
   }
-  return {create,fareCents,maxWaitSeconds};
+  return {create,fareCents,maxWaitSeconds:daytime.max,meanWaitSeconds:daytime.mean};
 })();
