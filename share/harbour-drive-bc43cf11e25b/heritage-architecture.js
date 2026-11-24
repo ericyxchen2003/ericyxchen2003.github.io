@@ -62,6 +62,9 @@ window.HKHeritage=(()=>{
     function sash(f,u,y,w,h,d,frameColour,glass){
       panel(f,u-w/2-.10,u+w/2+.10,y-.10,y+h+.10,d,frameColour);
       panel(f,u-w/2,u+w/2,y,y+h,d+.014,glass);
+      const [x,,z]=f.at(u,y,d);
+      if(Math.abs(Math.round(x*1.3+z*.8+y*2))%5<2)
+        tile(b.lights,f,u-w*.47,u+w*.47,y+.08,y+h-.08,d+.023,id==='school'?'#9a9983':'#bbad88');
       for(const x of [u-w*.19,u+w*.19])panel(f,x-.023,x+.023,y,y+h,d+.034,frameColour);
       panel(f,u-w/2,u+w/2,y+h*.73,y+h*.73+.047,d+.038,frameColour);
     }
@@ -91,6 +94,8 @@ window.HKHeritage=(()=>{
       for(let i=0;i<n;i++){
         const x=u-w/2+(i+.5)*pitch,cap=leg+(1-Math.abs(i+.5-n/2)/(n/2))*rise*.44;
         arch(f,x,y+.055,pitch*.85,cap-.32,.28,base+.036,'#b8ad92',colours[i%5],{trim:.045,depth:.017});
+        tile(b.lights,f,x-pitch*.40,x+pitch*.40,y+.10,y+cap-.29,base+.024,
+          ['#7a9099','#bc9667','#658793','#a2a480','#a57476'][i%5]);
         for(let j=0;j<6;j++){
           const yy=y+.18+(cap-.48)*j/6;
           panel(f,x-pitch*.39,x+pitch*.39,yy,yy+.026,base+.047,'#51534e');
@@ -127,6 +132,7 @@ window.HKHeritage=(()=>{
             for(const x of [-.22,.22])box(face,u+x,sill+1.07,d+.025,.035,.43,.05,'#d4bb8c');
             panel(face,u-.031,u+.031,sill,sill+leg+.62,d+.018,'#9f8562');
           }else{
+            if(j%3!==1)tile(b.lights,face,u-w*.47,u+w*.47,sill+.07,sill+leg-.035,d+.004,'#bead88');
             for(let k=-3;k<=3;k++){
               const xx=u+k*w*.106,hh=.81*(1-Math.abs(k)/4);
               line(face,xx,sill+.03,xx,sill+leg+hh,d+.018,.027,'#d7d8c8');
@@ -152,6 +158,7 @@ window.HKHeritage=(()=>{
         b.cylinder(x,base+7.57,z,.94,.53,.48,white,16);
         b.cylinder(x,base+7.97,z,.93,.93,.38,'#d3d4c8',16);
         b.cylinder(x,base+8.47,z,.53,.58,.85,'#56615c',10);
+        b.lights.cylinder(x,base+8.47,z,.536,.586,.81,'#c6b58a',10);
         for(let k=0;k<8;k++){
           const a=k*Math.PI/4;b.cylinder(x+Math.cos(a)*.56,base+8.54,z+Math.sin(a)*.56,.075,.09,1.06,white,8);
         }
@@ -161,6 +168,13 @@ window.HKHeritage=(()=>{
       const [cx,,cz]=f.at(0,0,-14.8),R=6.05;
       b.cylinder(cx,prayerRoof+.45,cz,R,R+.22,.94,'#e6e5db',44);
       b.dome(cx,prayerRoof+.87,cz,R,5.6,R,'#f5f0e3',0,48);
+      // Soft light reflected by the drum and lower dome, with a falloff towards the crescent.
+      const skin=(az,el)=>[cx+(R+.04)*Math.cos(el)*Math.cos(az),prayerRoof+.89+5.63*Math.sin(el),cz+(R+.04)*Math.cos(el)*Math.sin(az)];
+      const wash=(az,el)=>(.24+.48*(.5+.5*Math.cos(az*4)))*Math.cos(el)**2+.035;
+      for(let j=0;j<14;j++)for(let i=0;i<48;i++){
+        const a=i*Math.PI/24,c=(i+1)*Math.PI/24,lo=j*Math.PI/28,hi=(j+1)*Math.PI/28;
+        b.wash(skin(a,lo),skin(c,lo),skin(c,hi),skin(a,hi),'#c8cebf',[wash(a,lo),wash(c,lo),wash(c,hi),wash(a,hi)]);
+      }
       b.cylinder(cx,prayerRoof+6.82,cz,.04,.12,.79,'#aa926b',10);
       let prev;
       for(let k=0;k<=22;k++){const t=.48+k*5.15/22,p=f.at(Math.sin(t)*.32,prayerRoof+7.50-Math.cos(t)*.35,-14.8);
@@ -508,6 +522,7 @@ window.HKHeritage=(()=>{
           for(let k=0;k<9;k++)for(let j=0;j<n;j++){
             const y=lo+2.00+k*3.78,u=(j+.5)*w;
             panel(face,u-w*.41,u+w*.41,y,y+2.43,.05,'#55706f');
+            if((j*7+k*3)%11<4)tile(b.lights,face,u-w*.39,u+w*.39,y+.1,y+2.34,.060,'#b5c5ad');
             panel(face,u-w*.41,u+w*.41,y+1.79,y+1.88,.083,'#b0b5a4');
             box(face,u,y+2.53,.13,w-.16,.26,.59,'#eee1c3');
           }

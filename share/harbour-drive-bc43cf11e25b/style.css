@@ -107,6 +107,16 @@
 
 .dm-surface{position:absolute;inset:0;touch-action:none}
 .taxi-readout b{color:#ffcf75;font-variant-numeric:tabular-nums}
+#remaining{white-space:nowrap;font-variant-numeric:tabular-nums}
+.mission #restBtn{width:auto;height:auto;min-height:34px;padding:5px 10px;border:1px solid var(--line);color:var(--gold);font-size:13px;white-space:nowrap}
+#restDialog{width:min(300px,90vw);padding:24px;border:1px solid var(--line);border-radius:14px;background:var(--ink);color:#f6f1df;text-align:center}
+#restDialog::backdrop{background:#0b191be8}
+#restTitle{margin:0;font-size:22px;outline:0}
+#restWake{margin:8px 0 18px;color:var(--sub);font-variant-numeric:tabular-nums}
+.rest-track{height:3px;border-radius:2px;background:var(--line);overflow:hidden}
+#restDialog[open] .rest-track::after{content:"";display:block;height:100%;background:var(--gold);transform-origin:left;animation:rest-elapsed var(--rest-duration) linear both}
+@keyframes rest-elapsed{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media(prefers-reduced-motion:reduce){.rest-track{display:none}}
 #mission button[hidden],.taxi-readout[hidden]{display:none}
 .dm-filters{max-width:calc(100vw - 30px);overflow-x:auto;scrollbar-width:none;padding-bottom:3px}
 .dm-chip{flex-shrink:0}
@@ -168,6 +178,35 @@
 .dm-pick .dm-meta{color:#93632b}
 .dm-pick .dm-distance{display:block;color:#52636a;line-height:1.45}
 .dm-pick .dm-pin:focus-visible{z-index:3}
+.dm-shifts{display:flex;gap:4px;min-width:0;margin:9px 0 12px;padding:0;border:0}
+.dm-shifts legend{margin:0 0 5px;padding:0;color:#52636a;font-size:12px}
+.dm-shifts.resuming{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+#walletBalance{font-variant-numeric:tabular-nums;color:#f6ce78}
+.dash-stats{display:grid;gap:4px;margin-top:7px;padding-top:6px;border-top:1px solid #ffffff26}
+.dash-stats .odo{margin:0}
+.guide-tips{margin:3px 0 18px;padding-inline-start:1.6em;line-height:1.65}
+.guide-tips li+li{margin-top:8px}
+.guide-tips li::marker{color:var(--gold);font-weight:700}
+.guide-keys{margin-bottom:16px;border-top:1px solid var(--line)}
+.guide-keys summary{padding:10px 0;cursor:pointer;color:var(--sub);font-size:14px}
+#menuSources{background:transparent;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:3px;padding:8px;margin-right:4px}
+.dm-shifts label{position:relative;flex:1;cursor:pointer}
+.dm-shifts input{position:absolute;opacity:0;width:1px;height:1px}
+.dm-shifts span{display:block;padding:6px 1px;text-align:center;border:1px solid #cbd6d2;border-radius:5px;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.dm-shifts input:checked+span{background:#e1f1ed;border-color:#397668;color:#1d564b;font-weight:700}
+.dm-shifts input:focus-visible+span{outline:2px solid #2267b5;outline-offset:1px}
+#gameTime{margin-left:auto;font-variant-numeric:tabular-nums;letter-spacing:.02em;color:var(--sub)}
+#headlightControl{position:relative;display:grid;place-items:center;width:39px;height:39px;margin:0 2px;border-radius:7px;color:var(--sub)}
+#headlightControl:hover{background:#ffffff1a}
+#headlightControl:focus-within{outline:3px solid var(--gold);outline-offset:2px}
+#headlightControl.lit{color:#a2edbc;background:#355346}
+#headlightControl svg{width:21px;height:21px;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;fill:none}
+#headlightControl small{position:absolute;right:3px;bottom:2px;font:bold 8px/1 sans-serif}
+#headlightControl select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+@media(pointer:coarse),(max-width:590px){#headlightControl{width:31px;height:32px}#headlightControl svg{width:18px;height:18px}}
+@media(max-width:490px){.mast{max-width:calc(100% - 200px)}.district{min-width:0}.district b,.district span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+@media(max-width:590px){.dashhead{gap:4px}}
+@media(max-height:520px){.dm-pick .dm-card{max-height:calc(100% - 105px);overflow:auto}}
 #menuFilm{opacity:0;pointer-events:none}
 #menuFilm.ready{opacity:1}
 #menuMotion{display:grid;place-items:center;margin-left:6px;width:36px;height:36px;border:1px solid #ffffff60;border-radius:50%;color:#fff8e9;background:#132827ba}

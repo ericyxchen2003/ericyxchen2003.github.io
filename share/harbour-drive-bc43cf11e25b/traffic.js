@@ -3,6 +3,7 @@
   "use strict";
   const colours = ["#557a88", "#d2c8ae", "#f1efe0", "#31464e", "#738579", "#51667a"];
   const count = 26;
+  const braking = 2.9; // comfortable deceleration in m/s²
   const key = p => p[0] + "/" + p[1];
   const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
@@ -18,6 +19,7 @@
       if ((road.l < 0 && !road.underpass) || road.cls === "service") continue;
       const lanes = Math.max(1, Number(road.lanes) || (road.one ? 1 : 2));
       const half = road.w / 2;
+      const speedLimit = global.HKDriving.roadSpeedLimit(road);
       const laneWidth = road.w / lanes, laneCount = road.one ? lanes : Math.max(1, Math.floor(lanes / 2));
       for (let i = 1; i < road.p.length; i++) {
         if (Number(road.one) !== -1) add(road.p[i - 1], road.p[i], i);
@@ -27,7 +29,7 @@
         const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
         if (len < 0.08) return;
         const dx = (b[0] - a[0]) / len, dz = (b[1] - a[1]) / len;
-        const edge = { a, b, len, dx, dz, road, half, laneWidth, laneCount, token: rules.token(road, index) };
+        const edge = { a, b, len, dx, dz, road, half, laneWidth, laneCount, speedLimit, token: rules.token(road, index) };
         const start = key(a);
         if (!junctions.has(start)) junctions.set(start, []);
         junctions.get(start).push(edge); edges.push(edge);
@@ -158,13 +160,31 @@
       const kind = i % 8 === 0 ? "bus" : i % 4 === 1 ? "taxi" : "sedan";
       const vehicle = { id: i, kind, laneChoice: kind === "bus" ? 0.12 : random(), color: kind === "sedan" ? colours[i % colours.length] : undefined,
         halfLength: kind === "bus" ? 5.92 : 2.32, halfWidth: kind === "bus" ? 1.29 : 0.89,
-        cruise: kind === "bus" ? 7.4 + random() * 1.8 : 8.2 + random() * 3.3 };
+        cruiseFraction: kind === "bus" ? .90 + random() * .09 : .93 + random() * .07 };
       const da = i < 7 ? [22, 94] : i < 16 ? [84, 204] : [160, 350];
       if (spawn(vehicle, player, ...da) || spawn(vehicle, player, 15, 500)) vehicles.push(vehicle);
     }
     sim.setTraffic(vehicles);
     let lastX = player.x, lastZ = player.z, recycleTimer = 0;
 
+    function cruiseSpeed(v, track, dt) {
+      const limit = track.points[track.index].edge.speedLimit;
+      const cruise = limit * v.cruiseFraction;
+      // Check the planned lane, including short links between long, faster roads.
+      const stepRoom = v.speed * dt + .1;
+      const horizon = v.speed * v.speed / (2 * braking) + stepRoom;
+      let ahead = -track.offset;
+      for (let i = track.index + 1; i < track.points.length; i++) {
+        ahead += distance(track.points[i - 1], track.points[i]);
+        if (ahead >= horizon) break;
+        const nextLimit = track.points[i].edge.speedLimit;
+        if (nextLimit < limit) {
+          const lower = nextLimit * v.cruiseFraction;
+          return Math.min(cruise, Math.sqrt(lower * lower + 2 * braking * Math.max(0, ahead - stepRoom)));
+        }
+      }
+      return cruise;
+    }
     function collide(p, vehicle, player, margin = 0) {
       const level=p.edge.road.l;
       const body={layer:level,x:p.x,z:p.z,yaw:p.yaw,kind:vehicle.kind,halfLength:vehicle.halfLength+margin,halfWidth:vehicle.halfWidth};
@@ -247,14 +267,15 @@
     // whereas crossing paths and two lanes merging into one must take turns.
     function junctionPlan(v, track) {
       let metres = -track.offset, entry = Infinity, exit = 0, first = null;
+      const reach = Math.max(34, stoppingDistance(v) + v.halfLength + 10);
       for (let i = track.index + 1; i < track.points.length; i++) {
         const p = track.points[i];
         metres += distance(track.points[i - 1], p);
-        if (metres > (first ? exit + 6 : 34)) break;
+        if (metres > (first ? exit + 6 : reach)) break;
         if (!p.junctionRadius) continue;
         const margin = p.junctionRadius + v.halfLength + 1.5;
         if (!first) { first = p; entry = metres - margin; }
-        exit = Math.min(46, Math.max(exit, metres + margin));
+        exit = Math.min(reach + 12, Math.max(exit, metres + margin));
       }
       if (!first) return null;
       const path = [], pad = v.halfLength + v.halfWidth + 1;
@@ -277,9 +298,12 @@
       if (a.x0 > b.x1 || b.x0 > a.x1 || a.z0 > b.z1 || b.z0 > a.z1) return false;
       return a.path.some(p => b.path.some(q => bodyOverlap(p, q)));
     }
+    function stoppingDistance(v) {
+      return v.speed * v.speed / (2 * braking) + v.speed * .3;
+    }
     function frontSignal(v) {
       if (v.layer !== 0) return null;
-      return signals?.approach(v.x + Math.sin(v.yaw) * v.halfLength, v.z - Math.cos(v.yaw) * v.halfLength, v.yaw, 47);
+      return signals?.approach(v.x + Math.sin(v.yaw) * v.halfLength, v.z - Math.cos(v.yaw) * v.halfLength, v.yaw, Math.max(47, stoppingDistance(v) + 2));
     }
     let clock = 0, dispatchIn = 0;
     function manageJunctions(player) {
@@ -305,7 +329,7 @@
         if (!plan) { track.ticket = null; continue; }
         if (track.ticket?.first !== plan.first) track.ticket = { first: plan.first, at: clock };
         track.hold = Math.max(0, plan.entry);
-        if (plan.entry > Math.max(3, v.speed * 1.25) || (mustStop && lamp.distance <= plan.exit)) continue;
+        if (plan.entry > Math.max(3, v.speed * 1.25, stoppingDistance(v)) || (mustStop && lamp.distance <= plan.exit)) continue;
         requests.push({ v, track, plan });
       }
       requests.sort((a, b) => a.track.ticket.at - b.track.ticket.at || a.plan.entry - b.plan.entry || a.v.id - b.v.id);
@@ -345,11 +369,14 @@
         if (recycle && track.stopped > 1 && v.waitingForSignal == null) repairBend(v, track, player);
         if (recycle && !track.pass && !track.ticket && (!signal || signal.distance > 21)) { tryLaneChange(v, track, player); track = tracks[v.id]; }
         const speed = v.speed;
-        let desired = v.cruise;
-        const tangent = sample(track, Math.max(v.halfLength, speed * 1.3));
+        let desired = cruiseSpeed(v, track, dt);
+        const bendDistance = Math.max(v.halfLength, speed * 1.3);
+        const tangent = sample(track, bendDistance);
         if (tangent) {
           const bend = Math.abs(Math.atan2(Math.sin(tangent.yaw - v.yaw), Math.cos(tangent.yaw - v.yaw)));
-          desired *= 1 / (1 + bend * 0.72);
+          // Approximate turn radius from the change of heading. A tight turn
+          // needs the same cornering speed whichever road it connects to.
+          if (bend > .01) desired = Math.min(desired, Math.sqrt(2.4 * bendDistance / bend));
         }
         const gap = 2.0 + speed * 0.35;
         const lookahead = Math.max(9, gap + speed * speed / 6);
@@ -374,7 +401,7 @@
             v.waitingForSignal = signal.head.id;
           }
         } else { v.amberDecision = null; }
-        desired = Math.min(desired, Math.sqrt(5.8 * stopRoom));
+        desired = Math.min(desired, Math.sqrt(2 * braking * stopRoom));
         const rate = desired < speed ? 4.3 : v.kind === "bus" ? 1.1 : 1.6;
         v.speed += Math.max(-rate * dt, Math.min(rate * dt, desired - speed));
         if (stopRoom < .045) v.speed = 0;

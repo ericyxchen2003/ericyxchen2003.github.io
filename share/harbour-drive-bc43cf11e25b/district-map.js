@@ -91,6 +91,8 @@ window.HKDistrictMap=(()=>{
     function open(parent,actions){
       close();
       const picking=Boolean(actions.pickStand);
+      const savedMinute=actions.savedMinute??null;
+      let startMinutes=savedMinute===null?HKDayCycle.defaultStart:null;
       const v=picking?{...drivingView,k:0}:drivingView;
       const basePins=atlas.pins.filter(p=>!picking||p.kind==='taxi').sort((a,b)=>b.priority-a.priority);
       const searchRows=picking?searchable.filter(row=>row.p.kind==='taxi'):searchable;
@@ -173,13 +175,30 @@ window.HKDistrictMap=(()=>{
         const title=$el('h2','',p.name),sub=$el('div','dm-en',p.en&&p.en!==p.name?p.en:'');
         const row=$el('div','dm-actions');
         if(picking){
-          const confirm=button('從這個的士站出發','flag',()=>actions.pickStand(destination),'dm-nav');
+          const shifts=$el('fieldset','dm-shifts'),legend=$el('legend');shifts.append(legend);
+          const options=HKDayCycle.shifts.map(s=>({value:s.minutes,label:s.label+' '+HKDayCycle.format(s.minutes)}));
+          if(savedMinute!==null){
+            options.unshift({value:null,label:'繼續 '+HKDayCycle.format(savedMinute%1440)});
+            shifts.classList.add('resuming');
+          }
+          function showDeparture(){
+            const next=HKWallet.departure(savedMinute,startMinutes),fee=HKWallet.feeBetween(savedMinute,next);
+            legend.textContent=fee?'出車時間 · 跨過早上六時，扣日租 '+HKWallet.format(fee):'出車時間';
+          }
+          showDeparture();
+          for(const shift of options){
+            const label=$el('label'),radio=$el('input');
+            radio.type='radio';radio.name='shift';radio.checked=shift.value===startMinutes;
+            radio.onchange=()=>{if(radio.checked){startMinutes=shift.value;showDeparture();}};
+            label.append(radio,$el('span','',shift.label));shifts.append(label);
+          }
+          const confirm=button('從這個的士站出發','flag',()=>actions.pickStand(destination,startMinutes),'dm-nav');
           confirm.append('從這個的士站出發');row.append(confirm);
           const address=$el('p','dm-distance',destination.alias);
-          card.append(meta,dismiss,title,sub,address,row);confirm.focus({preventScroll:true});refresh();return;
+          card.append(meta,dismiss,title,sub,address,shifts,row);confirm.focus({preventScroll:true});refresh();return;
         }
         const length=preview?.points.reduce((a,pt,i,path)=>a+(i?Math.hypot(pt[0]-path[i-1][0],pt[1]-path[i-1][1]):0),0);
-        const stat=$el('div','dm-distance',preview?'駕駛路程　'+metric(length):destination?'目前位置未有可達路線':'附近沒有可用的行車起點');
+        const stat=$el('div','dm-distance',preview?'駕駛路程　'+metric(length):destination?'目前位置未有可達路線':'附近沒有可供導航的道路');
         if(preview&&length>2){
           const overview=button('查看全程','fit',()=>{
             const xs=preview.points.map(pt=>pt[0]),zs=preview.points.map(pt=>pt[1]);
@@ -190,10 +209,13 @@ window.HKDistrictMap=(()=>{
           },'dm-route-fit');overview.append('查看全程');stat.append(overview);
         }
         const nav=button('導航到此','route',()=>{if(!actions.navigate(destination))stat.textContent='目前位置未有可達路線';},'dm-nav');
-        nav.append('導航到此');nav.disabled=!preview||actions.hired;
-        const depart=button('從這裏出發','flag',()=>actions.depart(destination),'dm-depart');depart.append('從這裏出發');depart.disabled=!destination||actions.hired;
+        nav.append('導航到此');nav.disabled=!preview||actions.hired;row.append(nav);
+        if(p.kind==='taxi'){
+          const depart=button('從這裏出發','flag',()=>actions.departStand(p.destination),'dm-depart');
+          depart.append('從這裏出發');depart.disabled=actions.hired;row.append(depart);
+        }
         if(actions.hired)stat.textContent='載客中 · 請先送乘客到目的地';
-        row.append(nav,depart);card.append(meta,dismiss,title,sub,stat,row);refresh();
+        card.append(meta,dismiss,title,sub,stat,row);refresh();
       }
       function search(){
         results.replaceChildren();const q=fold(input.value);index=-1;input.removeAttribute('aria-activedescendant');
@@ -320,7 +342,7 @@ window.HKDistrictMap=(()=>{
       for(const event of ['pointerup','pointercancel','lostpointercapture'])on(surface,event,end);
       on(surface,'click',e=>{if(dragged&&e.detail){e.preventDefault();e.stopPropagation();}},{capture:true});
       on(root,'keydown',e=>{
-        if(e.defaultPrevented||e.target===input||e.ctrlKey||e.metaKey||e.altKey)return;
+        if(e.defaultPrevented||e.target instanceof HTMLInputElement||e.ctrlKey||e.metaKey||e.altKey)return;
         const delta=85/v.k;
         switch(e.key){
           case '+':case '=':zoom(1.5);break;case '-':zoom(1/1.5);break;

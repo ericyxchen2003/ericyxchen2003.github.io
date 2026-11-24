@@ -8,6 +8,9 @@
   const levelBit = layer => 1 << (layer < 0 ? 15 - layer : layer);
   const L = 2.27;
   const W = 0.88;
+  const mainRoads = new Set(["motorway", "trunk", "primary"]);
+  // Game road limits in m/s, shared by route planning and ambient traffic.
+  const roadSpeedLimit = road => (mainRoads.has(road.cls) ? 70 : 40) / 3.6;
   const corners = [[L, W], [L, -W], [-L, W], [-L, -W], [L, 0], [-L, 0], [0, W], [0, -W], [0, 0]];
   const locations = [
     ["salisbury", "半島酒店", "The Peninsula", 114.17156, 22.29474, "Salisbury Road"],
@@ -194,13 +197,14 @@
     for (const road of map.roads) {
       if (!(road.p && road.p.length > 1) || (Number(road.l) < 0 && !road.underpass)) continue;
       const half = Math.max(1.6, Number(road.w || 6) / 2);
+      const speedLimit = roadSpeedLimit(road);
       for (let i = 1; i < road.p.length; i++) {
         const a = road.p[i - 1], b = road.p[i];
         const vx = b[0] - a[0], vz = b[1] - a[1], len = magnitude(vx, vz);
         if (len < 0.04) continue;
         const start = nodeFor(a), end = nodeFor(b), one = Number(road.one || 0);
         const layer = Number(road.l) || 0, bit = levelBit(layer);
-        const s = { a, b, start, end, len, half, dx: vx / len, dz: vz / len, road, one, layer, bit };
+        const s = { a, b, start, end, len, half, dx: vx / len, dz: vz / len, road, one, layer, bit, speedLimit };
         for (const node of [nodes[start], nodes[end]]) {
           node.levels |= bit; node.half = Math.max(node.half, half);
         }
@@ -408,7 +412,9 @@
       return state;
     }
 
-    function findPath(from, to) {
+    const travelSeconds = (metres, segment) => metres / segment.speedLimit;
+    const roadMetres = metres => metres;
+    function findPath(from, to, costOf = travelSeconds) {
       const s = from.segment, t = to.segment;
       const costAt = new Map(), parent = new Map(), queue = new Queue();
       const stride = edges.length + nodes.length;
@@ -417,14 +423,14 @@
         if (cost >= (costAt.get(key) ?? Infinity)) return;
         costAt.set(key, cost); parent.set(key, prev); queue.push(key, cost);
       }
-      function start(edge, cost) {
-        if (edge) offer(rules.advance(0, edge.token, 1) * stride + edge.id, cost, -1);
+      function start(edge, metres) {
+        if (edge) offer(rules.advance(0, edge.token, 1) * stride + edge.id, costOf(metres, s), -1);
       }
       if (from.along < .001) offer(edges.length + s.start, 0, -1);
       if (s.len - from.along < .001) offer(edges.length + s.end, 0, -1);
       start(s.forward, s.len - from.along); start(s.reverse, from.along);
       if (s === t && (to.along >= from.along ? s.forward : s.reverse)) {
-        best = Math.abs(to.along - from.along); direct = true;
+        best = costOf(Math.abs(to.along - from.along), s); direct = true;
       }
       while (queue.list.length) {
         const [key, cost] = queue.pop();
@@ -441,10 +447,10 @@
           const nextState = rules.advance(state, edge.token, 1);
           if (nextState < 0) continue;
           if (edge.segment === t) {
-            const final = cost + (edge === t.forward ? to.along : t.len - to.along);
+            const final = cost + costOf(edge === t.forward ? to.along : t.len - to.along, t);
             if (final < best) { best = final; last = key; tail = edge; direct = false; }
           }
-          const next = cost + edge.segment.len;
+          const next = cost + costOf(edge.segment.len, edge.segment);
           if (next < best) offer(nextState * stride + edge.id, next, key);
         }
       }
@@ -464,20 +470,23 @@
         for (const edge of steps.reverse()) append(nodes[edge.to].point, edge.segment);
       }
       append([to.x, to.z], tail?.segment || t);
-      return { points, layers };
+      return { points, layers, cost: best };
     }
 
-    function previewRoute(id) {
+    function shortestRoadDistance(from,to) {
+      return findPath(from,to,roadMetres)?.cost ?? null;
+    }
+    function previewRoute(id, startAnchor) {
       const target=typeof id==='object'?id:places.find(p=>p.id===id);
       const destination=target?.anchor||snaps.get(target?.id);
       if(!destination)return null;
-      const origin=roadAtLevel(state.x,state.z,levelBit(state.layer))||
+      const origin=startAnchor||roadAtLevel(state.x,state.z,levelBit(state.layer))||
         nearestRoad(state.x,state.z,s=>s.layer===state.layer)||nearestRoad(state.x,state.z);
       const path=findPath(origin,destination);
       return path?{...path,target,layer:destination.segment.layer}:null;
     }
-    function navigate(id) {
-      const path=previewRoute(id);
+    function navigate(id, startAnchor) {
+      const path=previewRoute(id,startAnchor);
       if(!path){route=null;return null;}
       const target=path.target;
       const { points, layers } = path;
@@ -598,10 +607,10 @@
       return state;
     }
     reset();
-    return { state, places, step, reset, nearestRoad, mapPoint, previewRoute, navigate, trafficOverlap, rules,
+    return { state, places, step, reset, nearestRoad, mapPoint, shortestRoadDistance, previewRoute, navigate, trafficOverlap, rules,
       // Ambient traffic still follows the carriageway through bends and junctions.
-      canOccupy(x, z, yaw, layer = 0) { return !obstructed(x, z, yaw, layer, levelsAt(x,z,layer), true); },
+      canOccupy(x, z, yaw, layer = 0, onCarriageway = true) { return !obstructed(x, z, yaw, layer, levelsAt(x,z,layer), onCarriageway || layer !== 0); },
       setTraffic(vehicles) { traffic = vehicles; }, cancelRoute() { route = null; }, get route() { return route; } };
   }
-  global.HKDriving = { create, intersects };
+  global.HKDriving = { create, intersects, roadSpeedLimit };
 })(typeof window === "object" ? window : globalThis);

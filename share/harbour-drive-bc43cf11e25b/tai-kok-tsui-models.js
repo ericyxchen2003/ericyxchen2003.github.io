@@ -41,6 +41,7 @@ window.HKTaiModels=(()=>{
       const rot=Math.atan2(dz,dx)+(area>0?Math.PI:0),c=Math.cos(rot),s=Math.sin(rot);
       const at=(u,y,v)=>[(p[0]+q[0])/2+u*c-v*s,y,(p[1]+q[1])/2+u*s+v*c];
       return {w,at,nx:-s,nz:c,
+        light:(u,y,d,width,h,tint)=>props.litPanel(at,u,y,d,width,h,tint),
         box:(u,y,v,width,h,d,color)=>props.add('box',...at(u,y,v),width,h,d,color,-rot),
         badge:(u,y,v,width,h,text)=>signs.quad(sign(text),[at(u-width/2,y-h/2,v),at(u+width/2,y-h/2,v),at(u+width/2,y+h/2,v),at(u-width/2,y+h/2,v)])
       };
@@ -74,6 +75,7 @@ window.HKTaiModels=(()=>{
         for(let i=0;i<4;i++)for(let row=0;row<2;row++){
           const u=center+span*((i+.5)/4-.5),y=base+9.5+row*6.4,ww=span/4-1.05;
           box(u,y,-.09,ww,4.9,.12,'#334b4e');
+          if((i+row)%3!==1)f.light(u,y,-.018,ww-.14,4.68,'#b7c5b0');
           box(u,y-1.1,.25,ww,.12,.10,'#bdc1ac');
           for(let j=-2;j<=2;j++)box(u+j*ww/5,y-1.8,.24,.07,1.4,.09,'#9ba5a1');
         }
@@ -81,6 +83,7 @@ window.HKTaiModels=(()=>{
         badge(w*.405,base+14.2,.37,w*.12,4.0,['體育館','SPORTS CENTRE','#437a74']);
         for(let i=-2;i<=2;i++){
           box(i*3.0,base+1.48,.05,2.77,2.95,.24,'#46616a');
+          f.light(i*3,base+1.55,.18,2.57,2.60,'#dcc79e');
           box(i*3.0,base+1.45,.21,.09,2.85,.08,'#adb6ad');
         }
         box(0,base+3.03,.96,17,.23,2.0,'#b9c0ad');
@@ -90,6 +93,9 @@ window.HKTaiModels=(()=>{
         box(0,base+H*.57,-.02,w-3,H*.78,.3,blue);
         for(let i=1;i<=8;i++)box((i/9-.5)*w,base+H*.57,.16,.23,H*.78,.26,'#819aa1');
         for(let i=1;i<11;i++)box(0,base+7+i*3.6,.18,w-3,.26,.3,'#8b9b99');
+        for(let i=1;i<=7;i++)for(const y of [10,18,31]){
+          if((i+y)%3!==0)f.light((i/9-.44)*w,base+y,.145,w*.085,2.25,'#92afae');
+        }
         for(const y of [15,20,25])box(0,base+y,.29,w-2.8,1.35,.5,white);
         box(-w*.37,base+H*.52,.45,w*.11,H*.87,.65,gold);
       }else{
@@ -97,6 +103,7 @@ window.HKTaiModels=(()=>{
         for(let i=1;i<9;i++){
           const ww=w*(i>5?.60:.76),y=base+4.5+i*4.7;
           box(w*.04,y,.095,ww,2.45,.19,i>5?blue:dark);
+          for(let j=0;j<7;j++)if((j*5+i)%8<3)f.light(w*.04+ww*((j+.5)/7-.5),y,.20,ww/7-.26,2.22,'#b1baa6');
           for(let j=1;j<7;j++)box(w*.04+ww*(j/7-.5),y,.22,.16,2.45,.14,'#c5cbc4');
         }
         if(f.nz<-.3){
@@ -143,6 +150,7 @@ window.HKTaiModels=(()=>{
       if(H<3)continue;
       f.box(0,low+H*.55,.06,f.w-.16,H*.88,.22,station?'#516f71':'#507887');
       const n=Math.max(1,Math.round(f.w/(station?4.4:3.65)));
+      for(let i=0;i<n;i++)if(i%4!==2)f.light(((i+.5)/n-.5)*f.w,low+H*.49,.187,f.w/n-.30,H*.55,station?'#b0c5b9':'#ceba99');
       for(let i=0;i<n;i++)f.box((i/n-.5)*f.w,low+H*.55,.24,.21,H*.90,.34,'#c3c8bc');
       f.box(0,low+H*.79,.23,f.w,.24,.38,'#a7b9b4');
       if(f.w>17)f.box(0,low+4.9,.37,f.w*.88,.35,.85,trim);
