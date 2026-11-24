@@ -177,3 +177,5 @@
 ## 市區的士營運
 候客站根據運輸署市區的士站點定位，站位配對至可駛入的同層路邊。奧海城二期使用 OSM 記錄的單向的士支路。香港西九龍站的上客位設在 B2，遊戲將其地下車道以簡化單向環路接回連翔道地下行車道。候客時間與訂單屬遊戲模擬。[運輸署的士站開放數據](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html) · [港鐵西九龍站的士設施](https://www.highspeed.mtr.com.hk/tc/guide/wek.html)
 市區的士起錶 HK$29，包首兩公里。續程每 200 米或慢車等候每分鐘一跳，車資達 HK$102.50 前每跳 HK$2.10，其後 HK$1.40。遊戲按 12 km/h 切換距離和時間計費，停定落客即收錶，只計基本錶價。[運輸署收費表](https://www.td.gov.hk/tc/transport_in_hong_kong/public_transport/taxi/taxi_fare_of_hong_kong/) · [計程錶型式核准指引附錄 B](https://www.td.gov.hk/filemanager/tc/content_4808/item4.39.pdf)
+
+圓方東側車站環迴路的雙向道路按 OSM 地面建築通道及地政總署商場、住宅塔樓的測繪輪廓分層建模。路廳淨高、柱距、照明及平台花園的局部高差作遊戲化簡化。[九龍站設計總圖，Farrells](https://farrells.com/project/kowloon-station-development/) · [九龍站分層剖面，Buildings 圖 6](https://www.mdpi.com/2075-5309/12/2/197)

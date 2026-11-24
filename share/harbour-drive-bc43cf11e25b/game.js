@@ -3,26 +3,60 @@
   const $ = id => document.getElementById(id);
   function boot(){
     const map=window.HKMAP,height=HKWorld.groundSampler(map.terrain),sim=HKDriving.create(map,height);
-    sim.reset('ferry');
     const service=HKTaxiService.create(map,sim),taxi=service.state;
     sim.state.taxi=taxi;sim.taxiStands=service.stands;
     const hired=()=>taxi.phase==='hired';
     const signals=HKSignals.create(map),world=HKWorld.create($('world'),map,sim,signals,height);
+    const menu=$('titleMenu');
+    const film=$('menuFilm'),motionButton=$('menuMotion'),reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+    let motionOverride=null;
+    function syncMenuFilm(){
+      const enabled=motionOverride??!reducedMotion.matches;
+      const label=enabled?'暫停背景動畫':'播放背景動畫';
+      motionButton.title=label;motionButton.setAttribute('aria-label',label);
+      motionButton.querySelector('use').setAttribute('href',enabled?'#i-pause':'#i-play');
+      if(menu.hidden||menu.inert||document.hidden||!enabled){film.pause();return;}
+      film.play().catch(error=>{
+        if(error.name==='NotAllowedError'){motionOverride=false;syncMenuFilm();}
+      });
+    }
+    film.addEventListener('playing',()=>film.classList.add('ready'));
+    film.addEventListener('error',()=>{film.classList.remove('ready');motionButton.hidden=true;});
+    motionButton.onclick=()=>{motionOverride=!(motionOverride??!reducedMotion.matches);syncMenuFilm();};
+    reducedMotion.addEventListener('change',()=>{motionOverride=null;syncMenuFilm();});
+    document.addEventListener('visibilitychange',syncMenuFilm);
+    let started=false,frameId=0,prev=0;
     let dragId=null,dragX=0,dragLook=0;
     const keys={},touch={},held=()=>({throttle:keys.KeyW||keys.ArrowUp||touch.throttle,brake:keys.KeyS||keys.ArrowDown||touch.brake,left:keys.KeyA||keys.ArrowLeft||touch.left,right:keys.KeyD||keys.ArrowRight||touch.right,handbrake:keys.Space});
     let panel='',toastTimer=0,lastCollision=0,arrived=false,uiTimer=0,districtMap=null,lastFocus=null,blockedFrames=0;
     const bars=[];for(let i=0;i<18;i++){const bar=document.createElement('i');bars.push(bar);$('meter').append(bar);}
     function toast(msg,seconds=2){$('toast').textContent=msg;$('toast').classList.add('show');toastTimer=seconds;}
     function clearInputs(){dragLook=0;dragId=null;for(const k in keys)delete keys[k];for(const k in touch)delete touch[k];document.querySelectorAll('.touch .active').forEach(b=>b.classList.remove('active'));}
-    function closePanel(){districtMap?.close();delete $('overlay').dataset.panel;panel='';$('overlay').hidden=true;clearInputs();prev=performance.now();if(lastFocus?.isConnected)lastFocus.focus({preventScroll:true});else $('game').focus({preventScroll:true});}
+    function closePanel(){districtMap?.close();delete $('overlay').dataset.panel;panel='';$('overlay').hidden=true;menu.inert=false;syncMenuFilm();clearInputs();prev=performance.now();if(lastFocus?.isConnected)lastFocus.focus({preventScroll:true});else $('game').focus({preventScroll:true});}
+    function showMenu(){
+      cancelAnimationFrame(frameId);
+      closePanel();lastFocus=null;
+      HKSound.step(sim.state.speed,false,true);
+      $('world').inert=true;$('hud').hidden=true;
+      $('startLabel').textContent=started?'繼續駕駛':'開始駕駛';
+      menu.hidden=false;syncMenuFilm();$('startDrive').focus({preventScroll:true});
+    }
+    function startDrive(){
+      if(menu.hidden||panel)return;
+      clearInputs();started=true;menu.hidden=true;syncMenuFilm();
+      $('world').inert=false;$('hud').hidden=false;
+      world.frame(0,false);hud();$('game').focus({preventScroll:true});
+      prev=performance.now();frameId=requestAnimationFrame(tick);
+    }
     function showPanel(name,kicker,title){
-      districtMap?.close();$('overlay').dataset.panel=name;clearInputs();if(!panel)lastFocus=document.activeElement;panel=name;$('panelKicker').textContent=kicker;$('panelTitle').textContent=title;$('overlay').hidden=false;$('panelBody').replaceChildren();$('closePanel').focus({preventScroll:true});
+      districtMap?.close();$('overlay').dataset.panel=name;clearInputs();if(!panel)lastFocus=document.activeElement;panel=name;menu.inert=true;$('panelKicker').textContent=kicker;$('panelTitle').textContent=title;$('overlay').hidden=false;$('panelBody').replaceChildren();$('closePanel').focus({preventScroll:true});
+      $('closePanel').setAttribute('aria-label',name==='map'&&!started?'返回主選單':'關閉');syncMenuFilm();
     }
     function addButton(label,cls,action,parent=$('panelBody')){const el=document.createElement('button');el.textContent=label;el.className=cls;el.onclick=action;parent.append(el);return el;}
     function openPause(){
       showPanel('pause','HARBOUR DRIVE','駕駛已暫停');
       const p=document.createElement('p');p.className='panelHint';p.textContent=sim.state.roadName+' · 市區的士';$('panelBody').append(p);
-      const actions=document.createElement('div');actions.className='panelActions';$('panelBody').append(actions);addButton('繼續駕駛','primary',closePanel,actions);addButton('街區地圖','subbtn',openMap,actions);addButton('返回天星碼頭','subbtn',()=>reset('ferry'),actions).disabled=hired();
+      const actions=document.createElement('div');actions.className='panelActions';$('panelBody').append(actions);addButton('繼續駕駛','primary',closePanel,actions);addButton('街區地圖','subbtn',openMap,actions);addButton('主選單','subbtn',showMenu,actions);
     }
     function openSources(){
       showPanel('sources','MAP & MODELS','地圖及模型資料');
@@ -36,56 +70,22 @@
     function openHelp(){
       showPanel('help','DRIVER’S GUIDE','駕駛操作');
       $('panelBody').innerHTML='<div class="helpgrid"><div>油門 <kbd>W / ↑</kbd></div><div>煞車 · 停定後倒車 <kbd>S / ↓</kbd></div><div>向左 / 向右轉 <kbd>A D / ← →</kbd></div><div>手掣 <kbd>空白鍵</kbd></div><div>駕駛席 / 外部鏡頭 <kbd>C</kbd></div><div>左右望（按住） <kbd>Q / E</kbd></div><div>調校視角 <kbd>+ − / 滾輪</kbd></div><div>開啟地圖 <kbd>M</kbd></div><div>暫停 / 繼續 <kbd>P / Esc</kbd></div><div>返回天星碼頭 <kbd>R</kbd></div><div>聲音 / 響號 <kbd>V / B</kbd></div></div><p class="info">從右軚駕駛席沿左側車道行駛。在擋風玻璃上左右拖動可望向兩側，放開即回正。按 C 切換到近距離跟車，可左右拖動畫面環視車身。使用駕駛席鏡頭接近交通燈時，畫面顯示本車道燈號及距離，路面光帶標示停止線。紅燈和紅黃燈須停車，黃燈在能安全停下時停車。街區地圖可拖動，滾輪或雙指可縮放。點選地圖標記或搜尋地名、街道，再選擇導航或從該處出發。</p><p class="info">在地圖選「的士站」，駛入標示 TAXI 的候客位停定。連續候客最長 '+(HKTaxiService.maxWaitSeconds/60)+' 分鐘，乘客上車即自動接單。跟隨導航，在目的地綠色下客位停定收錶。起錶 HK$29 包首兩公里，慢於 12 km/h 按時間跳錶。</p><p class="info">道路與海岸 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>。建築輪廓及地形源自香港特別行政區政府地政總署。一般樓宇立面及路面設施經簡化建模。 <button id="sourceBtn" class="linkbtn">資料來源及精度</button></p>';
-      $('sourceBtn').onclick=openSources;addButton('返回駕駛','primary',closePanel);
+      $('sourceBtn').onclick=openSources;addButton(menu.hidden?'返回駕駛':'返回主選單','primary',closePanel);
     }
     function reset(id){if(hired()){toast('載客中 · 請先完成行程');return;}service.clear();sim.reset(id);world.resetCamera();closePanel();arrived=false;hud();const p=typeof id==='object'?id:sim.places.find(q=>q.id===id);toast('已抵達起點 · '+p.name);}
-    // Cache only the geographic drawing. Labels, route and player stay sharp
-    // when the large district map and the small moving map use different scales.
-    const bounds=map.bounds,atlas=document.createElement('canvas');
-    const mapArea=(bounds[2]-bounds[0])*(bounds[3]-bounds[1]);
-    const scale=Math.min(1.4,Math.sqrt(20000000/mapArea));
-    atlas.width=Math.ceil((bounds[2]-bounds[0])*scale);atlas.height=Math.ceil((bounds[3]-bounds[1])*scale);
-    const base=atlas.getContext('2d');base.setTransform(scale,0,0,scale,-bounds[0]*scale,-bounds[1]*scale);
-    function line(c,p){c.moveTo(...p[0]);for(let i=1;i<p.length;i++)c.lineTo(...p[i]);}
-    function polys(c,rows,col){c.fillStyle=col;for(const b of rows){c.beginPath();line(c,b.p);c.closePath();for(const hole of b.holes||[]){line(c,hole);c.closePath();}c.fill('evenodd');}}
-    base.fillStyle='#214749';base.fillRect(bounds[0],bounds[1],bounds[2]-bounds[0],bounds[3]-bounds[1]);polys(base,map.land,'#344642');polys(base,map.parks,'#3e5c49');polys(base,map.piers,'#516159');polys(base,map.buildings,'#45564e');
-    base.lineJoin=base.lineCap='round';
-    for(const r of map.roads.filter(r=>r.underpass)){
-      base.save();base.strokeStyle=r.covered?'#779497':'#87938b';base.lineWidth=r.w*.6;
-      if(r.covered)base.setLineDash([4,4]);base.beginPath();line(base,r.p);base.stroke();base.restore();
-    }
-    for(const r of map.roads){if(r.l<0)continue;base.strokeStyle=r.w>=9?'#9b9a78':'#77877b';base.lineWidth=Math.max(1.6,r.w*.62);base.beginPath();line(base,r.p);base.stroke();}
-    if(window.HKMongKokPlaces){
-      base.save();base.lineWidth=1.35;base.strokeStyle='#a8afa0';base.setLineDash([3,2]);
-      for(const b of HKMongKokPlaces.bridges){base.beginPath();line(base,b.p);base.stroke();}
-      base.strokeStyle='#729494';base.setLineDash([1.4,2.5]);
-      for(const b of HKMongKokPlaces.subways){base.beginPath();line(base,b.p);base.stroke();}
-      base.restore();
-    }
-    function drawMiniMap(){
-      const canvas=$('mini'),w=canvas.clientWidth,h=canvas.clientHeight;
-      if(!w||!h)return;
-      const pr=Math.min(devicePixelRatio||1,2);
-      if(canvas.width!==Math.round(w*pr)||canvas.height!==Math.round(h*pr)){canvas.width=Math.round(w*pr);canvas.height=Math.round(h*pr);}
-      const c=canvas.getContext('2d');c.setTransform(pr,0,0,pr,0,0);c.fillStyle='#214749';c.fillRect(0,0,w,h);
-      const s=sim.state,factor=w/308,xy=(x,z)=>[(x-s.x)*factor+w/2,(z-s.z)*factor+h/2];
-      c.drawImage(atlas,...xy(bounds[0],bounds[1]),atlas.width/scale*factor,atlas.height/scale*factor);
-      c.font='bold 10px sans-serif';c.textAlign='center';
-      for(const p of service.stands){
-        const [x,y]=xy(p.x,p.z);if(x<0||y<0||x>w||y>h)continue;
-        c.fillStyle='#ffcf72';c.fillRect(x-6,y-6,12,12);c.fillStyle='#352e25';c.fillText('T',x,y+4);
-      }
-      if(sim.route&&!sim.route.arrived){
-        c.beginPath();sim.route.points.forEach((p,i)=>{if(i)c.lineTo(...xy(...p));else c.moveTo(...xy(...p));});
-        c.lineJoin=c.lineCap='round';c.strokeStyle='#78ded1';c.lineWidth=2.8;c.stroke();
-      }
-      c.save();c.translate(w/2,h/2);c.rotate(s.yaw);c.beginPath();c.arc(0,0,15,0,Math.PI*2);c.fillStyle='#f3c45929';c.fill();
-      c.beginPath();c.moveTo(0,-10);c.lineTo(7,7);c.lineTo(0,4);c.lineTo(-7,7);c.closePath();
-      c.fillStyle='#ffce5c';c.strokeStyle='#172d27';c.lineWidth=1.7;c.fill();c.stroke();c.restore();
-    }
+    const atlas=HKCartography.create(map,sim);
+    const drawMiniMap=HKDistrictMap.createMini($('mini'),$('miniPins'),atlas,sim);
     function openMap(){
-      showPanel('map','','街區地圖');
-      districtMap??=HKDistrictMap.create(map,sim);
+      showPanel('map','',started?'街區地圖':'選擇出發的士站');
+      $('closePanel').dataset.back=started?'返回駕駛':'返回主選單';
+      districtMap??=HKDistrictMap.create(map,sim,atlas);
+      if(!started){
+        districtMap.open($('panelBody'),{pickStand(stand){
+          if(started||panel!=='map'||!service.stands.includes(stand))return;
+          reset(stand);startDrive();
+        }});
+        return;
+      }
       districtMap.open($('panelBody'),{close:closePanel,depart:reset,hired:hired(),navigate:place=>{
         if(hired())return false;
         const r=sim.navigate(place);
@@ -93,6 +93,7 @@
         arrived=false;closePanel();toast(r.arrived?'已在目的地附近':'開始導航 · '+r.target.name);return true;
       }});
     }
+    $('startDrive').onclick=()=>{if(started)startDrive();else openMap();};$('menuHelp').onclick=openHelp;
     $('miniBtn').onclick=openMap;$('helpBtn').onclick=openHelp;$('pauseBtn').onclick=openPause;$('closePanel').onclick=closePanel;$('overlay').onclick=e=>{if(e.target===$('overlay'))closePanel();};
     function toggleSound(){
       const on=HKSound.toggle(),button=$('soundBtn'),label=(on?'關閉':'開啟')+'聲音 (V)';
@@ -110,6 +111,10 @@
     window.addEventListener('keydown',e=>{
       if(e.defaultPrevented||e.isComposing||e.keyCode===229||e.metaKey||e.ctrlKey||e.altKey)return;
       if(panel&&e.code==='Tab'){const focusable=[...$('overlay').querySelectorAll('button:not(:disabled),input,a[href],[tabindex="0"]')].filter(el=>el.tabIndex>=0&&el.getClientRects().length);if(e.shiftKey&&document.activeElement===focusable[0]){e.preventDefault();focusable.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===focusable.at(-1)){e.preventDefault();focusable[0].focus();}return;}
+      if(!menu.hidden){
+        if(panel&&e.code==='Escape'){e.preventDefault();closePanel();}
+        return;
+      }
       if(panel==='map'&&e.target instanceof HTMLInputElement&&e.code!=='Escape')return;
       if(!panel&&driveKeys.includes(e.code)){e.preventDefault();keys[e.code]=true;return;}
       if(e.repeat)return;
@@ -127,7 +132,7 @@
     window.addEventListener('keyup',e=>{delete keys[e.code];});
     window.addEventListener('blur',clearInputs);document.addEventListener('visibilitychange',()=>{
       clearInputs();
-      if(document.hidden&&!panel)openPause();
+      if(document.hidden&&menu.hidden&&!panel)openPause();
     });
     $('world').addEventListener('wheel',e=>{e.preventDefault();if(!panel)world.zoomBy(Math.exp(Math.max(-.15,Math.min(.15,e.deltaY*.003))));},{passive:false});
     const windscreen=$('world');
@@ -184,7 +189,7 @@
         $('navMode').textContent=r.arrived?'目的地':fmt(r.turnDistance)+' 後'+(turn[r.nextTurn]||'直行');if(r.arrived&&!arrived){arrived=true;toast('已抵達 · '+r.target.name,3);}}else arrived=false;
     }
     window.addEventListener('resize',()=>{blockedFrames=0;});
-    let prev=performance.now();world.frame(0,false);hud();$('loading').hidden=true;$('game').focus({preventScroll:true});
+    $('loading').hidden=true;showMenu();
     function tick(now){
       const elapsed=Math.max(0,(now-prev)/1000),dt=Math.min(.10,elapsed);prev=now;
       if(!panel){
@@ -202,8 +207,8 @@
         const message={traffic:'前方有車 · 請煞車',building:'已碰到建築 · 可倒車調整',water:'已到水邊',boundary:'已到地圖邊界',deck:'已到橋面邊緣',barrier:'已到地道護牆',headroom:'橋下空間不足 · 請倒車'};
         toast(message[sim.state.collisionKind]);lastCollision=now;
       }
-      requestAnimationFrame(tick);
-    }requestAnimationFrame(tick);
+      frameId=requestAnimationFrame(tick);
+    }
   }
   window.addEventListener('load',()=>requestAnimationFrame(()=>setTimeout(async()=>{
     try{

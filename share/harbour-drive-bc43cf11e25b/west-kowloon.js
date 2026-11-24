@@ -22,9 +22,12 @@
     if(a[0]===right && a[0]!==b[0])d.westJoin={x:right,dzDx:(b[1]-a[1])/(b[0]-a[0]),oldId:peer.id,oldLayer:peer.l};
     if(a[1]===top && a[1]!==b[1])d.join={z:top,dxDz:(b[0]-a[0])/(b[1]-a[1]),oldId:peer.id,oldLayer:peer.l};
   }
-  const replaced=new Set(west.seamBuildingIds);
+  const podium=west.elements;
+  const excluded=new Set(podium.replace);
+  const replaced=new Set([...west.seamBuildingIds,...excluded]);
+  map.elementsDeck=podium.buildings.find(b=>b.podiumPart==='upper');
   map.buildings=map.buildings.filter(b=>!replaced.has(b.id));
-  north.buildings=north.buildings.filter(b=>!replaced.has(b.id)).concat(west.buildings);
+  north.buildings=north.buildings.filter(b=>!replaced.has(b.id)).concat(west.buildings.filter(b=>!excluded.has(b.id)),podium.buildings);
   for(const k of ['roads','parks','paths','decks','piers','excavations','barriers','water','marks','diagonals'])north[k].push(...west[k]);
   for(const [k,rows] of Object.entries(west.nodes))north.nodes[k].push(...rows);
   north.land=west.land;map.terrain.coast=west.terrain;

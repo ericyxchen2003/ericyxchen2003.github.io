@@ -320,6 +320,7 @@
         !(area.holes || []).some(hole => inRing(x, z, hole)));
     }
     function obstructed(x, z, yaw, layer = 0, levels = levelBit(layer), keepToRoad = layer !== 0) {
+      if (global.HKWestTunnels?.hitsWall(x,z,yaw,layer,groundHeight,L,W)) return "barrier";
       const fx = Math.sin(yaw), fz = -Math.cos(yaw);
       for (const [longitudinal, lateral] of corners) {
         const cx = x + fx * longitudinal - fz * lateral;

@@ -64,7 +64,7 @@
   // Each wall belongs to its carriageway. Omit a wall where another branch
   // joins at the same elevation, leaving the merge open to the vehicle.
   function tunnels(scene,height){
-    const T=window.THREE,verts=[],colors=[],lanes=north.roads.filter(r=>r.bore),cells=new Map();
+    const T=window.THREE,verts=[],colors=[],lanes=north.roads.filter(r=>r.bore&&!window.HKWestTunnels?.ids.has(r.id)),cells=new Map();
     const color=new T.Color(),key=(x,z)=>Math.floor(x/24)+','+Math.floor(z/24);
     for(const r of lanes)for(let i=1;i<r.profile.length;i++){
       const a=r.profile[i-1],b=r.profile[i],margin=r.w/2+1,entry={r,a,b};
@@ -120,6 +120,7 @@
     }
     const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));geo.computeVertexNormals();
     const mesh=new T.Mesh(geo,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide}));mesh.name='Yau Ma Tei tunnel structures';scene.add(mesh);
+    window.HKWestTunnels?.draw(scene,height);
   }
   window.HKNorthWorks={blocked,excavated,cutTerrain,tunnels,water:north.water};
 })();
