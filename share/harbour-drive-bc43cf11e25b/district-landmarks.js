@@ -12,7 +12,7 @@ window.HKDetails=(()=>{
     ['peking','北京道一號',[233614,240106]],['chungking','重慶大廈',[60300,239283,319094,319095,319096,319097]],
     ['k11','K11 Art Mall',[256131,211487]],['musea','K11 MUSEA',[159627,239340]],
     ['heritage','香港文物探知館',[117847,118006,118012]],['sports','九龍公園體育館',[336462]],
-    ...(window.HKHeritage?.sites||[]),...(window.HKHarbourPlaces?.sites||[]),['terminal','海運大廈',[205457]],
+    ...(window.HKHeritage?.sites||[]),...(window.HKHarbourPlaces?.sites||[]),...(window.HKYauPlaces?.sites||[]),['terminal','海運大廈',[205457]],
     ['ocean','海洋中心',[156367,233817]],['gateway','港威商場',[21883]],
     ...Object.entries(data.entrances).map(([code,[id]])=>[code,(code.match(/^[NP]/)?'尖東站 ':'尖沙咀站 ')+code,[id]])
   ];
@@ -56,7 +56,7 @@ window.HKDetails=(()=>{
   const fortCenters=[[-31,-600],[-32,-574]], pavilion=[70,-493.5], gate=[181,-271];
   const sciencePoint=(u,v)=>[802.7-.7441*u-.6681*v,-598.5+.6681*u-.7441*v];
   const scienceCourt=[[14,0],[83,0],[83,16],[14,16]].map(([u,v])=>sciencePoint(u,v));
-  const parkSolids=[...(window.HKHarbourPlaces?.solids||[]),{p:scienceCourt,h:5.4},{p:rect(209.17,-641.7,.76,.72),h:2.7},{p:rect(209.4,-638.6,.76,.72),h:2.7},{p:rect(...pavilion,5.6,5.6),h:5.4},...fortCenters.map(([x,z])=>({p:rect(x,z,3.5,3.5),h:3.6})),
+  const parkSolids=[...(window.HKYauPlaces?.solids||[]),...(window.HKHarbourPlaces?.solids||[]),{p:scienceCourt,h:5.4},{p:rect(209.17,-641.7,.76,.72),h:2.7},{p:rect(209.4,-638.6,.76,.72),h:2.7},{p:rect(...pavilion,5.6,5.6),h:5.4},...fortCenters.map(([x,z])=>({p:rect(x,z,3.5,3.5),h:3.6})),
     {p:rect(...gate,3.4,.52),h:2.3}];
   const isPond=(x,z)=>ponds.some(s=>near(x,z,s)&&signedDistance(x,z,s.p)<0);
   const fortAngle=k=>(-.18+k/29)*TAU;
@@ -69,7 +69,7 @@ window.HKDetails=(()=>{
   }
   parkSolids.push({p:rect(-31,-586,9.8,1.9),h:2.72});
   function clearPlanting(x,z){
-    if(window.HKHarbourPlaces?.clearPlanting(x,z))return true;
+    if(window.HKYauPlaces?.clearPlanting(x,z)||window.HKHarbourPlaces?.clearPlanting(x,z))return true;
     if(x>726&&x<810&&z>-612&&z<-535&&signedDistance(x,z,scienceCourt)<10.0)return true;
     if(ponds.some(s=>near(x,z,s)&&signedDistance(x,z,s.p)<2.0))return true;
     return (x>-45&&x<-12&&z>-612&&z<-558&&signedDistance(x,z,play)<1)||Math.hypot(x-gate[0],z-gate[1])<3;
@@ -110,7 +110,7 @@ window.HKDetails=(()=>{
     return {quad,finish};
   }
   function build(scene,ground,kit){
-    const T=THREE,{Parts,facadeFrame:frame,tile,eachEdge:edges,lerp2}=kit,labels=atlas(),placed=[];
+    const T=THREE,{Parts,facadeFrame:frame,tile,eachEdge:edges,lerp2}=kit,labels=atlas(),signCache=new Map(),placed=[];
     const glassMat=new T.MeshPhongMaterial({vertexColors:true,color:0xc5eaeb,transparent:true,opacity:.29,shininess:75,side:T.DoubleSide,depthWrite:false});
     const steel='#b4c6c6',stone='#e5d9bf',dark='#273b40',teal='#396365';
     const edge=(p,i)=>frame(p[i],p[(i+1)%p.length]);
@@ -118,7 +118,9 @@ window.HKDetails=(()=>{
     const ring=id=>records.get(id).p;
     let b,g,signs;
     function sign(f,u,y,d,w,h,label,sub,bg,fg){
-      const entry=labels.add(typeof label==='function'?label:board(label,sub,bg,fg));
+      const key=typeof label==='string'?JSON.stringify([label,sub,bg,fg]):label;
+      if(!signCache.has(key))signCache.set(key,labels.add(typeof label==='function'?label:board(label,sub,bg,fg)));
+      const entry=signCache.get(key);
       signs.quad(entry,[f.at(u-w/2,y-h/2,d),f.at(u+w/2,y-h/2,d),f.at(u+w/2,y+h/2,d),f.at(u-w/2,y+h/2,d)]);
     }
     function strip(f,y,h,d,c,start=0,end=f.length){if(end-start>.03)b.box(...f.at((start+end)/2,y),end-start,h,d,c,f.angle);}
@@ -710,13 +712,14 @@ window.HKDetails=(()=>{
     }
     const builders={science,isquare,peking,chungking,k11,musea,heritage,sports,terminal,ocean,gateway};
     const extensionBuilder=(extension,id)=>group=>extension.build(id,{b,group,frame,edges,ring,low,top,shell,sign,tile,ground});
-    for(const extension of [window.HKHeritage,window.HKHarbourPlaces]){
+    for(const extension of [window.HKHeritage,window.HKHarbourPlaces,window.HKYauPlaces]){
       for(const [id] of extension?.sites||[])builders[id]=extensionBuilder(extension,id);
     }
     for(const [id,name,ids] of sites)if(ids.every(k=>records.has(k))){
       const [x,z]=mean(ring(ids[0]));place(id,name,x,z,builders[id]||(()=>mtr(id)));
     }
-    for(const [id,name,x,z] of window.HKHarbourPlaces?.walks||[])place(id,name,x,z,extensionBuilder(HKHarbourPlaces,id));
+    for(const extension of [window.HKHarbourPlaces,window.HKYauPlaces])
+      for(const [id,name,x,z] of extension?.walks||[])place(id,name,x,z,extensionBuilder(extension,id));
     place('birdlake','九龍公園鳥湖',-30,-439,lake);place('garden','中國花園',...pavilion,garden);
     place('play','歷奇樂園',-31,-583,playground);place('parkgate','九龍公園海防道入口',...gate,parkGate);
     return placed;

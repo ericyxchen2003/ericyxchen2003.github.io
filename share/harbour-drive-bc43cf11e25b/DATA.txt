@@ -1,6 +1,6 @@
 # 尖沙咀街區資料
 
-地圖取樣範圍約東西 2.15 公里、南北 1.60 公里，包括水域。中央是尖沙咀，由海運碼頭、天星碼頭、廣東道、彌敦道延伸至梳士巴利道及尖東海旁，北界在柯士甸道以北。遊戲可離線讀取隨附的 `map.js`。以下數量均按這個遊戲範圍計算。
+原尖沙咀取樣範圍約東西 2.15 公里、南北 1.60 公里，包括水域。中央是尖沙咀，由海運碼頭、天星碼頭、廣東道、彌敦道延伸至梳士巴利道及尖東海旁，北界在柯士甸道以北。遊戲可離線讀取隨附的 `map.js`。以下數量均按這個遊戲範圍計算。
 
 | 圖層 | 遊戲收錄 | 來源及處理 |
 | --- | ---: | --- |
@@ -106,4 +106,74 @@
 
 ## 道路與地形覆核
 現有 696 段車路對應 OSM 快照內 695 條道路要素，其中麼地道按路寬分段。遊戲保留來源單行方向。加拿分道、麼地道及康達徑的局部中心線按路寬、建築或橋台位置調整。地形烘焙分開處理車路與兩側坡地的短距離起伏，保護橋台、隧道引道及九龍公園徑接坡。橋墩間距、橫斷面與缺少測點處的坡度均為近似值。
-梳士巴利道兩條覆蓋段與[政府地下隧道輪廓](https://ginfo.cedd.gov.hk/server/rest/services/Basemap/MapServer/412)核對。高架段參照[高架路面圖層](https://ginfo.cedd.gov.hk/server/rest/services/Basemap/MapServer/403)及高程點。九龍公園徑北段的圖層覆蓋不完整，架空與接坡範圍依 OSM 和局部測點估算。圖幅邊緣的柯士甸道西、連翔道地下路網及紅磡海底隧道仍未完整開放行車。
+梳士巴利道兩條覆蓋段與[政府地下隧道輪廓](https://ginfo.cedd.gov.hk/server/rest/services/Basemap/MapServer/412)核對。高架段參照[高架路面圖層](https://ginfo.cedd.gov.hk/server/rest/services/Basemap/MapServer/403)及高程點。九龍公園徑北段的圖層覆蓋不完整，架空與接坡範圍依 OSM 和局部測點估算。柯士甸道西及連翔道的地下車道接回地面。紅磡海底隧道的兩條管道由九龍出入口延伸至地圖南界。
+
+## 佐敦及油麻地 · 本地首期
+
+北擴部分寬 2.15 公里，從原尖沙咀北界向北延伸 1.50 公里，涵蓋佐敦、油麻地及旺角南緣。新增範圍內有約 81.1 公里車行道中心線，分隔車道分別計算。以 3,303 個政府建築圖徵生成 3,365 塊可見建築形體。這一階段重建街廓、塔樓和裙樓，窗格與街面店舖為通用模型。
+
+採用地政總署 5 米數碼地形模型、iB1000 地面與高架高程點、CSDI 建築物輪廓及頂底標高。道路沿連通的中心線平滑坡度，舊區邊界沿用原有地面與橋面標高。高架橋、切口和隧道使用獨立路面。欠缺逐段實測縱斷面處以道路接點、地形及通行淨空估算。北區正射影像來自 2025 年 1 月 11 日 T11-NW-D 圖幅，沿用尖沙咀投影。© 香港特別行政區政府地政總署。[地政總署 5 米地形](https://www.landsd.gov.hk/tc/spatial-data/open-data/kf_dtm.html) · [政府 iB1000 地形圖層](https://ginfo.cedd.gov.hk/server/rest/services/Basemap/MapServer) · [CSDI 建築物](https://portal.csdi.gov.hk/server/rest/services/common/landsd_rcd_1637211194312_35158/MapServer/0) · [CSDI 使用條款](https://portal.csdi.gov.hk/csdi-webpage/doc/TNC)
+
+路網、行車方向、已記錄的車道數、過路處與綠地採用 OpenStreetMap。未記錄的路寬按分類與車道數估算。連翔道地道向南接回柯士甸道西與連翔道。中九龍繞道重建油麻地交匯處和遊戲範圍內的隧道，東行至本圖東界。道路資料 © OpenStreetMap contributors，按 ODbL 1.0 授權，可在遊戲內下載合併後的 [map.js](map.js)。[OpenStreetMap 版權](https://www.openstreetmap.org/copyright) · [運輸署中九龍繞道（油麻地段）](https://www.td.gov.hk/en/transport_in_hong_kong/tunnels_and_bridges_n/ckr/index.html) · [路政署工程說明](https://www.hyd.gov.hk/en/our_projects/road_projects/6461th/index.html)
+
+## 油麻地及佐敦地標
+建築平面及絕對標高沿用地政總署 CSDI 建築物分件。用遊戲內原創幾何、材質及招牌重建街道可見的外觀。小販經營內容、路人、商舖、照明與部分屋頂設備為街景演繹。
+- 伊利沙伯醫院的病房翼及入口對照[院區導覽圖](https://www3.ha.org.hk/qeh/tch/patients/maps-directions.htm)。主座的連續病房、日間醫療中心及新翼的外觀參考[醫管局院區今昔照片](https://www3.ha.org.hk/ehaslink/issue129/en/the-inside-stories-1.html)。
+- 廟街的牌樓、燈串、布篷、小食及零售攤檔參考[旅發局的廟街照片](https://www.discoverhongkong.com/tc/place-to-go/travel.guide-temple-street-night-market.html)及[民政事務總署的地區介紹](https://www.gohk.gov.hk/tc/spots/spot_detail.php?spot=Temple+Street+Night+Market)。攤位按步行街和行車路緣分別擺放。
+- 土地審裁處的柱廊、花崗石基座和雙向梯級參考[電影推廣服務科的外景照片](https://fpf.ccidahk.gov.hk/tc/location/detail.php?id=383)與[古諮會歷史建築評估](https://www.aab.gov.hk/filemanager/aab/common/historicbuilding/en/128_Appraisal_En.pdf)。
+- 油麻地天后廟的五座相連建築、前簷廊及正脊參考[古蹟辦的建築介紹](https://www.amo.gov.hk/tc/historic-buildings/monuments/kowloon/monuments_126/index.html)及[東華三院的廟群照片](https://rho.tungwah.org.hk/tc/built-heritage/4)。
+- 前油麻地抽水站工程師辦公室（紅磚屋）設樓上宿舍。中式瓦頂、煙囪、上海街拱廊、木窗和鑄鐵欄杆參考[康文署的紅磚屋介紹](https://www.lcsd.gov.hk/en/ymtt/aboutus/introduction/history.html)及[古諮會建築評估](https://www.aab.gov.hk/filemanager/aab/common/historicbuilding/en/185_Appraisal_En.pdf)。
+- 槍會山軍營採用地圖中三幢長條形建築的輪廓及屋頂高度，重現坡地上的外部建築群。歷史背景見[香港測量師學會資料](https://www.hkis.org.hk/archive/materials/category/BK_211129_v25.pdf)。
+- 彌敦道的商業立面參考[永安百貨資料](https://wingonfile01.easesales.com/upload/3302BA3D66D2EDC2/202402/5215293495858847599.pdf)及[旅發局的現時點介紹](https://www.discoverhongkong.com/eng/place-to-go/travel.guide-in-s-point.html)。
+
+## 旺角及太子
+
+新增範圍由原油麻地圖幅北界延伸至界限街以北。道路和公眾通道使用 [OpenStreetMap](https://www.openstreetmap.org/copyright) 路線、單行、行車線、橋樑及隧道標籤。新區共有 1,191 段可行車道路，合計約 77.4 車行道公里，雙程分隔道路兩側分開計算。地面路口、相交天橋和地道按實際相連節點分層。私人車道和停車場內部有所簡化。
+
+地形來自[地政總署空間數據共享平台](https://portal.csdi.gov.hk/)公開的全港 5 米數碼地形模型及街道測量高程。地形沿路網限坡，兩區共同邊緣保留相同高程。地面影像拼接 TDOP T11-NW-D、T11-NW-B，轉換香港 1980 方格網後再切分為街區貼圖。航拍圖像、建築物、地形及測量資料 © 香港特別行政區政府地政總署。
+
+新圖幅採用 5,220 個地政總署建築構件，包括跨舊圖幅接縫的構件。相接兩邊採用同一批未經裁切的原始輪廓重新建模，預留行車空間，並保留有實際承托的上層平台。朗豪坊的商場天幕、玻璃辦公樓及圓頂參考[建築師 JERDE](https://www.jerde.com/projects/8033/langham-place)、[香港工程師學會](https://hkie.org.hk/ea/en/project/148)及[業主年報](https://www1.hkexnews.hk/listedco/listconews/sehk/2024/0321/2024032100519.pdf)。新世紀廣場依照旺角東站上蓋、商場平台、花園及兩座辦公樓組成，可參考 [MOKO 交通及商場資料](https://www.moko.com.hk/about-moko/to-moko/)。信和中心設彌敦道入口，旺角電腦中心設奶路臣街入口和屏幕招牌。始創中心、聯合廣場及康得思酒店亦有專屬外立面細節。
+
+市集按營業時的街景呈現。女人街兩列帳篷沿通菜街步行段布置，汽車可導航至登打士街口。花園街南段設運動鞋陳列牆，西洋菜南街有影音、相機和服飾店舖，太子亦有金魚街和花墟。商戶招牌、商品和攤檔數量為場景設計。參考香港旅遊發展局的[女人街](https://www.discoverhongkong.com/eng/place-to-go/travel.guide-ladies-market.html)及[波鞋街](https://www.discoverhongkong.com/eng/place-to-go/travel.guide-sneakers-street.html)。
+
+有蓋行人天橋依實際地圖線位、分支和樓梯建模，包括沿旺角道、洗衣街通往旺角東站和 MOKO 的通道，以及橫跨彌敦道的西段。橋面、簷篷、欄杆及橋柱為遊戲推算，樓梯下端依行人路淨寬調整。其他行人地道設下沉樓梯和通道，地面車流保持通行。參考[香港政府的旺角道行人天橋工程資料](https://www.info.gov.hk/gia/general/200705/16/P200705160104.htm)。
+
+整條路網、地形高度、建築碰撞和導航常駐。精細建築、店面、街市攤位、行人及部分路旁設施以 200 米街區按距離建立，行駛方向優先，遠處保留簡化建築。高解像地表分成 112 塊，先顯示低解像全區底圖。分檔網站按需要讀取地表圖片，離線單檔內嵌相同資料，靠近才解碼和上載至顯示卡。
+
+## 行車路網覆核
+
+平面走線與[運輸署道路網絡中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)交叉核對。油麻地交匯處按跨路位置校正橋面和接坡，中九龍繞道西面出入口參照[路政署工程資料](https://www.info.gov.hk/gia/general/201812/18/P2018121800531p.htm)。橋面標高、引道縱坡及隧道斷面為遊戲估算。導航使用 OSM 已記錄、適用於車種的常設轉向限制，包括經中央分隔帶的多段轉向。臨時交通措施和指定時段的管制未模擬。
+
+## 大角咀、奧運站及海旁
+西面新增約 2.13 平方公里的地形範圍，包含海面。沿岸取自 [OpenStreetMap](https://www.openstreetmap.org/copyright)，地面使用地政總署五米數碼地形模型及正射影像。海旁與內街使用同一套座標和高程，地形經平滑，路口、引橋及隧道口另按行車需要擬合。
+新增 511 段行車道路，按分隔行車線分開計算，全長約 35.7 公里。連翔道、西九龍走廊、西九龍公路及海輝道保留分層，櫻桃街行車隧道有雙向管道、敞開引道、側牆和頂板。高架與隧道線位參照地圖資料，部分橋面標高、淨空及坡度按相鄰道路與高程推算。封閉式行人天橋與扶梯依原始橋樑標記銜接，室內商場通道未另設遊覽模式。
+樓宇取自[地政總署三維空間數據](https://portal.csdi.gov.hk/)。大角咀市政大廈按實測外輪廓和頂部高程建模，街市入口、體育館黃白框架與泳池玻璃立面另行繪製。參考[大廈外觀照片](https://zh.wikipedia.org/wiki/大角咀市政大廈)及[康文署場館資料](https://www.lcsd.gov.hk/clpss/tc/webApp/Facility/Details.do?did=17&fid=537)。
+奧海城一至三期、奧運站、港灣豪庭廣場和海富商場設有專用臨街細節。沿岸屋苑沿用測量樓座，加上有別的立面腰線、角柱和屋頂構件。參考[奧海城](https://www.olympiancity.com.hk/en/AboutUs)及[港鐵奧運站物業](https://www.mtr.com.hk/en/corporate/properties/tcl_olympic.html)。沿街舖面為程序化示意，招牌不代表現有租戶。
+以[運輸署道路網中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)獨立核對西面新增路段。每約十米取樣，共 3,570 點，其中 3,560 點與方向相符的參考中心線相距十米以內。這項比較核對平面位置，不能據此判定橋底高度或逐條轉彎線。
+
+## 西九龍海岸、九龍站及奧運站
+
+西九龍文化區、九龍站及奧運站之間採用共同的本地米制座標。西岸由五米數碼地形模型、測量高程、真數碼正射影像和 OSM 海岸線組合。陸地沿路床限坡，兩幅新舊地形在交界共用邊緣高程。奧運站西北的潤發碼頭保留接通欽明路的閘口及場內回環，一般車流及的士導航沿公眾道路行駛。[民政事務總署行政區分界](https://data.gov.hk/en-data/dataset/hk-had-json1-hong-kong-administrative-boundaries) · [地政總署真數碼正射影像](https://www.landsd.gov.hk/en/survey-mapping/mapping/aerial-photo-photogrammetric-products/digital-orthophoto.html) · [OpenStreetMap](https://www.openstreetmap.org/copyright)
+
+西區海底隧道由九龍入口雙向延伸至海下的遊戲邊界。兩條管道各自有連續路面、側牆及頂板。橋面、隧道縱坡及橋墩採遊戲工程近似值。行人天橋、地道、樓梯及站口按 OSM 平面位置建模。港鐵及高鐵出口的站名以原始站區關係辨別。[運輸署隧道資料](https://www.td.gov.hk/tc/transport_in_hong_kong/tunnels_and_bridges_n/location_map/index.html)
+
+香港故宮文化博物館重現上寬下窄的金屬外殼、三面中庭、海旁平台。M+ 採用橫向基座、直立展屏和陶瓦色遮陽構件。藝術公園保留臨海步道、廣場、休憩設施與自由空間。[香港故宮文化博物館建築](https://www.hkpm.org.hk/en/about/the-building) · [M+ 建築設計](https://www.mplus.org.hk/en/the-building/design/)
+
+高鐵香港西九龍站沿實測建築輪廓設置曲線玻璃天幕、種植頂面及立面肋架，上蓋環球匯的辦公樓採用獨立的玻璃立面。九龍站 Union Square 包括環球貿易廣場、圓方、凱旋門空中會所、天璽、君臨天下、擎天半島及漾日居。奧運站及奧海城承接既有大角咀模型。建築供車外觀看，屋頂細節、立面和標誌經簡化。[高鐵站建築師 Aedas](https://www.aedas.com/en/project/hong-kong-west-kowloon-station/) · [新鴻基地產環球匯](https://www.shkp.com/zh-HK/media/press-releases/20260724) · [環球貿易廣場](https://www.shkp.com/en-US/our-business/hong-kong-properties/offices/international-commerce-centre-icc)
+
+## 西岸版本路網核對
+
+遊戲路網共 4,012 段，合計約 247.5 公里，以分向車路長度計算。遊戲可從 45 個目的地出發，1,980 組不同起訖點均能建立的士路線。全圖按各車道約每四米測試車體，在地圖邊緣預留車長，144,241 個樣點均通過建築物、橋墩、地形及海岸碰撞檢查。404 個道路中心線立體交叉點按上下層次序通過，高低路面差最少約 5.90 米。這是路面至路面的距離，實際橋底淨高須另外扣除橋面結構。
+
+西岸與既有圖幅的 27 個車路接點覆蓋 49 條車道，兩側測得的最大高度差約 9.4 毫米。西隧兩管分別作出、入方向連續試駕。這些檢查覆蓋遊戲幾何及導航，坡度與站內結構仍採用簡化模型。
+
+按民政事務總署的油尖旺正式區界，沿遊戲道路每十米取樣，17,250 個樣點中有 16,970 個（98.4%）在十米內找到走向相近的運輸署道路中心線。反過來沿政府路網取樣，20,426 個樣點中有 18,451 個（90.3%）落在任何遊戲車路十米以內。差距集中在地圖東端的紅磡繞道、都會道一帶，亦有出入支路和西隧廣場的並行線位差異。兩個百分比衡量平面位置，未量度樓層高度或臨時改道。[運輸署行車道路網中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)
+
+## 玩家車輛 · 皇冠 Comfort 市區的士
+預設採用香港四乘客座位的石油氣房車。車身比例參考豐田記錄的 4.695 m 車長、1.695 m 車寬和 2.785 m 軸距。[豐田 Crown Comfort 車型檔案](https://www.toyota.co.jp/jpn/company/history/75years/vehicle_lineage/car/id60005626/index.html)
+紅色車身、銀色車頂、黑色防撞條、指示燈和綠色座位牌參照香港的士實車照片。後燈和車身件按同系列房車簡化。車牌是遊戲自訂號碼。[WiNG 攝四座的士](https://commons.wikimedia.org/wiki/File:HK_Toyota_Comfort_Four_Seats_Taxi.jpg) · [Ominae 攝車尾](https://commons.wikimedia.org/wiki/File:Toyota_Crown_Comfort_Red_Taxi_Front_Rear.jpg)
+灰色右軚駕駛艙的風口、無線電和計程錶按實車照片繪製，錶面會隨載客狀態顯示本程車資。速度錶與行程錶由遊戲車速和里程驅動。[WiNG 攝駕駛艙](https://commons.wikimedia.org/wiki/File:HKToyotaComfortInterior.jpg) · [豐田 Crown Comfort 使用手冊](https://manual.toyota.jp/pdf/crowncomfort/crowncomfort_201310.pdf)
+
+## 市區的士營運
+候客站根據運輸署市區的士站點定位，站位配對至可駛入的同層路邊。奧海城二期使用 OSM 記錄的單向的士支路。香港西九龍站的上客位設在 B2，遊戲將其地下車道以簡化單向環路接回連翔道地下行車道。候客時間與訂單屬遊戲模擬。[運輸署的士站開放數據](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html) · [港鐵西九龍站的士設施](https://www.highspeed.mtr.com.hk/tc/guide/wek.html)
+市區的士起錶 HK$29，包首兩公里。續程每 200 米或慢車等候每分鐘一跳，車資達 HK$102.50 前每跳 HK$2.10，其後 HK$1.40。遊戲按 12 km/h 切換距離和時間計費，停定落客即收錶，只計基本錶價。[運輸署收費表](https://www.td.gov.hk/tc/transport_in_hong_kong/public_transport/taxi/taxi_fare_of_hong_kong/) · [計程錶型式核准指引附錄 B](https://www.td.gov.hk/filemanager/tc/content_4808/item4.39.pdf)

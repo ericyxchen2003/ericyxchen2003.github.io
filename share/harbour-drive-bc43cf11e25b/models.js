@@ -800,5 +800,5 @@
     gardens.position.y=groundHeight(-14,292);scene.add(gardens);
     return placed.concat(window.HKDetails?.build(scene,groundHeight,{Parts,facadeFrame,tile,eachEdge,lerp2}) || []);
   }
-  window.HKModels={createVehicle,addLandmarks,isReplacedBuilding};
+  window.HKModels={createVehicle,createPlayerTaxi:()=>HKCrownComfort.create(Parts),addLandmarks,isReplacedBuilding};
 }());
