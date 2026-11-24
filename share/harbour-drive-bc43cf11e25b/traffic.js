@@ -7,6 +7,7 @@
   const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
   function create(map, sim, signals) {
+    const rules = sim.rules;
     const edges = [], junctions = new Map(), vehicles = [], tracks = [];
     let rng = 18277633;
     function random() {
@@ -14,51 +15,53 @@
       return rng / 4294967296;
     }
     for (const road of map.roads) {
-      if ((road.l && !road.underpass) || road.cls === "service") continue;
+      if ((road.l < 0 && !road.underpass) || road.cls === "service") continue;
       const lanes = Math.max(1, Number(road.lanes) || (road.one ? 1 : 2));
       const half = road.w / 2;
       const laneWidth = road.w / lanes, laneCount = road.one ? lanes : Math.max(1, Math.floor(lanes / 2));
       for (let i = 1; i < road.p.length; i++) {
-        if (Number(road.one) !== -1) add(road.p[i - 1], road.p[i]);
-        if (Number(road.one) !== 1) add(road.p[i], road.p[i - 1]);
+        if (Number(road.one) !== -1) add(road.p[i - 1], road.p[i], i);
+        if (Number(road.one) !== 1) add(road.p[i], road.p[i - 1], -i);
       }
-      function add(a, b) {
+      function add(a, b, index) {
         const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
         if (len < 0.08) return;
         const dx = (b[0] - a[0]) / len, dz = (b[1] - a[1]) / len;
-        const edge = { a, b, len, dx, dz, road, half, laneWidth, laneCount };
+        const edge = { a, b, len, dx, dz, road, half, laneWidth, laneCount, token: rules.token(road, index) };
         const start = key(a);
         if (!junctions.has(start)) junctions.set(start, []);
         junctions.get(start).push(edge); edges.push(edge);
       }
     }
-    function viableNetwork(minWidth) {
-      const live = new Set(edges.filter(e => e.road.w >= minWidth));
+    function viableNetwork(minWidth, mode) {
+      const live = new Set(edges.filter(e => e.road.w >= minWidth && !(rules.access(e.road) & mode)));
       let changed = true;
       while (changed) {
         changed = false;
         for (const e of live) {
           const next = junctions.get(key(e.b)) || [];
-          if (!next.some(n => live.has(n) && e.dx * n.dx + e.dz * n.dz > -0.74)) {
+          if (!next.some(n => live.has(n) && rules.advance(rules.advance(0, e.token, mode), n.token, mode) >= 0 && e.dx * n.dx + e.dz * n.dz > -0.74)) {
             live.delete(e); changed = true;
           }
         }
       }
       return live;
     }
-    const cars = viableNetwork(0), buses = viableNetwork(5.8);
+    const fleets = { taxi: viableNetwork(0, 1), sedan: viableNetwork(0, 4), bus: viableNetwork(5.8, 2) };
+    const mode = { taxi: 1, bus: 2, sedan: 4 };
     function lane(edge, along, vehicle) {
       const index = Math.min(edge.laneCount - 1, Math.floor(vehicle.laneChoice * edge.laneCount));
       const side = edge.half - edge.laneWidth * (index + 0.5);
       return { x: edge.a[0] + edge.dx * along + edge.dz * side,
         z: edge.a[1] + edge.dz * along - edge.dx * side, edge };
     }
-    function chooseNext(edge, vehicle) {
+    function chooseNext(edge, vehicle, state) {
       const candidates = [];
       let sum = 0;
       for (const next of junctions.get(key(edge.b)) || []) {
         const dot = edge.dx * next.dx + edge.dz * next.dz;
-        if (dot < -0.74 || !(vehicle.kind === "bus" ? buses : cars).has(next)) continue;
+        if (rules.advance(state, next.token, mode[vehicle.kind]) < 0) continue;
+        if (dot < -0.74 || !fleets[vehicle.kind].has(next)) continue;
         const bending = Math.max(0.06, (dot + 1) / 2);
         const continuous = edge.road.id === next.road.id || (edge.road.en && edge.road.en === next.road.en);
         const weight = (continuous ? 4 : 1) * (0.21 + bending * bending) * (next.road.cls.endsWith("_link") ? 0.55 : 1);
@@ -68,6 +71,7 @@
       return candidates.find(c => c.sum >= ticket)?.next;
     }
     function append(track, p) {
+      p.turnState ??= track.turnState;
       if (distance(track.points.at(-1), p) > 0.045) track.points.push(p);
     }
     function extend(track, vehicle) {
@@ -76,12 +80,13 @@
       // Cut back both approaches and join lane tangents across each OSM node.
       // Limiting trim to 38% leaves space on very short junction links.
       for (let run = 0; run < 18 && track.points.length < 44; run++) {
-        const edge = track.edge, next = chooseNext(edge, vehicle);
+        const edge = track.edge, next = chooseNext(edge, vehicle, track.turnState);
         if (!next) { append(track, lane(edge, edge.len, vehicle)); track.atEnd = true; return; }
         const dot = Math.max(-1, Math.min(1, edge.dx * next.dx + edge.dz * next.dz));
         const trim = (vehicle.kind === "bus" ? 10 : 6.8) * (0.26 + 0.74 * Math.sqrt((1 - dot) / 2));
         const tail = Math.min(trim, edge.len * 0.38, edge.len - track.along);
         const head = Math.min(trim, next.len * 0.38);
+        const nextTurn = rules.advance(track.turnState, next.token, mode[vehicle.kind]);
         const a = lane(edge, edge.len - tail, vehicle), b = lane(next, head, vehicle);
         append(track, a);
         const span = distance(a, b), handle = span * 0.39;
@@ -91,8 +96,9 @@
         for (let j = 1; j <= samples; j++) {
           const t = j / samples, u = 1 - t;
           append(track, { x: u*u*u*a.x + 3*u*u*t*c.x + 3*u*t*t*d.x + t*t*t*b.x,
-            z: u*u*u*a.z + 3*u*u*t*c.z + 3*u*t*t*d.z + t*t*t*b.z, edge: t < 0.5 ? edge : next });
+            z: u*u*u*a.z + 3*u*u*t*c.z + 3*u*t*t*d.z + t*t*t*b.z, turnState: t < 0.5 ? track.turnState : nextTurn, edge: t < 0.5 ? edge : next });
         }
+        track.turnState = nextTurn;
         track.edge = next; track.along = head;
       }
     }
@@ -101,7 +107,7 @@
       while (index + 1 < track.points.length) {
         const a = track.points[index], b = track.points[index + 1], len = distance(a, b);
         if (offset < len) return { x: a.x + (b.x - a.x) * offset / len, z: a.z + (b.z - a.z) * offset / len,
-          yaw: Math.atan2(b.x - a.x, a.z - b.z), index, offset, edge: a.edge };
+          yaw: Math.atan2(b.x - a.x, a.z - b.z), index, offset, turnState: a.turnState, edge: a.edge };
         offset -= len; index++;
       }
       return null;
@@ -111,7 +117,7 @@
     function spawn(vehicle, player, near, far) {
       const eligible = [];
       let sum = 0;
-      for (const edge of (vehicle.kind === "bus" ? buses : cars)) {
+      for (const edge of fleets[vehicle.kind]) {
         if (edge.len < (vehicle.kind === "bus" ? 15 : 7) || (vehicle.kind === "bus" && edge.road.w < 7)) continue;
         const mid = lane(edge, edge.len / 2, vehicle), radius = distance(mid, player);
         if (radius < near || radius > far) continue;
@@ -126,7 +132,8 @@
         if (distance(pos, player) < 14 || vehicles.some(v => v !== vehicle && distance(v, pos) < 14)
           || !sim.canOccupy(pos.x, pos.z, yaw, edge.road.l)) continue;
         Object.assign(vehicle, { x: pos.x, z: pos.z, yaw, layer: edge.road.l, speed: 3.5 + 2.6 * random(), waitingForSignal: null });
-        const track = { edge, along, points: [pos], offset: 0, index: 0, atEnd: false, stopped: 0 };
+        const track = { turnState: rules.advance(0, edge.token, mode[vehicle.kind]), edge, along, points: [pos], offset: 0, index: 0, atEnd: false, stopped: 0 };
+        pos.turnState = track.turnState;
         tracks[vehicle.id] = track;
         extend(track, vehicle);
         return true;
@@ -168,9 +175,10 @@
         if (index < 0 || index >= edge.laneCount) continue;
         const vehicle = { ...v, laneChoice: (index + 0.5) / edge.laneCount };
         const anchor = lane(edge, along, vehicle);
-        const next = { edge, along, points: [anchor], offset: 0, index: 0, atEnd: false, stopped: 0 };
+        const next = { turnState: sample(track, 0)?.turnState ?? rules.advance(0, edge.token, mode[vehicle.kind]), edge, along, points: [anchor], offset: 0, index: 0, atEnd: false, stopped: 0 };
+        anchor.turnState = next.turnState;
         extend(next, vehicle);
-        const points = [{ x: v.x, z: v.z, edge }];
+        const points = [{ x: v.x, z: v.z, edge, turnState: anchor.turnState }];
         let end;
         for (let d = 2; d <= 22; d += 2) {
           const pose = sample(next, d);
@@ -208,7 +216,7 @@
         extend(track, v);
         const frontX = v.x + Math.sin(v.yaw) * v.halfLength;
         const frontZ = v.z - Math.cos(v.yaw) * v.halfLength;
-        const signal = v.layer < 0 ? null : signals?.approach(frontX, frontZ, v.yaw, 47);
+        const signal = v.layer !== 0 ? null : signals?.approach(frontX, frontZ, v.yaw, 47);
         if (recycle && (!signal || signal.distance > 21)) { tryLaneChange(v, track, player); track = tracks[v.id]; }
         const speed = v.speed;
         let desired = v.cruise;

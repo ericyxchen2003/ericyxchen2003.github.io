@@ -16,7 +16,51 @@
     ["park", "九龍公園", "Kowloon Park", 114.17041, 22.29806, "Haiphong Road"],
     ["nathan", "彌敦道", "Nathan Road", 114.17227, 22.29821, "Nathan Road"],
     ["mody", "麼地道", "Mody Road", 114.17641, 22.29764, "Mody Road"],
-    ["science", "香港科學館", "Science Museum", 114.178691, 22.301191, "Science Museum Road"]
+    ["science", "香港科學館", "Science Museum", 114.178691, 22.301191, "Science Museum Road"],
+    ["jordan","佐敦站","Jordan Station",114.17165,22.30522,"Nathan Road"],
+    ["temple","廟街近街市街","Temple Street at Market Street",114.17071,22.30900,"Temple Street"],
+    ["theatre","油麻地戲院","Yau Ma Tei Theatre",114.16941,22.31225,"Waterloo Road"],
+    ["ymt","油麻地站","Yau Ma Tei Station",114.17076,22.31274,"Nathan Road"],
+    ["gascoigne","加士居道天橋","Gascoigne Road Flyover",114.17365,22.30823,"Gascoigne Road Flyover"],
+    ["qeh","伊利沙伯醫院","Queen Elizabeth Hospital",114.1741822,22.3081725,"Queen Elizabeth Hospital Road"],
+    ["nightmarket","廟街夜市牌樓","Temple Street Night Market",114.1696895,22.3053281,"Jordan Road"],
+    ["lands","土地審裁處","Lands Tribunal",114.1727267,22.3079919,"Gascoigne Road"],
+    ["tinhau","油麻地天后廟","Tin Hau Temple",114.1704075,22.3101772,"Public Square Street"],
+    ["redbrick","油麻地紅磚屋","Red Brick Building",114.1695245,22.3123444,"Shanghai Street"],
+    ...(window.HKMongKok ? [
+      ["langham","朗豪坊","Langham Place",114.16855,22.31830,"Shanghai Street"],
+      ["ladies","女人街（登打士街口）","Ladies’ Market",114.17142,22.31570,"Dundas Street"],
+      ["sneakers","波鞋街","Sneakers Street",114.17125,22.31825,"Fa Yuen Street"],
+      ["electronics","西洋菜南街","Sai Yeung Choi Street South",114.17010,22.31760,"Sai Yeung Choi Street South"],
+      ["computer","旺角電腦中心","Mong Kok Computer Centre",114.17109,22.31852,"Nelson Street"],
+      ["sino","信和中心","Sino Centre",114.17002,22.31613,"Nathan Road"],
+      ["mkbridge","旺角道行人天橋","Mong Kok Road Footbridge",114.16997,22.32092,"Mong Kok Road"],
+      ["moko","MOKO 新世紀廣場","MOKO · Mong Kok East",114.17246,22.32225,"Luen Wan Street"],
+      ["prince","太子站","Prince Edward Station",114.16810,22.32449,"Nathan Road"],
+      ["goldfish","金魚街","Goldfish Market",114.16971,22.32320,"Tung Choi Street"],
+      ["flower","花墟","Flower Market",114.17155,22.32565,"Flower Market Road"]
+    ] : []),
+    ...(window.HKTaiKokTsui ? [
+      ["tkt-civic","大角咀市政大廈","Tai Kok Tsui Municipal Services Building",114.163022,22.322197,"Fuk Tsun Street"],
+      ["olympic","奧運站","Olympic Station",114.160717,22.317689,"Sham Mong Road"],
+      ["oc1","奧海城一期","Olympian City 1",114.158149,22.318874,"Hoi Fan Road"],
+      ["oc2","奧海城二期","Olympian City 2",114.162662,22.316792,"Hoi Ting Road"],
+      ["oc3","奧海城三期","Olympian City 3",114.164733,22.317286,"Hoi Ting Road"],
+      ["metroharbour","港灣豪庭廣場","Metro Harbour Plaza",114.160071,22.324251,"Fuk Lee Street"],
+      ["longbeach","浪澄灣","The Long Beach",114.156568,22.319364,"Hoi Fai Road"],
+      ["silversea","一號銀海","One SilverSea",114.156658,22.317492,"Hoi Fai Road"]
+    ] : []),
+    ...(window.HKWestKowloon ? [
+      ["palace","香港故宮文化博物館","Hong Kong Palace Museum",114.156187,22.301395,"Museum Drive"],
+      ["mplus","M+ 博物館","M+ Museum",114.158944,22.302040,"Museum Drive"],
+      ["artpark","藝術公園","Art Park",114.156170,22.301199,"Museum Drive"],
+      ["westk-station","香港西九龍站","Hong Kong West Kowloon Station",114.166152,22.304427,"Wui Man Road"],
+      ["union-square","環球貿易廣場","International Commerce Centre",114.160543,22.303698,"Station Perimeter Road South"],
+      ["elements","圓方","Elements",114.162586,22.304517,"Station Perimeter Road East"],
+      ["kowloon-station","九龍站","Kowloon Station",114.160676,22.305624,"Nga Cheung Road"],
+      ["austin-station","柯士甸站","Austin Station",114.166404,22.304426,"Wui Cheung Road"]
+    ] : []),
+    ["gunclub","槍會山軍營（柯士甸道）","Gun Club Hill, Austin Road",114.1759192,22.3034769,"Austin Road"]
   ];
 
   class Grid {
@@ -90,8 +134,52 @@
       Math.abs(dz * u - dx * v) <= ow + hl * cross + hw * same;
   }
 
+  // A turn can span both halves of a divided junction. Keep the longest suffix
+  // of the travelled edges that can still complete a mapped restriction.
+  function turnRules(data) {
+    const keys = new Map((data?.keys || []).map((k, i) => [k, i]));
+    const states = [];
+    function addState() {
+      states.push({ next: new Map(), fail: 0, deny: 0 });
+      return states.length - 1;
+    }
+    addState();
+    for (const [mask, ...edges] of data?.bans || []) {
+      let state = 0;
+      for (const edge of edges) {
+        if (!states[state].next.has(edge)) states[state].next.set(edge, addState());
+        state = states[state].next.get(edge);
+      }
+      states[state].deny |= mask;
+    }
+    const queue = [...states[0].next.values()];
+    function follow(state, token) {
+      while (state && !states[state].next.has(token)) state = states[state].fail;
+      return states[state].next.get(token) || 0;
+    }
+    for (let i = 0; i < queue.length; i++) {
+      const parent = states[queue[i]];
+      for (const [token, child] of parent.next) {
+        const fail = follow(parent.fail, token);
+        states[child].fail = fail;
+        states[child].deny |= states[fail].deny;
+        queue.push(child);
+      }
+    }
+    return {
+      token: (road, index) => keys.get(road.id + ':' + index),
+      access: road => data?.access?.[road.id] || 0,
+      advance(state, token, vehicle) {
+        if (token === undefined) return 0;
+        const next = follow(state, token);
+        return states[next].deny & vehicle ? -1 : next;
+      }
+    };
+  }
+
   function create(map, groundHeight) {
     const segments = [], nodes = [], nodeIDs = new Map();
+    const edges = [], rules = turnRules(map === global.HKMAP ? global.HKTurnData : map.turnData);
     const ground = [...(map.land || []), ...(map.piers || [])];
     let traffic = [];
     const roadsGrid = new Grid(), wallsGrid = new Grid(), transitions = new Grid();
@@ -116,8 +204,16 @@
         for (const node of [nodes[start], nodes[end]]) {
           node.levels |= bit; node.half = Math.max(node.half, half);
         }
-        if (one !== -1) nodes[start].edges.push({ id: end, length: len });
-        if (one !== 1) nodes[end].edges.push({ id: start, length: len });
+        function connect(from, to, index) {
+          const edge = { id: edges.length, from, to, segment: s, token: rules.token(road, index) };
+          edges.push(edge);
+          nodes[from].edges.push(edge);
+          return edge;
+        }
+        if (!(rules.access(road) & 1)) {
+          if (one !== -1) s.forward = connect(start, end, i);
+          if (one !== 1) s.reverse = connect(end, start, -i);
+        }
         segments.push(s);
         const pad = half + 3;
         roadsGrid.insert(s, Math.min(a[0], b[0]) - pad, Math.min(a[1], b[1]) - pad,
@@ -133,6 +229,12 @@
     }
     const detail=map===globalThis.HKMAP?globalThis.HKDetails:null;
     const structures=[...(map.buildings||[]),...(detail?.parkSolids || [])];
+    if(map===global.HKMAP&&global.HKMongKokPlaces){
+      const rect=(x,z,a,w,d)=>[[-w,-d],[w,-d],[w,d],[-w,d]].map(([u,v])=>[x+u*Math.cos(a)-v*Math.sin(a),z+u*Math.sin(a)+v*Math.cos(a)]);
+      for(const [x,z,a] of HKMongKokPlaces.stalls)structures.push({p:rect(x,z,a,1.36,.74),h:2.28});
+      for(const b of HKMongKokPlaces.bridges)for(const [x,z] of b.posts)structures.push({p:rect(x,z,0,.45,.45),h:5.5});
+      for(const m of HKMongKokPlaces.mouths)structures.push({...m,h:1});
+    }
     for(const [x,z,deck,angle,width] of map.terrain?.relief?.piers||[]){
       if(!groundHeight)continue;
       const base=groundHeight(x,z)-.18,cap=deck-.78;
@@ -223,15 +325,15 @@
         const cx = x + fx * longitudinal - fz * lateral;
         const cz = z + fz * longitudinal + fx * lateral;
         if (map.bounds && (cx < map.bounds[0] || cz < map.bounds[1] ||
-            cx > map.bounds[2] || cz > map.bounds[3])) return "boundary";
-        if (groundHeight?.underpass?.blocks(cx,cz,layer)) return "barrier";
+            cx > map.bounds[2] || cz > map.bounds[3] || map.outsideExtension?.(cx,cz))) return "boundary";
+        if ((layer===0 && levels===1 && global.HKNorthWorks?.blocked(cx,cz)) || groundHeight?.underpass?.blocks(cx,cz,layer)) return "barrier";
         if (keepToRoad) {
           if (!pavementAt(cx, cz, levels)) return "deck";
         } else if (!supportedGround(cx, cz) && !((levels & ~1) && pavementAt(cx, cz, levels & ~1))) {
           return "water";
         }
         if(layer>=0 && groundHeight?.overhead){
-          for(let upper=layer+1;upper<=2;upper++){
+          for(let upper=layer+1;upper<=(groundHeight.maxLayer||2);upper++){
             if(levels&(1<<upper))continue;
             const overhead=groundHeight.overhead(cx,cz,upper);
             if(overhead===undefined)continue;
@@ -260,8 +362,8 @@
     };
     const places = [], snaps = new Map();
     for (const [id, name, en, lng, lat, street] of locations) {
-      const x = (lng - 114.17) * 103060, z = (22.296 - lat) * 111100;
-      const snap = nearestRoad(x, z, s => (s.road.en || s.road.n || "").toLowerCase().includes(street.toLowerCase())) || nearestRoad(x, z);
+      const x = (lng - 114.17) * 103055, z = (22.296 - lat) * 110741;
+      const snap = nearestRoad(x, z, s => (s.forward || s.reverse) && (s.road.en || s.road.n) === street) || nearestRoad(x, z);
       places.push({ id, name, en, x: snap.x, z: snap.z });
       snaps.set(id, snap);
     }
@@ -274,14 +376,22 @@
       state.roadEn = hit?.road.en || "";
     }
 
+    function mapPoint(x,z,name,en,street){
+      const hit=nearestRoad(x,z,s=>(s.forward||s.reverse)&&(!street||(s.road.en||s.road.n)===street)&&
+        (street||(!s.layer&&!['motorway','motorway_link','trunk','trunk_link'].includes(s.road.cls))));
+      if(!hit||hit.distance>(street?Infinity:180))return null;
+      return {name,en,x:hit.x,z:hit.z,anchor:hit};
+    }
     function reset(id = "salisbury") {
-      const anchor = snaps.get(id) || snaps.get("salisbury");
+      const anchor = (typeof id === "object" ? id?.anchor || snaps.get(id?.id) : snaps.get(id)) || snaps.get("salisbury");
       const s = anchor.segment, direction = s.one || (s.dx >= 0 ? 1 : -1);
       const fx = s.dx * direction, fz = s.dz * direction, yaw = Math.atan2(fx, -fz);
       const lanes = Math.max(1, Number(s.road.lanes) || (s.one ? 1 : 2));
       const offset = Math.max(0, Math.min(s.half - 1.15, s.half * (1 - 1 / lanes)));
-      let position;
+      const bay=typeof id==="object"&&id.parking;
+      let position=bay?[bay.x,bay.z]:null;
       for (const delta of [0, 3, -3, 8, -8, 15, -15]) {
+        if(position)break;
         const along = clamp(anchor.along + delta, 0, s.len);
         for (const side of [offset, offset * 0.65, 0]) {
           const x = s.a[0] + along * s.dx + side * fz, z = s.a[1] + along * s.dz - side * fx;
@@ -290,7 +400,7 @@
         if (position) break;
       }
       position ||= [anchor.x, anchor.z];
-      Object.assign(state, { x: position[0], z: position[1], yaw, speed: 0, steer: 0,
+      Object.assign(state, { x: position[0], z: position[1], yaw:bay?bay.yaw:yaw, speed: 0, steer: 0,
         gear: "D", odometer: 0, collision: false, collisionKind: "", layer: s.layer });
       route = null; collisionTime = 0; reverseDelay = 0; streetTimer = 0;
       updateStreet();
@@ -299,61 +409,83 @@
 
     function findPath(from, to) {
       const s = from.segment, t = to.segment;
-      const dist = new Float64Array(nodes.length).fill(Infinity);
-      const prev = new Int32Array(nodes.length).fill(-1), queue = new Queue();
-      // Extra endpoints let a trip start and finish halfway along directed edges.
-      const starts = [], ends = [];
-      if (s.one !== 1) starts.push([s.start, from.along]);
-      if (s.one !== -1) starts.push([s.end, s.len - from.along]);
-      if (t.one !== -1) ends.push([t.start, to.along]);
-      if (t.one !== 1) ends.push([t.end, t.len - to.along]);
-      for (const [id, cost] of starts) { dist[id] = cost; queue.push(id, cost); }
-      let minCost = Infinity, finalNode = -1, direct = false;
-      if (s === t && (Math.abs(to.along - from.along) < 0.1 || (to.along >= from.along ? s.one !== -1 : s.one !== 1))) {
-        minCost = Math.abs(to.along - from.along); direct = true;
+      const costAt = new Map(), parent = new Map(), queue = new Queue();
+      const stride = edges.length + nodes.length;
+      let best = Infinity, last = -1, tail = null, direct = false;
+      function offer(key, cost, prev) {
+        if (cost >= (costAt.get(key) ?? Infinity)) return;
+        costAt.set(key, cost); parent.set(key, prev); queue.push(key, cost);
+      }
+      function start(edge, cost) {
+        if (edge) offer(rules.advance(0, edge.token, 1) * stride + edge.id, cost, -1);
+      }
+      if (from.along < .001) offer(edges.length + s.start, 0, -1);
+      if (s.len - from.along < .001) offer(edges.length + s.end, 0, -1);
+      start(s.forward, s.len - from.along); start(s.reverse, from.along);
+      if (s === t && (to.along >= from.along ? s.forward : s.reverse)) {
+        best = Math.abs(to.along - from.along); direct = true;
       }
       while (queue.list.length) {
-        const [id, cost] = queue.pop();
-        if (cost > minCost) break;
-        if (cost > dist[id]) continue;
-        for (const [goal, remainder] of ends) {
-          if (id === goal && cost + remainder < minCost) {
-            minCost = cost + remainder; finalNode = id; direct = false;
-          }
+        const [key, cost] = queue.pop();
+        if (cost >= best) break;
+        if (cost !== costAt.get(key)) continue;
+        const id = key % stride, prev = edges[id], node = prev ? prev.to : id - edges.length;
+        const state = Math.floor(key / stride), outgoing = nodes[node].edges;
+        if ((node === t.start && to.along < .001) || (node === t.end && t.len - to.along < .001)) {
+          best = cost; last = key; tail = null; direct = false; break;
         }
-        for (const edge of nodes[id].edges) {
-          const next = cost + edge.length;
-          if (next < dist[edge.id]) {
-            dist[edge.id] = next; prev[edge.id] = id; queue.push(edge.id, next);
+        for (const edge of outgoing) {
+          // Shape vertices are not turning facilities. Allow reversal at a dead end.
+          if (prev && prev.segment === edge.segment && outgoing.length > 1) continue;
+          const nextState = rules.advance(state, edge.token, 1);
+          if (nextState < 0) continue;
+          if (edge.segment === t) {
+            const final = cost + (edge === t.forward ? to.along : t.len - to.along);
+            if (final < best) { best = final; last = key; tail = edge; direct = false; }
           }
+          const next = cost + edge.segment.len;
+          if (next < best) offer(nextState * stride + edge.id, next, key);
         }
       }
-      if (!direct && finalNode < 0) return null;
-      const points = [];
-      if (!direct) for (let id = finalNode; id >= 0; id = prev[id]) points.push(nodes[id].point);
-      points.reverse();
-      points.unshift([from.x, from.z]); points.push([to.x, to.z]);
-      return points.filter((p, i) => !i || magnitude(p[0] - points[i - 1][0], p[1] - points[i - 1][1]) > 0.05);
+      if (!Number.isFinite(best)) return null;
+      const points = [[from.x, from.z]], layers = [];
+      function append(point, segment) {
+        const p = points.at(-1);
+        if (magnitude(point[0] - p[0], point[1] - p[1]) < .001) return;
+        points.push(point); layers.push(segment.layer);
+      }
+      if (!direct) {
+        const steps = [];
+        for (let key = last; key >= 0; key = parent.get(key)) {
+          const edge = edges[key % stride];
+          if (edge) steps.push(edge);
+        }
+        for (const edge of steps.reverse()) append(nodes[edge.to].point, edge.segment);
+      }
+      append([to.x, to.z], tail?.segment || t);
+      return { points, layers };
     }
 
+    function previewRoute(id) {
+      const target=typeof id==='object'?id:places.find(p=>p.id===id);
+      const destination=target?.anchor||snaps.get(target?.id);
+      if(!destination)return null;
+      const origin=roadAtLevel(state.x,state.z,levelBit(state.layer))||
+        nearestRoad(state.x,state.z,s=>s.layer===state.layer)||nearestRoad(state.x,state.z);
+      const path=findPath(origin,destination);
+      return path?{...path,target,layer:destination.segment.layer}:null;
+    }
     function navigate(id) {
-      const target = places.find(place => place.id === id), destination = snaps.get(id);
-      if (!target) return null;
-      const origin = roadAtLevel(state.x, state.z, levelBit(state.layer)) ||
-        nearestRoad(state.x, state.z, s => s.layer === state.layer) || nearestRoad(state.x, state.z);
-      const points = findPath(origin, destination);
-      if (!points) { route = null; return null; }
+      const path=previewRoute(id);
+      if(!path){route=null;return null;}
+      const target=path.target;
+      const { points, layers } = path;
       routeProgress = 0; rerouteTime = 0; routeLengths = [0];
       for (let i = 1; i < points.length; i++) {
         routeLengths.push(routeLengths[i - 1] + magnitude(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
       }
       const total = routeLengths.at(-1);
-      const layers=points.slice(1).map((b,i)=>{
-        const a=points[i],x=(a[0]+b[0])/2,z=(a[1]+b[1])/2;
-        const s=roadsGrid.at(x,z).find(s=>project(s,...a).distance<.05&&project(s,...b).distance<.05);
-        return s?.layer??0;
-      });
-      route = { target, points, layers, total, remaining: total, arrived: false, progress: 0, nextTurn: "straight", turnDistance: total };
+      route = { target, destinationLayer:path.layer, points, layers, total, remaining: total, arrived: false, progress: 0, nextTurn: "straight", turnDistance: total };
       updateRoute(0);
       return route;
     }
@@ -363,6 +495,7 @@
       const { points, target } = route;
       let nearest = Infinity, progress = 0, score = Infinity, index = 0;
       for (let i = 1; i < points.length; i++) {
+        if (route.layers[i - 1] !== state.layer) continue;
         const a = points[i - 1], b = points[i], len = routeLengths[i] - routeLengths[i - 1];
         const dx = (b[0] - a[0]) / len, dz = (b[1] - a[1]) / len;
         const t = clamp((state.x - a[0]) * dx + (state.z - a[1]) * dz, 0, len);
@@ -376,7 +509,7 @@
       routeProgress = progress;
       route.remaining = Math.max(0, route.total - progress);
       route.progress = route.total ? progress / route.total : 1;
-      if (magnitude(state.x - target.x, state.z - target.z) < 9 && route.remaining < 16) {
+      if (magnitude(state.x - target.x, state.z - target.z) < 9 && route.remaining < 16 && state.layer === route.destinationLayer) {
         route.arrived = true; route.remaining = 0; route.progress = 1; route.nextTurn = "arrive"; route.turnDistance = 0;
         return;
       }
@@ -392,7 +525,7 @@
         }
       }
       rerouteTime = nearest > 23 ? rerouteTime + dt : 0;
-      if (rerouteTime > 1.2) navigate(target.id);
+      if (rerouteTime > 1.2) navigate(target);
     }
 
     function trafficOverlap(x,z,yaw,layer,other,halfLength=L,halfWidth=W,bodyHeight=1.75){
@@ -415,7 +548,7 @@
       if (handbrake) v -= Math.sign(v) * Math.min(Math.abs(v), 12.5 * dt);
       else if (throttle && !brake) {
         reverseDelay = 0;
-        const acceleration = v < 0 ? 7.5 : 4.7 / (1 + Math.max(0, v) * 0.048);
+        const acceleration = v < 0 ? 7.5 : 4.7 / (1 + Math.max(0, v) * 0.048) + Math.max(0, v - 70 / 3.6) * .095;
         v += throttle * acceleration * dt;
       } else if (brake) {
         if (v > 0.02) {
@@ -425,7 +558,7 @@
       } else { reverseDelay = 0; }
       const resistance = 0.34 + 0.0021 * v * v;
       v -= Math.sign(v) * Math.min(Math.abs(v), resistance * dt);
-      v = clamp(v, -4.5, 19.45);
+      v = clamp(v, -4.5, 120 / 3.6);
       if (v === 0) { state.speed = 0; return; }
       const yawRate = v / 2.68 * Math.tan(state.steer);
       const newYaw = state.yaw + clamp(yawRate, -1.72, 1.72) * dt;
@@ -464,7 +597,7 @@
       return state;
     }
     reset();
-    return { state, places, step, reset, nearestRoad, navigate, trafficOverlap,
+    return { state, places, step, reset, nearestRoad, mapPoint, previewRoute, navigate, trafficOverlap, rules,
       // Ambient traffic still follows the carriageway through bends and junctions.
       canOccupy(x, z, yaw, layer = 0) { return !obstructed(x, z, yaw, layer, levelsAt(x,z,layer), true); },
       setTraffic(vehicles) { traffic = vehicles; }, cancelRoute() { route = null; }, get route() { return route; } };
