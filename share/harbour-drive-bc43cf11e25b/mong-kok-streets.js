@@ -2,6 +2,7 @@
 window.HKMongKokStreets=(()=>{
   const data=window.HKMongKokPlaces;
   const catalogs={
+    food:[['港式茶餐廳','CHA CHAAN TENG'],['韓式小館','KOREAN KITCHEN'],['台式小食','TAIWANESE SNACKS'],['日式食堂','JAPANESE KITCHEN'],['燒味飯店','ROAST MEATS'],['街坊漢堡','BURGER CAFE']],
     sport:[['跑步專門','RUNNING'],['街場波鞋','COURT SHOES'],['運動用品','SPORTS CLUB']],
     electronics:[['影音專門','HI-FI AUDIO'],['數碼相機','CAMERA SHOP'],['潮流服飾','STREET WEAR'],['街頭小食','SNACK BAR']],
     ladies:[['時裝小店','FASHION'],['手袋飾物','ACCESSORIES'],['布藝精品','MARKET GOODS']],
@@ -45,7 +46,11 @@ window.HKMongKokStreets=(()=>{
     }
     put(0,2.99,.27,w,.12,.57,'#c1b6a4');put(0,3.52,.13,w,1.03,.25,tint);
     face(signs,at,label(brand,tint),y+3.54,w*.97,.95,.29,0,hours);
-    if(kind==='sport'){
+    if(kind==='food'){
+      put(-w*.20,1.02,.27,w*.52,.13,.4,'#c0b5a3');
+      for(let i=0;i<3;i++)put(w*(-.37+i*.16),1.84,.25,w*.13,.44,.035,i%2?'#b99571':'#e2cf99');
+      put(w*.34,1.61,.25,.31,.5,.04,'#e3c891');
+    }else if(kind==='sport'){
       for(let row=0;row<3;row++){
         put(-w*.20,.68+row*.54,.24,w*.51,.055,.22,'#e0d7c1');
         for(let i=0;i<3;i++){
@@ -195,12 +200,35 @@ window.HKMongKokStreets=(()=>{
     const q=(a,b,c,d,shade)=>buf.quad(a,b,c,d,shade);
     const podium=window.HKWestKowloon?.elements;
     const integratedPaths=new Set(podium?.integratedPaths),deckBridges=new Set(podium?.deckBridges);
+    const roadById=new Map(HKMAP.roads.map(r=>[r.id,r]));
     for(const b of data.bridges){
       if(integratedPaths.has(String(b.id)))continue;
       const deck=deckBridges.has(String(b.id))?HKMAP.elementsDeck.top:undefined;
-      const p=b.p,w=b.w;let run=0;
+      const p=b.p,w=b.w,flush=new Set(b.flushSegments);let run=0;
       for(let i=1;i<p.length;i++){
         const a=p[i-1],e=p[i],dx=e[0]-a[0],dz=e[1]-a[1],len=Math.hypot(dx,dz);if(len<.05)continue;
+        if(flush.has(i)){
+          const road=roadById.get(b.crossingPaint?.[i]?.[1]);
+          if(road){
+            const nx=-dz/len,nz=dx/len,half=Math.min(2,w*.42);
+            const point=(d,u)=>{
+              const x=a[0]+dx*d/len+nx*u,z=a[1]+dz*d/len+nz*u;
+              let gap=Infinity,px=x,pz=z;
+              for(let k=1;k<road.p.length;k++){
+                const start=road.p[k-1],sx=road.p[k][0]-start[0],sz=road.p[k][1]-start[1];
+                const t=Math.max(0,Math.min(1,((x-start[0])*sx+(z-start[1])*sz)/(sx*sx+sz*sz||1)));
+                const cx=start[0]+t*sx,cz=start[1]+t*sz,dist=Math.hypot(x-cx,z-cz);
+                if(dist<gap){gap=dist;px=cx;pz=cz;}
+              }
+              return gap<=road.w/2+.08?[x,height.surface(px,pz,road.l,road.id)+.05,z]:null;
+            };
+            for(let d=(1.12-run%1.12)%1.12;d+.42<=len;d+=1.12){
+              const stripe=[point(d,-half),point(d,half),point(d+.42,half),point(d+.42,-half)];
+              if(stripe.every(Boolean))q(...stripe,color('#dfa83b'));
+            }
+          }
+          run+=len;continue;
+        }
         const nx=-dz/len,nz=dx/len,h0=(deck??(height(...a)+b.h[i-1]))+.18,h1=(deck??(height(...e)+b.h[i]))+.18;
         const pt=(t,u,h)=>[a[0]+dx*t+nx*u,h0+(h1-h0)*t+h,a[1]+dz*t+nz*u];
         const bands=(l,r,y0,y1,c)=>q(pt(0,l,y0),pt(1,l,y0),pt(1,r,y1),pt(0,r,y1),c);

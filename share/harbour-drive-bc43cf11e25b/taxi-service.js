@@ -2,8 +2,8 @@
 window.HKTaxiService=(()=>{
   'use strict';
   const stopped=.12;
-  const earliestPickup=10; // Real seconds continuously stopped in the bay.
-  const daytime={mean:20,max:60},overnight={mean:40,max:120};
+  const earliestPickup=5; // Real seconds continuously stopped in the bay.
+  const daytime={mean:10,max:20},overnight={mean:20,max:40};
   function fareCents(fastMetres,slowSeconds){
     // Distance starts its next band just beyond the included distance. A minute
     // of low-speed operation contributes one increment, including in the flagfall.
@@ -124,13 +124,13 @@ window.HKTaxiService=(()=>{
       state.expectedWaitSeconds=period.mean;
       const due=Math.min(period.max,earliestPickup+(period.mean-earliestPickup)*arrivalFactor);
       state.wait+=seconds;
-      if(state.wait>=due){
+      if(state.wait+1e-9>=due){
         if(!dispatch(rank)){clear();return;}
         state.phase='hired';state.fare=2900;lastOdo=car.odometer;retry=3;
         return 'pickup';
       }
     }
-    return {state,stands,step,nearDrop,clear};
+    return {state,stands,step,withinBay,nearDrop,clear};
   }
   return {create,fareCents,maxWaitSeconds:daytime.max,meanWaitSeconds:daytime.mean};
 })();

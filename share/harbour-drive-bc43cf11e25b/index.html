@@ -3,8 +3,8 @@
 <head>
 <meta name="robots" content="noindex, nofollow, noarchive">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#182a2a">
-<title>港路 Harbour Drive · 尖沙咀・油麻地・旺角・太子・大角咀・西九龍</title>
-<link rel="icon" href="icon.svg?v=8920e182d09a"><link rel="stylesheet" href="style.css?v=aa95b03f6223">
+<title>香港的士模拟器 · Hong Kong Taxi Simulator</title>
+<link rel="icon" href="icon.svg?v=8920e182d09a"><link rel="stylesheet" href="style.css?v=147734a91d3d">
 </head><body>
 <svg aria-hidden="true" class="defs" xmlns="http://www.w3.org/2000/svg"><defs>
 <symbol id="i-mark" viewBox="0 0 40 40"><path d="M6 33V22c0-5 3-8 8-10l18-7v6l-16 6c-3 1-4 3-4 6v10zm12 0V22l6-2v13zm10 0V18l6-3v18z" fill="currentColor"/></symbol>
@@ -25,15 +25,15 @@
 <symbol id="i-gas" viewBox="0 0 24 24"><path d="M8 4h8l2 15-2 2H8l-2-2zm2 4v8m4-8v8"/></symbol>
 <symbol id="i-brake" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="m6 14 3-4m2 4 3-4m2 4 2-3"/></symbol>
 </defs></svg>
-<main id="game" tabindex="-1" aria-label="九龍第一身駕駛遊戲"><canvas id="world" inert aria-label="油尖旺及西九龍海岸三維街景"></canvas>
-<div id="loading"><div class="loadbox"><svg viewBox="0 0 40 40"><use href="#i-mark"/></svg><div><strong>港路</strong><small>HARBOUR DRIVE</small></div></div><p id="loadingText">正在建立九龍街景…</p></div>
+<main id="game" tabindex="-1" aria-label="九龍第一身駕駛遊戲"><canvas id="world" inert aria-label="油尖旺、紅磡及九龍海岸的三維街景"></canvas>
+<div id="loading" tabindex="-1" aria-labelledby="loadingText"><div class="loadbox"><svg aria-hidden="true" viewBox="0 0 40 40"><use href="#i-mark"/></svg><div><strong>香港的士模拟器</strong><small>HONG KONG TAXI SIMULATOR</small></div></div><p id="loadingText" role="status">正在建立九龍街景…</p></div>
 <section id="titleMenu" aria-label="主選單" hidden>
   <img class="menu-scene" src="menu-scene.webp?v=3f38bbcfaa09" alt="">
   <video id="menuFilm" class="menu-scene" src="menu-drive.mp4?v=faaf620aff6c" muted loop playsinline preload="none" disablepictureinpicture aria-hidden="true"></video>
   <div class="menu-layout">
-    <div class="menu-brand"><svg aria-hidden="true" viewBox="0 0 40 40"><use href="#i-mark"/></svg><span>香港駕駛模擬</span></div>
+    <div class="menu-brand"><svg aria-hidden="true" viewBox="0 0 40 40"><use href="#i-mark"/></svg></div>
     <div class="menu-content">
-      <h1>港路<span lang="en">Harbour Drive</span></h1>
+      <h1>香港的士模拟器<span lang="en">Hong Kong Taxi Simulator</span></h1>
       <div class="menu-actions">
         <button type="button" id="startDrive" class="menu-start"><span id="startLabel">開始駕駛</span><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></svg></button>
         <button type="button" id="menuHelp" class="menu-help"><svg aria-hidden="true"><use href="#i-help"/></svg>駕駛指南</button>
@@ -43,8 +43,15 @@
   </div>
 </section>
 <div class="hud" id="hud" hidden>
-<header class="mast"><div class="mark"><svg viewBox="0 0 40 40"><use href="#i-mark"/></svg></div><div class="branding"><b>港路</b><span>HARBOUR DRIVE</span></div><div class="district"><b>尖沙咀</b><span>TSIM SHA TSUI</span></div></header>
+<header class="mast"><div class="mark"><svg viewBox="0 0 40 40"><use href="#i-mark"/></svg></div><div class="branding"><b>香港的士模拟器</b><span>HONG KONG TAXI SIMULATOR</span></div><div class="district"><b>尖沙咀</b><span>TSIM SHA TSUI</span></div></header>
 <div class="tools"><button id="viewBtn" aria-label="切換鏡頭 (C)" title="切換鏡頭 (C)"><svg><use href="#i-view"/></svg></button><label id="headlightControl" title="車燈模式 (L)"><svg aria-hidden="true"><use href="#i-headlamp"/></svg><small aria-hidden="true">A</small><select id="headlights" aria-label="車燈模式"><option value="auto">自動車燈</option><option value="on">長開車燈</option><option value="off">關閉車燈</option></select></label><button id="soundBtn" aria-label="關閉聲音 (V)" aria-pressed="true" title="關閉聲音 (V)"><svg><use href="#i-sound"/></svg></button><button id="helpBtn" aria-label="駕駛操作指南 (H)" title="駕駛操作指南 (H)"><svg><use href="#i-help"/></svg></button><button id="pauseBtn" aria-label="暫停 (P)" title="暫停 (P)"><svg><use href="#i-pause"/></svg></button></div>
+<aside class="rank-guide" id="rankGuide" aria-label="的士站候客指引" hidden>
+  <div class="rank-guide-copy">
+    <div class="rank-guide-location"><strong id="guideStandName"></strong><span id="guideStandDistance" title="距候客位的直線距離"></span></div>
+    <p id="guideStandAction" role="status"></p>
+  </div>
+  <button type="button" id="dismissRankGuide" aria-label="關閉候客指引" title="關閉候客指引"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+</aside>
 <section id="signalHUD" class="signalhud" hidden aria-label="前方交通燈">
 <div id="signalTower" class="signalTower" aria-hidden="true"><i></i><i></i><i></i></div>
 <div class="signalText"><small>前方交通燈</small><b id="signalAdvice"></b></div><span class="signalDistance"><b id="signalMetres"></b> m</span>
@@ -59,19 +66,69 @@
 <div class="touch"><div><button data-key="left" aria-label="左轉"><svg><use href="#i-left"/></svg></button><button data-key="right" aria-label="右轉"><svg><use href="#i-right"/></svg></button></div><div><button data-key="brake" aria-label="煞車及倒車"><svg><use href="#i-brake"/></svg></button><button data-key="throttle" class="accelerator" aria-label="加速"><svg><use href="#i-gas"/></svg></button></div></div>
 </div>
 <template id="driverGuide">
+  <div class="guide-controls">
+    <section>
+      <h2>駕駛</h2>
+      <dl>
+        <dt>加速</dt><dd><kbd>W</kbd> 或 <kbd>↑</kbd></dd>
+        <dt>煞車，停定後按住倒車</dt><dd><kbd>S</kbd> 或 <kbd>↓</kbd></dd>
+        <dt>左轉</dt><dd><kbd>A</kbd> 或 <kbd>←</kbd></dd>
+        <dt>右轉</dt><dd><kbd>D</kbd> 或 <kbd>→</kbd></dd>
+        <dt>手掣</dt><dd><kbd>空白鍵</kbd></dd>
+      </dl>
+    </section>
+    <section>
+      <h2>喇叭、聲音與車燈</h2>
+      <dl>
+        <dt>按喇叭（響號）</dt><dd><kbd>B</kbd></dd>
+        <dt>靜音／恢復聲音</dt><dd><kbd>V</kbd></dd>
+        <dt>開燈／關燈</dt><dd><kbd>L</kbd></dd>
+        <dt>恢復自動車燈</dt><dd><kbd>Shift</kbd> + <kbd>L</kbd></dd>
+      </dl>
+    </section>
+    <section>
+      <h2>視角</h2>
+      <dl>
+        <dt>切換五個駕駛視角</dt><dd><kbd>C</kbd></dd>
+        <dt>駕駛席望左／望右</dt><dd>按住 <kbd>Q</kbd>／<kbd>E</kbd></dd>
+        <dt>拉近／拉遠鏡頭</dt><dd><kbd>+</kbd> 或 <kbd>=</kbd>／<kbd>−</kbd></dd>
+      </dl>
+      <p>左右拖動可轉動視角，滾輪可調整遠近。</p>
+    </section>
+    <section>
+      <h2>地圖與選單</h2>
+      <dl>
+        <dt>開啟／關閉街區地圖</dt><dd><kbd>M</kbd></dd>
+        <dt>暫停／繼續駕駛</dt><dd><kbd>Esc</kbd> 或 <kbd>P</kbd></dd>
+        <dt>開啟／關閉操作指南</dt><dd><kbd>H</kbd></dd>
+        <dt>選單移到下一項／上一項</dt><dd><kbd>Tab</kbd>／<kbd>Shift</kbd> + <kbd>Tab</kbd></dd>
+      </dl>
+    </section>
+    <section>
+      <h2>在地圖上</h2>
+      <dl>
+        <dt>平移地圖</dt><dd><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd></dd>
+        <dt>放大／縮小</dt><dd><kbd>+</kbd> 或 <kbd>=</kbd>／<kbd>−</kbd></dd>
+        <dt>定位車輛（選站時顯示全圖）</dt><dd><kbd>Home</kbd></dd>
+      </dl>
+      <p>拖動可平移，滾輪或雙指可縮放。雙擊放大，按住 <kbd>Shift</kbd> 雙擊縮小。</p>
+    </section>
+    <section>
+      <h2>搜尋地點</h2>
+      <dl>
+        <dt>選上一個／下一個搜尋結果</dt><dd><kbd>↑</kbd>／<kbd>↓</kbd></dd>
+        <dt>選取地點</dt><dd><kbd>Enter</kbd></dd>
+        <dt>收起搜尋結果</dt><dd><kbd>Esc</kbd></dd>
+      </dl>
+    </section>
+  </div>
+  <!-- Local explorer controls -->
   <ol class="guide-tips">
     <li>在地圖選「的士站」，駛入標示 <b>TAXI</b> 的候客位停定。</li>
     <li>遊戲內每天早上 <b>6 點</b>會自動扣除 <b>HK$50</b> 的士日租。</li>
   </ol>
-  <details class="guide-keys"><summary>基本按鍵</summary>
-    <div class="helpgrid">
-      <div>加速 <kbd>W / ↑</kbd></div><div>煞車或倒車 <kbd>S / ↓</kbd></div>
-      <div>向左轉 <kbd>A / ←</kbd></div><div>向右轉 <kbd>D / →</kbd></div>
-      <div>開啟地圖 <kbd>M</kbd></div><div>暫停或繼續 <kbd>Esc</kbd></div>
-    </div>
-  </details>
 </template>
 <dialog id="restDialog" aria-labelledby="restTitle" aria-describedby="restWake"><h2 id="restTitle" tabindex="-1" autofocus>休息中</h2><p id="restWake"></p><div class="rest-track" aria-hidden="true"></div></dialog>
 <div id="overlay" hidden><section class="panel" role="dialog" aria-modal="true" aria-labelledby="panelTitle"><header><div><small id="panelKicker"></small><h1 id="panelTitle"></h1></div><button id="closePanel" class="iconbtn" aria-label="關閉"><svg><use href="#i-close"/></svg></button></header><div id="panelBody"></div></section></div>
 </main>
-<script src="vendor/three.min.js?v=170c6789f432"></script><script src="map.js?v=8965acfb65ff"></script><script src="crossing-data.js?v=65cf73b24524"></script><script src="north-data.js?v=53996a2bc33d"></script><script src="mong-kok-data.js?v=5c25097cc371"></script><script src="mong-kok.js?v=ddf28d7525f7"></script><script src="tai-kok-tsui-data.js?v=ea735d545b3e"></script><script src="tai-kok-tsui.js?v=f9f16449dd8b"></script><script src="west-kowloon-data.js?v=44971a7ef08d"></script><script src="west-kowloon.js?v=99a626fd07ff"></script><script src="north.js?v=549f1b19de87"></script><script src="taxi-ranks.js?v=1e210be23c69"></script><script src="west-tunnel-data.js?v=f12f66a784ba"></script><script src="west-tunnels.js?v=152abb8fe6d4"></script><script src="crossing-marks.js?v=0e1116b57ce7"></script><script src="detail-data.js?v=8bd5913e2437"></script><script src="heritage-architecture.js?v=cf68690159c3"></script><script src="harbour-places.js?v=0ebdf37e9a67"></script><script src="temple-market-data.js?v=74c6f8291e07"></script><script src="yau-ma-tei-places.js?v=95d7cc7df5c1"></script><script src="district-landmarks.js?v=1d3ed6b2001c"></script><script src="crown-comfort.js?v=edb8ea2a3ba6"></script><script src="models.js?v=36f510a09cb0"></script><script src="turns-data.js?v=97f84658b90a"></script><script src="driving.js?v=b7ec496b6b34"></script><script src="stops.js?v=b70908196c75"></script><script src="signals.js?v=e69bd1181638"></script><script src="traffic.js?v=2bbb25c80cc0"></script><script src="cockpit.js?v=c592ad68f41b"></script><script src="nathan-data.js?v=d8005e663ab7"></script><script src="nathan-frontages.js?v=87310c509b11"></script><script src="underpass.js?v=195df24f8931"></script><script src="mong-kok-places-data.js?v=f1808a25d2e0"></script><script src="tai-kok-tsui-places.js?v=b42a11197598"></script><script src="tai-kok-tsui-models.js?v=e7dd88dbebec"></script><script src="west-kowloon-places.js?v=618a3dd88387"></script><script src="west-kowloon-models.js?v=6b32618da4f6"></script><script src="mong-kok-streets.js?v=05bc84ab0e5d"></script><script src="ground-tiles.js?v=b18f60e95418"></script><script src="scenery-stream.js?v=df5b45d3e4d8"></script><script src="day-cycle.js?v=93585ceb2cd2"></script><script src="wallet.js?v=590afdae6954"></script><script src="street-lights.js?v=b535f2d449a4"></script><script src="world.js?v=000bad75bd69"></script><script src="sources.js?v=d50193ad9ca1"></script><script src="sound.js?v=a61f5b5602c7"></script><script src="map-cartography.js?v=000ab5a8a9ee"></script><script src="district-map.js?v=8abab605dde2"></script><script src="taxi-service.js?v=0bc7f2e0a1f3"></script><script src="taxi-stands.js?v=6bf72e14931f"></script><script src="game.js?v=dd2faba7dc8a"></script></body></html>
+<script src="vendor/three.min.js?v=170c6789f432"></script><script src="map.js?v=8965acfb65ff"></script><script src="crossing-data.js?v=65cf73b24524"></script><script src="north-data.js?v=692deac705c1"></script><script src="mong-kok-data.js?v=5c25097cc371"></script><script src="mong-kok.js?v=ddf28d7525f7"></script><script src="tai-kok-tsui-data.js?v=ea735d545b3e"></script><script src="tai-kok-tsui.js?v=f9f16449dd8b"></script><script src="west-kowloon-data.js?v=44971a7ef08d"></script><script src="west-kowloon.js?v=99a626fd07ff"></script><script src="hung-hom-data.js?v=cb86a4d82f18"></script><script src="hung-hom.js?v=113781a1c490"></script><script src="to-kwa-wan-data.js?v=65c24225db46"></script><script src="to-kwa-wan.js?v=c1cfe999d449"></script><script src="north.js?v=c3c8f7b29ab9"></script><script src="taxi-ranks.js?v=1e210be23c69"></script><script src="west-tunnel-data.js?v=f12f66a784ba"></script><script src="west-tunnels.js?v=152abb8fe6d4"></script><script src="crossing-marks.js?v=0e1116b57ce7"></script><script src="detail-data.js?v=8bd5913e2437"></script><script src="heritage-architecture.js?v=cf68690159c3"></script><script src="harbour-places.js?v=0ebdf37e9a67"></script><script src="temple-market-data.js?v=74c6f8291e07"></script><script src="yau-ma-tei-places.js?v=95d7cc7df5c1"></script><script src="district-landmarks.js?v=1d3ed6b2001c"></script><script src="crown-comfort.js?v=edb8ea2a3ba6"></script><script src="models.js?v=36f510a09cb0"></script><script src="turns-data.js?v=db67a96042cd"></script><script src="hung-hom-guide.js?v=39ad4c954384"></script><script src="to-kwa-wan-guide.js?v=0b114e711264"></script><script src="driving.js?v=d986758a9d9d"></script><script src="stops.js?v=b70908196c75"></script><script src="signals.js?v=e69bd1181638"></script><script src="traffic.js?v=2bbb25c80cc0"></script><script src="cockpit.js?v=c592ad68f41b"></script><script src="nathan-data.js?v=d8005e663ab7"></script><script src="nathan-frontages.js?v=87310c509b11"></script><script src="underpass.js?v=195df24f8931"></script><script src="mong-kok-places-data.js?v=f1808a25d2e0"></script><script src="tai-kok-tsui-places.js?v=b42a11197598"></script><script src="tai-kok-tsui-models.js?v=e7dd88dbebec"></script><script src="west-kowloon-places.js?v=618a3dd88387"></script><script src="west-kowloon-models.js?v=7e9396942953"></script><script src="hung-hom-places.js?v=c067b397e841"></script><script src="hung-hom-models.js?v=c27b8cbd4746"></script><script src="to-kwa-wan-places.js?v=5471cfeaa96b"></script><script src="to-kwa-wan-models.js?v=ef458b6353d4"></script><script src="mong-kok-streets.js?v=4ee79b5511ce"></script><script src="ground-tiles.js?v=a52bac0acdf3"></script><script src="scenery-stream.js?v=df5b45d3e4d8"></script><script src="day-cycle.js?v=93585ceb2cd2"></script><script src="wallet.js?v=590afdae6954"></script><script src="street-lights.js?v=1bb95fe7d0a7"></script><script src="world.js?v=82cf4d0aae4e"></script><script src="sources.js?v=3e1b418b505e"></script><script src="sound.js?v=a61f5b5602c7"></script><script src="map-cartography.js?v=0a8c03bd187e"></script><script src="district-map.js?v=f7e3ef15e809"></script><script src="taxi-service.js?v=e8066046137e"></script><script src="taxi-stands.js?v=6bf72e14931f"></script><script src="game.js?v=4815f09048b8"></script></body></html>

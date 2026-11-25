@@ -13,6 +13,8 @@
   const roadSpeedLimit = road => (mainRoads.has(road.cls) ? 70 : 40) / 3.6;
   const corners = [[L, W], [L, -W], [-L, W], [-L, -W], [L, 0], [-L, 0], [0, W], [0, -W], [0, 0]];
   const locations = [
+    ...(window.HKHungGuide?.places||[]),
+    ...(window.HKToKwaWanGuide?.places||[]),
     ["salisbury", "半島酒店", "The Peninsula", 114.17156, 22.29474, "Salisbury Road"],
     ["ferry", "天星碼頭", "Star Ferry Pier", 114.169194, 22.294144, "Salisbury Road"],
     ["harbour", "海港城", "Harbour City", 114.16877, 22.29831, "Canton Road"],
@@ -292,6 +294,10 @@
     function pavementAt(x, z, mask) {
       for (const s of roadsGrid.at(x, z)) {
         if (!(mask & s.bit)) continue;
+        if (s.road.fork) {
+          if (inRing(x,z,s.road.fork.outline)) return true;
+          continue;
+        }
         const along = clamp((x - s.a[0]) * s.dx + (z - s.a[1]) * s.dz, 0, s.len);
         const ex = x - s.a[0] - along * s.dx, ez = z - s.a[1] - along * s.dz;
         if (ex * ex + ez * ez <= (s.half + 0.28) ** 2) return true;
@@ -455,10 +461,24 @@
         }
       }
       if (!Number.isFinite(best)) return null;
-      const points = [[from.x, from.z]], layers = [];
+      const points = [[from.x, from.z]], layers = [], forkTurns = {};
       function append(point, segment) {
         const p = points.at(-1);
         if (magnitude(point[0] - p[0], point[1] - p[1]) < .001) return;
+        const fork = segment.road.fork;
+        if (fork) {
+          const along = q => ((q[0]-segment.a[0])*segment.dx+(q[1]-segment.a[1])*segment.dz)/segment.len;
+          const start = along(p), end = along(point);
+          const middle = ([a,b]) => [(a[0]+b[0])/2,(a[1]+b[1])/2];
+          if (start < .0001) {
+            forkTurns[points.length-1] = fork.turn;
+            if (points.length>1) points[points.length-1] = middle(fork.rows[0]);
+          }
+          for (let i=1; i<fork.rows.length-1; i++) {
+            const t = i/(fork.rows.length-1);
+            if (t>start && t<end) {points.push(middle(fork.rows[i])); layers.push(segment.layer);}
+          }
+        }
         points.push(point); layers.push(segment.layer);
       }
       if (!direct) {
@@ -470,7 +490,7 @@
         for (const edge of steps.reverse()) append(nodes[edge.to].point, edge.segment);
       }
       append([to.x, to.z], tail?.segment || t);
-      return { points, layers, cost: best };
+      return { points, layers, forkTurns, cost: best };
     }
 
     function shortestRoadDistance(from,to) {
@@ -495,7 +515,7 @@
         routeLengths.push(routeLengths[i - 1] + magnitude(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
       }
       const total = routeLengths.at(-1);
-      route = { target, destinationLayer:path.layer, points, layers, total, remaining: total, arrived: false, progress: 0, nextTurn: "straight", turnDistance: total };
+      route = { target, destinationLayer:path.layer, points, layers, forkTurns:path.forkTurns, total, remaining: total, arrived: false, progress: 0, nextTurn: "straight", turnDistance: total };
       updateRoute(0);
       return route;
     }
@@ -528,6 +548,9 @@
         const a = points[i - 1], b = points[i], c = points[i + 1];
         const u = Math.atan2(b[0] - a[0], a[1] - b[1]), v = Math.atan2(c[0] - b[0], b[1] - c[1]);
         const turn = Math.atan2(Math.sin(v - u), Math.cos(v - u));
+        if (routeLengths[i] >= progress + 1 && route.forkTurns[i]) {
+          route.nextTurn = route.forkTurns[i]; route.turnDistance = routeLengths[i] - progress; break;
+        }
         if (Math.abs(turn) > 0.62 && routeLengths[i] >= progress + 1) {
           route.nextTurn = Math.abs(turn) > 2.6 ? "u-turn" : turn > 0 ? "right" : "left";
           route.turnDistance = routeLengths[i] - progress;

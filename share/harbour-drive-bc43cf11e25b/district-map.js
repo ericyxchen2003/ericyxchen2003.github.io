@@ -101,7 +101,7 @@ window.HKDistrictMap=(()=>{
         '<div class="dm-find"><div class="dm-search"><span class="dm-brand" aria-hidden="true">'+icon('map')+'</span><input type="text" role="combobox" aria-label="搜尋地點或街道" aria-autocomplete="list" aria-expanded="false" aria-controls="dm-results" placeholder="搜尋地點或街道" autocomplete="off" spellcheck="false"><button class="dm-search-action" type="button" aria-label="搜尋">'+icon('search')+'</button></div>'+
         '<div id="dm-results" class="dm-results" role="listbox" aria-label="搜尋結果" hidden></div><div class="dm-filters" aria-label="地點類別"></div></div>'+
         '<div class="dm-card" hidden></div><div class="dm-tools"></div>'+
-        '<div class="dm-caption"><b>港路地圖</b><span class="dm-scale"></span></div><span class="dm-credit">© OpenStreetMap · 香港地政總署</span>';
+        '<div class="dm-caption"><b>街區地圖</b><span class="dm-scale"></span></div><span class="dm-credit">© OpenStreetMap · 香港地政總署</span>';
       parent.append(root);
       const get=sel=>root.querySelector(sel),canvas=get('canvas'),ctx=canvas.getContext('2d'),pinsEl=get('.dm-pins'),find=get('.dm-find'),input=get('input'),results=get('.dm-results'),card=get('.dm-card'),filters=get('.dm-filters'),tools=get('.dm-tools'),scale=get('.dm-scale');
       const controller=new AbortController(),signal=controller.signal;
