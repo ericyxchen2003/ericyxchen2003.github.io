@@ -186,6 +186,8 @@
 
 樓宇以地政總署測量輪廓、底部與頂部標高建模。紅館、觀音廟、黃埔號、嘉里酒店和理大創新樓另建外殼。政府合署、校園、酒店及殯儀館補上立面細節。紅磡站南北的士候客位在站前高架層，紅鸞道候客位在公共運輸交匯處內。公園、海濱步道、天橋及行人隧道按可用的步行資料取樣。沿岸座椅、涼亭、燈具和食肆招牌為代表性街景，時新快餐店標示黃埔街舊址。[地政總署建築物](https://portal.csdi.gov.hk/server/rest/services/common/landsd_rcd_1637211194312_35158/MapServer/0) · [真正射影像](https://data.gov.hk/en-data/dataset/hk-landsd-openmap-true-digital-orthophoto) · [康文署香港體育館](https://www.lcsd.gov.hk/en/hkc/aboutus/abouthongkongcoliseum.html) · [觀音廟歷史建築評估](https://www.aab.gov.hk/filemanager/aab/common/historicbuilding/en/122_Appraisal_En.pdf)
 
+理大賽馬會創新樓的兩片塔樓屋頂與南側低座按地政總署真正射影像分開描繪，斜頂、外牆百葉與夜間照明為遊戲近似重建。[理大設計學院建築介紹](https://www.polyu.edu.hk/en/sd/school/jockey-club-innovation-tower/) · [理大校園剖面圖 LA-22](https://www.tpb.gov.hk/tc/plan_application/Attachment/20220809/s16_A_K1_266_0_gist.pdf)
+
 ## 土瓜灣、馬頭角及宋皇臺
 
 本圖幅接上紅磡和何文田，向北延伸至太子道西，向東至啟德隧道西端。地形以地政總署五米高程格網平滑，再對齊舊區邊界。地面路網、高架和地道依道路方向及層級建模，橋面高程、護牆、匝道坡度和隧道斷面為近似值。道路平面位置另與運輸署中心線比對。[地政總署數碼地形模型](https://data.gov.hk/en-data/dataset/hk-landsd-openmap-5m-grid-dtm) · [運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)
@@ -196,3 +198,21 @@
 何文田沿用旺角、紅磡及土瓜灣的相連測繪圖幅，保留窩打老道谷地、何文田山及屋邨山坡。住宅、校舍和基座沿用地政總署建築輪廓與屋頂標高。遊戲街區範圍用於地圖標籤；歷史地名及今日社區有重疊。
 道路以 OpenStreetMap 為本，另按運輸署[道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)核對位置。治民街、忠孝街的士站參考運輸署站點，候客灣及步徑燈具按遊戲車身、地形及通行空間布置。
 香港都會大學的正校園、銀禧學院及賽馬會健康護理學院參考[校方校園資料](https://admissions.hkmu.edu.hk/ug/infoday2026/)及[銀禧學院外牆遮陽設計](https://www.news.gov.hk/en/categories/environment/html/2015/07/20150730_163626.lin.shtml)。東華學院京士柏與旺角校舍參考[校方設施資料](https://www.twc.edu.hk/en/Administration_Units/fmo/college_facility/kings_park_campus)。窗格、入口及晚上亮燈分布經簡化。
+
+## 九龍城舊區與寨城公園
+
+2026 年 11 月整理。九龍城舊區沿用土瓜灣圖幅已有的街網，新增的北面圖幅接通聯合道、賈炳達道、沙浦道及相鄰街道。地形以地政總署 5 米數碼地形模型及測量高程平滑處理，地面影像採用 T11-NW-B、T11-NE-A 正射影像。新舊批次的跨界樓宇按重疊輪廓與屋頂標高核對。道路與步徑源自 [OpenStreetMap](https://www.openstreetmap.org/copyright)，車路位置另與運輸署道路中心線核對。的士站採用運輸署位置，候客灣闊度按遊戲車身與行車線淨空調整。
+九龍城廣場與街市保留測量輪廓，以臨街招牌、商場窗帶及街市出入口區分兩者。[九龍城廣場](https://www.kowlooncityplaza.com/aboutus)及[食環署街市名單](https://www.fehd.gov.hk/english/pleasant_environment/tidy_market/market_goods.pdf)
+公園依現址配置衙府、南門遺蹟、亭樓、池塘及步徑。園內亭頂、侯王古廟屋脊及創意書院立面按參考資料簡化。夜間窗光、燈具位置和食街招牌屬遊戲設計。[康文署九龍寨城公園](https://www.lcsd.gov.hk/en/parks/kwcp/index.html)、[古物古蹟辦事處侯王古廟](https://www.amo.gov.hk/en/historic-buildings/monuments/kowloon/monuments_108/index.html)、[創意書院建築師項目資料](https://www.rocco.hk/?lang=en&p=hkicc-lee-shau-kee-school-of-creativity&view=projects%2Call)及[旅發局九龍城街區介紹](https://www.discoverhongkong.com/eng/neighbourhoods/kowloon-city/explore-local-culture-in-kowloon-city.html)
+
+## 九龍塘、又一村與筆架山
+
+2026 年 11 月整理。新圖幅由舊圖北緣接往達之路、歌和老街、聯合道及筆架山山脊。界限街至歌和老街之間沿用已建街網。沿線平房及低層住宅依 OSM 用途與地政總署樓宇輪廓配對。地面採用 T11-NW-B 正射影像及五米高程格網。高架橋台及地下引道以道路相交次序、車寬和通行淨空擬合。窩打老道共用橋面在遊戲採用固定雙向車道。獅子山隧道只到北面圖界，筆架山的士目的地在公共道路山腳。[地政總署街道圖](https://www.landsd.gov.hk/doc/en/mapping/ehkg/MapPages/GeoPDF/KN07_KowloonTong_MaTauWai.pdf)、[運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)、[港鐵九龍塘站街道圖](https://www.mtr.com.hk/archive/ch/services/maps/kot.pdf)。
+
+又一城保留長形玻璃天窗；城大包括楊建文學術樓和邵逸夫創意媒體中心。浸大校舍、浸信會醫院、廣播大廈、建新中心和教育服務中心按現址配置。宗教建築、夏利萊大宅、聖德肋撒堂和中電鐘樓均採簡化外觀。理想酒店以根德道舊址作搜尋名稱，地面顯示現址樓宇。燈光及住宅外牆以遊戲時間和場景表現設計。[又一城設計](https://arquitectonica.com/interiors/project/festival-walk/)、[創意媒體中心建築設計](https://libeskind.com/work/the-run-shaw-creative-media-centre/)、[城大校園圖](https://www.cityu.edu.hk/cdo/download/CampusDirectory.pdf)、[中國香港聖殿](https://www.churchofjesuschrist.org/temples/details/hong-kong-china-temple?lang=eng)、[中電鐘樓建築](https://www.clpulse.com/en/meet-clpulse/architecture.html)。
+
+## 啟德北停機坪、體育園及舊跑道
+
+2026 年 11 月整理。範圍包括太子道東南面的北停機坪、承啟道、承豐道、前跑道及郵輪碼頭，接回九龍城和土瓜灣原有街網。路線、通行方向及步徑取自 OpenStreetMap，另以運輸署道路中心線核對承豐道、啟德隧道、承啟道、啟新道、沐寧街和協調道。地面按地政總署五米地形及測量點平滑處理，海岸、避風塘和跑道之間保留水面。立交、洞口及場館平台的標高依接點、車道闊度與通車淨空擬合。郵輪碼頭和沐寧街的士站依運輸署位置配對到行車方向和候客位。[運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)、[運輸署的士站](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html)、[土木工程拓展署跑道基建](https://www.cedd.gov.hk/eng/our-projects/major-projects/index-id-78.html)。
+
+啟德體育園重建主場館外殼、開頂球場、體藝館立面及青年運動場跑道。AIRSIDE 的塔樓、摺紋玻璃及退台、稅務中心的橫向窗帶、工業貿易大樓的垂直綠化帶及郵輪碼頭按測量樓體與外觀資料製作。夜間窗帶、場館外環和步徑燈具採用遊戲燈光。跑道公園設有航空展示。宋皇臺公園以發展計劃的規劃用地標示，宋王臺花園及其石刻保留在現址，兩處可分別搜尋。[啟德體育園建築設計](https://populous.com/kai-tak-sports-park-a-gift-to-hong-kong)、[AIRSIDE 建築設計](https://www.snohetta.com/projects/airside)、[工業貿易大樓設計](https://www.wongtung.com/en/projects/trade-and-industry-tower/)、[稅務中心](https://www.ird.gov.hk/eng/abo/relocate.htm)、[啟德發展計劃](https://www.ktd.gov.hk/tchina/programmeandprogress.html)、[用地位置圖](https://www.districtcouncils.gov.hk/kc/doc/2024_2027/tc/committee_meetings_doc/TTC/29920/42.pdf)。

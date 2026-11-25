@@ -69,11 +69,12 @@ window.HKWorld = (() => {
         }
       }
       natural=(x,z)=>z>=patch.z?southern(x,z):z<=strip.z?coarse(x,z):triangle(transition,strip.nx,strip.nz,x-strip.x,z-strip.z);
-      for(const p of [grid.west,grid.coast,grid.hungHom,grid.toKwaWan].filter(Boolean)){
-        const bytes=atob(p.cm), values=new Int16Array(p.nx*p.nz);
+      for(const p of [grid.west,grid.coast,grid.kaiTak,grid.hungHom,grid.toKwaWan,grid.kowloonTong,grid.kowloonCity].filter(Boolean)){
+        const halo=p===grid.kowloonTong?18:0;
+        const bytes=atob(p.cm), values=p.unsigned?new Uint16Array(p.nx*p.nz):new Int16Array(p.nx*p.nz);
         for(let i=0;i<values.length;i++)values[i]=bytes.charCodeAt(i*2)|(bytes.charCodeAt(i*2+1)<<8);
         const east=natural;
-        natural=(x,z)=> ((p===grid.hungHom || p===grid.toKwaWan) ? x<=p.x+(p.nx-1)*p.step : x<north.x) && x>=p.x && z>=p.z && z<=p.z+(p.nz-1)*p.step
+        natural=(x,z)=> ((p===grid.kaiTak || p===grid.hungHom || p===grid.toKwaWan || p===grid.kowloonCity || p===grid.kowloonTong) ? x<=p.x+(p.nx-1)*p.step+halo : x<north.x) && x>=p.x-halo && z>=p.z-halo && z<=p.z+(p.nz-1)*p.step
           ?triangle(values,p.nx,p.nz,(x-p.x)/p.step,(z-p.z)/p.step)*.01:east(x,z);
       }
       const station=window.HKHungHom?.stationTerrain;
@@ -155,6 +156,14 @@ window.HKWorld = (() => {
               if(from<28){
                 const bank=startGap<endGap?d.p[0]:end,u=from/28;
                 result+=(ground(x-px+bank[0],z-pz+bank[1])-bank[2])*(1-u*u*(3-2*u));
+              }
+            }
+            if(d.landings){
+              for(const [ox,oz,y,gx,gz,inner,outer,worldSpace] of d.landings){
+                const dist=worldSpace?Math.hypot(x-ox,z-oz):Math.hypot(a[0]+t*dx-ox,a[1]+t*dz-oz);
+                if(dist>=outer)continue;
+                const w=limit((outer-dist)/(outer-inner),0,1);
+                result=lerp(result,y+gx*(x-ox)+gz*(z-oz),w*w*(3-2*w));
               }
             }
             if(d.forkPlane){
@@ -341,7 +350,7 @@ window.HKWorld = (() => {
     c.save();c.globalAlpha=.95;paint(true,paving);c.globalAlpha=.97;paint(false,pattern);c.restore();
   }
   function landMesh(map,height,scene,ribbons,stream,bake){
-    const portalCells=[...(window.HKHungHom?.portals?.cells||[]),...(window.HKToKwaWan?.portalCells||[])];
+    const portalCells=[...(window.HKHungHom?.portals?.cells||[]),...(window.HKToKwaWan?.portalCells||[]),...(window.HKKowloonTong?.portalCells||[]),...(window.HKKaiTak?.portalCells||[])];
     let sheet=0;
     function groundTile(bounds,aerial){
     const [x0,z0,x1,z1]=bounds, w=x1-x0,h=z1-z0;
@@ -351,10 +360,23 @@ window.HKWorld = (() => {
       c.strokeStyle='#d6cfb9';c.lineCap='round';c.lineJoin='round';
       for(const path of map.paths||[]){c.beginPath();c.lineWidth=path.w||2;c.moveTo(...path.p[0]);for(const pt of path.p.slice(1))c.lineTo(...pt);c.stroke();}
       if(aerial){c.globalCompositeOperation='source-atop';c.globalAlpha=.68;c.drawImage(aerial,x0,z0,w,h);c.globalAlpha=1;c.globalCompositeOperation='source-over';}
+      if(region===7)polygons(c,window.HKKowloonGarden?.features.filter(f=>f.kind==='pond'),'#739686');
       for(const path of window.HKMongKokPlaces?.walks||[]){c.strokeStyle='#bcb4a3';c.lineWidth=path.w;c.beginPath();c.moveTo(...path.p[0]);for(const pt of path.p.slice(1))c.lineTo(...pt);c.stroke();}
       window.HKHarbourPlaces?.paint(c);
       window.HKFrontages?.paintPavement(c);
       if(map.elementsDeck)polygons(c,[map.elementsDeck],'#9d9e97');
+      if(region===6&&window.HKKaiTakParks?.pitch){
+        const [a,b,d]=HKKaiTakParks.pitch, width=Math.hypot(b[0]-a[0],b[1]-a[1]),length=Math.hypot(d[0]-b[0],d[1]-b[1]);
+        c.save();c.translate((a[0]+d[0])/2,(a[1]+d[1])/2);c.rotate(Math.atan2(b[1]-a[1],b[0]-a[0]));
+        const oval=r=>{c.beginPath();c.roundRect(-r,-42-r,2*r,84+2*r,r);};
+        oval(46);c.fillStyle='#ac6658';c.fill();c.strokeStyle='#dfbcb0';c.lineWidth=.19;
+        for(let lane=1;lane<9;lane++){oval(46-lane*1.22);c.stroke();}
+        oval(35);c.fillStyle='#698c5b';c.fill();c.strokeStyle='#d6d6ba';c.lineWidth=.35;
+        c.strokeRect(-width/2,-length/2,width,length);c.beginPath();c.moveTo(-width/2,0);c.lineTo(width/2,0);c.stroke();
+        c.beginPath();c.arc(0,0,9.15,0,TAU);c.stroke();
+        for(const sign of [-1,1])c.strokeRect(-20.16,sign*length/2,40.32,-sign*16.5);
+        c.restore();
+      }
       paintRoadNetwork(c,ribbons,bounds);
       height.underpass?.cutTerrain(c);window.HKNorthWorks?.cutTerrain(c);
       c.save();c.globalCompositeOperation='destination-out';polygons(c,window.HKMongKokPlaces?.mouths,'#fff');c.restore();
@@ -414,7 +436,13 @@ window.HKWorld = (() => {
       tiled(ax,p.z,p.x,south,step);tiled(east,p.z,bx,south,step);
       partition(p.x,p.z,east,south,p.step,p.inset);
     }
-    if(region>=3)tiled(x0,z0,x1,z1,map.terrain.west.step);
+    if(region===9){
+      const city=HKKowloonCity.bounds,wan=HKToKwaWan.bounds;
+      tiled(x0,z0,x1,city[1],5);tiled(city[2],city[1],x1,wan[1],5);tiled(wan[2],wan[1],x1,z1,5);
+    }else if(region===8){
+      const [left,top]=HKKowloonCity.bounds;
+      tiled(x0,z0,x1,top,5);tiled(x0,top,left,z1,5);
+    }else if(region>=3)tiled(x0,z0,x1,z1,map.terrain.west.step);
     else if(z0===map.terrain.relief.z)partition(x0,z0,x1,z1,5,map.terrain.relief);
     else if(z1<=window.HKNorth.photoBounds?.[1]) tiled(x0,z0,x1,z1,map.terrain.north.step);
     else {
@@ -428,11 +456,14 @@ window.HKWorld = (() => {
     if(map.terrain.north){
       const mid=window.HKNorth.photoBounds||[map.bounds[0],map.bounds[1],map.bounds[2],south[1]];
       groundTile(mid,window.HK_NORTH_AERIAL);
-      if(mid[1]>map.bounds[1])groundTile([mid[0],map.bounds[1],mid[2],mid[1]],window.HK_MK_AERIAL);
+      if(mid[1]>map.terrain.north.z)groundTile([mid[0],map.terrain.north.z,mid[2],mid[1]],window.HK_MK_AERIAL);
       if(map.terrain.west)groundTile(HKTaiKokTsui.bounds,window.HK_WEST_AERIAL);
       if(map.terrain.coast)groundTile(HKWestKowloon.bounds,window.HK_COAST_AERIAL);
       if(map.terrain.hungHom)groundTile(HKHungHom.bounds,window.HK_HUNG_AERIAL);
       if(map.terrain.toKwaWan)groundTile(HKToKwaWan.bounds,window.HK_TKW_AERIAL);
+      if(map.terrain.kowloonCity)groundTile(HKKowloonCity.bounds,window.HK_KC_AERIAL);
+      if(map.terrain.kowloonTong)groundTile(HKKowloonTong.bounds,window.HK_KT_AERIAL);
+      if(map.terrain.kaiTak)groundTile(HKKaiTak.bounds,window.HK_KAI_AERIAL);
     }
   }
   function seaWall(map,height,scene){
@@ -444,15 +475,12 @@ window.HKWorld = (() => {
         batch.quad([p[0],-1,p[1]],[q[0],-1,q[1]],[q[0],height(...q)-.08,q[1]],[p[0],height(...p)-.08,p[1]],light,[0,0,1,1],dark);}
     }}batch.mesh(flatBatch(),scene,false);
   }
-  function sea(scene,tunnel){
-    const tex=canvasTexture(512,512,(c,w,h)=>{
-      c.fillStyle='#568e90';c.fillRect(0,0,w,h);const rand=rng(217);
-      for(let i=0;i<11500;i++){const x=rand()*w,y=rand()*h,len=1+rand()**3*28;c.strokeStyle=rand()>.46?'rgba(212,232,209,'+(rand()*.38)+')':'rgba(22,76,86,'+(rand()*.34)+')';c.lineWidth=.6+rand()*.9;c.beginPath();c.moveTo(x,y);c.quadraticCurveTo(x+len*.6,y-1,x+len,y-1+rand()*1.2);c.stroke();}
-    },true);tex.repeat.set(90,90);
+  function waterGeometry(tunnel){
     let plane;
+    const extent=Math.max(3250,...HKMAP.bounds.map(v=>Math.abs(v)+1500));
     if(tunnel){
-      const boundary=new T.Shape();boundary.moveTo(-3250,-3250);boundary.lineTo(3250,-3250);
-      boundary.lineTo(3250,3250);boundary.lineTo(-3250,3250);boundary.closePath();
+      const boundary=new T.Shape();boundary.moveTo(-extent,-extent);boundary.lineTo(extent,-extent);
+      boundary.lineTo(extent,extent);boundary.lineTo(-extent,extent);boundary.closePath();
       const hole=new T.Path();for(const [i,[x,z]] of tunnel.waterHole.entries()){if(i)hole.lineTo(x,-z);else hole.moveTo(x,-z);}
       hole.closePath();boundary.holes.push(hole);
       for(const poly of window.HKWestTunnels?.water||window.HKNorthWorks?.water||[]){
@@ -461,8 +489,15 @@ window.HKWorld = (() => {
       plane=new T.ShapeGeometry(boundary);
       const p=plane.attributes.position,uv=plane.attributes.uv;
       for(let i=0;i<p.count;i++)uv.setXY(i,.5+p.getX(i)/6500,.5+p.getY(i)/6500);
-    }else plane=new T.PlaneGeometry(6500,6500);
-    const m=new T.Mesh(plane,new T.MeshLambertMaterial({map:tex,color:0xeefbfb}));m.rotation.x=-Math.PI/2;m.position.y=-.65;scene.add(m);return tex;
+    }else plane=new T.PlaneGeometry(2*extent,2*extent);
+    return plane;
+  }
+  function sea(scene,tunnel){
+    const tex=canvasTexture(512,512,(c,w,h)=>{
+      c.fillStyle='#568e90';c.fillRect(0,0,w,h);const rand=rng(217);
+      for(let i=0;i<11500;i++){const x=rand()*w,y=rand()*h,len=1+rand()**3*28;c.strokeStyle=rand()>.46?'rgba(212,232,209,'+(rand()*.38)+')':'rgba(22,76,86,'+(rand()*.34)+')';c.lineWidth=.6+rand()*.9;c.beginPath();c.moveTo(x,y);c.quadraticCurveTo(x+len*.6,y-1,x+len,y-1+rand()*1.2);c.stroke();}
+    },true);tex.repeat.set(90,90);
+    const m=new T.Mesh(waterGeometry(tunnel),new T.MeshLambertMaterial({map:tex,color:0xeefbfb}));m.rotation.x=-Math.PI/2;m.position.y=-.65;scene.add(m);return tex;
   }
   function flatBatch(){return new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide});}
   function nightFixtures(){
@@ -535,15 +570,15 @@ window.HKWorld = (() => {
       mat.userData.load=()=>{
         if(mat.userData.loading)return;
         mat.userData.loading=true;
-        const uri=[window.HK_PHOTO_URI,window.HK_NORTH_PHOTO_URI,window.HK_MK_PHOTO_URI,window.HK_WEST_PHOTO_URI,window.HK_COAST_PHOTO_URI,window.HK_HUNG_PHOTO_URI,window.HK_TKW_PHOTO_URI][i];
-        new T.TextureLoader().load(uri||['ground.jpg','north.jpg','mong-kok.jpg','tai-kok-tsui.jpg','west-kowloon.jpg','hung-hom.jpg','to-kwa-wan.jpg'][i],t=>{
+        const uri=[window.HK_PHOTO_URI,window.HK_NORTH_PHOTO_URI,window.HK_MK_PHOTO_URI,window.HK_WEST_PHOTO_URI,window.HK_COAST_PHOTO_URI,window.HK_HUNG_PHOTO_URI,window.HK_TKW_PHOTO_URI,window.HK_KC_PHOTO_URI,window.HK_KT_PHOTO_URI,window.HK_KAI_PHOTO_URI][i];
+        new T.TextureLoader().load(uri||['ground.jpg','north.jpg','mong-kok.jpg','tai-kok-tsui.jpg','west-kowloon.jpg','hung-hom.jpg','to-kwa-wan.jpg','kowloon-city.jpg','kowloon-tong.jpg','kai-tak.jpg'][i],t=>{
           t.colorSpace=T.SRGBColorSpace;t.anisotropy=4;mat.map=t;tex.dispose();
         },undefined,()=>{mat.userData.loading=false;});
       };
       return mat;
     }
     const mallGlass=facade(['#768f99','#bdc8cd','#61909e','#3e6978','glass'],554);
-    return [...facades,roofMat(0),occlude(flatBatch()),roofMat(1),roofMat(2),mallGlass,...(window.HKTaiKokTsui?[roofMat(3)]:[]),...(window.HKWestKowloon?[roofMat(4)]:[]),...(window.HKHungHom?[roofMat(5)]:[]),...(window.HKToKwaWan?[roofMat(6)]:[])];
+    return [...facades,roofMat(0),occlude(flatBatch()),roofMat(1),roofMat(2),mallGlass,...(window.HKTaiKokTsui?[roofMat(3)]:[]),...(window.HKWestKowloon?[roofMat(4)]:[]),...(window.HKHungHom?[roofMat(5)]:[]),...(window.HKToKwaWan?[roofMat(6)]:[]),...(window.HKKowloonCity?[roofMat(7)]:[]),...(window.HKKowloonTong?[roofMat(8)]:[]),...(window.HKKaiTak?[roofMat(9)]:[])];
   }
   function buildingGeometry(map,buildings,height,scene,props,mats,frontages){
     const bins=tileBins(),south=map.southBounds||map.bounds;
@@ -551,7 +586,7 @@ window.HKWorld = (() => {
     const roofWhite=color('#e3dfce');
     function unclose(p){return p.length>2&&p[0][0]===p.at(-1)[0]&&p[0][1]===p.at(-1)[1]?p.slice(0,-1):p;}
     for(const b of buildings){
-      if(!b.p||b.p.length<3||window.HKHoManTinModels?.replaces(b)||window.HKToKwaWanModels?.replaces(b)||window.HKHungModels?.replaces(b)||HKModels.isReplacedBuilding(b)||window.HKCoastModels?.replaces(b)||window.HKTaiModels?.replaces(b))continue;
+      if(!b.p||b.p.length<3||window.HKKaiTakModels?.replaces(b)||window.HKKowloonTongModels?.replaces(b)||window.HKKowloonCityModels?.replaces(b)||window.HKHoManTinModels?.replaces(b)||window.HKToKwaWanModels?.replaces(b)||window.HKHungModels?.replaces(b)||HKModels.isReplacedBuilding(b)||window.HKCoastModels?.replaces(b)||window.HKTaiModels?.replaces(b))continue;
       const ring=unclose(b.p), holes=(b.holes||[]).map(unclose), rings=[ring,...holes];
       const rand=rng(7417+Math.imul(Number(b.id)||0,2654435761));
       const [cx,cz]=center(ring),r=rand(),h=Math.max(1.2,b.h||8),buildingHeight=b.sourceH||h;
@@ -560,9 +595,13 @@ window.HKWorld = (() => {
       const raised=(b.base||0)>2;
       const special=window.HKMongKokStreets,style=window.HKHoManTinModels?.style(b)??window.HKToKwaWanModels?.style(b)??window.HKHungModels?.style(b)??window.HKCoastModels?.style(b)??window.HKTaiModels?.style(b)??special?.style(special.ids[b.id])??(b.foundation?5:buildingHeight>67?(r<.42?3:r<.67?6:r<.85?7:5):buildingHeight<8?5:Math.floor(r*8));
       const mid=window.HKNorth?.photoBounds||[south[0],map.bounds[1],south[2],south[1]];
-      const district=map.terrain.toKwaWan && cx>=HKToKwaWan.bounds[0] && cz<=HKToKwaWan.bounds[3]?6:map.terrain.hungHom && cx>=HKHungHom.bounds[0]?5:map.terrain.west && cx<mid[0]?(map.terrain.coast&&cz>=HKWestKowloon.bounds[1]?4:3):cz<mid[1]?2:cz<south[1]?1:0;
-      const [x0,z0,x1,z1]=district===6?HKToKwaWan.bounds:district===5?HKHungHom.bounds:district===4?HKWestKowloon.bounds:district===3?HKTaiKokTsui.bounds:district===2?[mid[0],map.bounds[1],mid[2],mid[1]]:district===1?mid:south;
-      const roofIndex=[8,10,11,13,14,15,16][district];mats[roofIndex].userData.load();
+      const kc=window.HKKowloonCity?.bounds;
+      const kt=window.HKKowloonTong?.bounds;
+      const onTong=kt && cx>=kt[0] && cx<=kt[2] && cz>=kt[1] && cz<=kt[3];
+      const kai=window.HKKaiTak?.bounds;
+      const district=b.id>=3000000&&kai?9:kc && cx>=kc[0] && cx<=kc[2] && cz>=kc[1] && cz<kc[3]?7:onTong?8:map.terrain.toKwaWan && cx>=HKToKwaWan.bounds[0] && cz<=HKToKwaWan.bounds[3]?6:map.terrain.hungHom && cx>=HKHungHom.bounds[0]?5:map.terrain.west && cx<mid[0]?(map.terrain.coast&&cz>=HKWestKowloon.bounds[1]?4:3):cz<mid[1]?2:cz<south[1]?1:0;
+      const [x0,z0,x1,z1]=district===9?kai:district===8?kt:district===7?kc:district===6?HKToKwaWan.bounds:district===5?HKHungHom.bounds:district===4?HKWestKowloon.bounds:district===3?HKTaiKokTsui.bounds:district===2?[mid[0],map.terrain.north.z,mid[2],mid[1]]:district===1?mid:south;
+      const roofIndex=[8,10,11,13,14,15,16,17,18,19][district];mats[roofIndex].userData.load();
       const walls=bins.get(cx,cz,b.stationDeck?9:style),roof=bins.get(cx,cz,b.stationDeck?9:roofIndex);
       const tint=color('#ffffff').multiplyScalar(.83+rand()*.24),base=tint.clone().multiplyScalar(.75);
       rand(); // Preserve the original seeded roof palette draw before the window offset.
@@ -923,6 +962,8 @@ window.HKWorld = (() => {
       if(!planted){const r=nearest(x,z);if(r&&r.dist<r.r.w*.53+.9)return;}
       const y=height(x,z),h=scale*(5+rand()*3.1),shade=greens[Math.floor(rand()*greens.length)];
       if(deckBounds&&x>=deckBounds.min.x&&x<=deckBounds.max.x&&z>=deckBounds.min.y&&z<=deckBounds.max.y&&inside([x,z],podium.p))return;
+      const garden=window.HKKowloonGarden;
+      if(garden&&z< -3900&&x>1760&&x<2230&&(inside([x,z],garden.templeTerrace)||garden.features.some(f=>inside([x,z],f.p))))return;
       if(!hasSpace(x,z)||window.HKDetails?.clearPlanting(x,z))return;
       if([[-1,0],[1,0],[0,1],[0,-1],[0,0]].some(([a,b])=>(height.overhead(x+a*h*.33,z+b*h*.33)??Infinity)<y+h*1.12))return;
       props.add('pole',x,y+h*.33,z,.13*scale,h*.65,.13*scale,'#807761');props.add('crown',x,y+h*.70,z,h*.32,h*.36,h*.31,shade,rand()*TAU);
@@ -1102,7 +1143,7 @@ window.HKWorld = (() => {
     const shopMats=shops.map((name,i)=>signMaterial(name,eng[i],'shop'));
     for(const b of map.buildings){
       if(window.HKMongKokStreets?.owners.has(b.id))continue;
-      if(b.foundation||b.slice||(b.base||0)>2||(b.h||0)<7||window.HKHoManTinModels?.replaces(b)||window.HKToKwaWanModels?.replaces(b)||window.HKHungModels?.replaces(b)||HKModels.isReplacedBuilding(b)||rnd()>.48)continue;
+      if(b.foundation||b.slice||(b.base||0)>2||(b.h||0)<7||window.HKKaiTakModels?.replaces(b)||window.HKKowloonTongModels?.replaces(b)||window.HKKowloonCityModels?.replaces(b)||window.HKHoManTinModels?.replaces(b)||window.HKToKwaWanModels?.replaces(b)||window.HKHungModels?.replaces(b)||HKModels.isReplacedBuilding(b)||rnd()>.48)continue;
       const ring=b.p;let chosen=null;
       for(let i=0;i<ring.length;i++){
         const p=ring[i],q=ring[(i+1)%ring.length],dx=q[0]-p[0],dz=q[1]-p[1],len=Math.hypot(dx,dz);
@@ -1341,6 +1382,9 @@ window.HKWorld = (() => {
           window.HKTaiModels?.building(b,props,signs,height,g);
           window.HKCoastModels?.building(b,props,signs,height,g);
           window.HKHungModels?.building(b,props,signs,height,g,mats);
+          window.HKKaiTakModels?.building(b,props,signs,height,g);
+          window.HKKowloonTongModels?.building(b,props,signs,height,g);
+          window.HKKowloonCityModels?.building(b,props,signs,height,g);
           window.HKToKwaWanModels?.building(b,props,signs,height,g);
         window.HKHoManTinModels?.building(b,props,signs,height,g);
         }
@@ -1356,16 +1400,20 @@ window.HKWorld = (() => {
           street.entrance(signs,x,y+3.05,z,ref);
         }
       }
+      window.HKKaiTakModels?.park(c,props,signs,height,g);
       signs.finish(g);props.flush();streetLights.bind(g);return g;
     },buildings=>{
       const batch=new Batch(),group=new T.Group(),fixtures=nightFixtures();
       for(const b of buildings){
-        if(HKModels.isReplacedBuilding(b)||((b.h<6||b.foundation)&&!b.podiumPart))continue;
+        if(HKModels.isReplacedBuilding(b)||((b.h<6||b.foundation)&&!b.podiumPart&&!window.HKKowloonCityModels?.replaces(b)&&!window.HKKowloonTongModels?.replaces(b)&&!window.HKKaiTakModels?.replaces(b)))continue;
         window.HKHungModels?.lights(b,fixtures);
+        window.HKKaiTakModels?.lights(b,fixtures);
+        window.HKKowloonTongModels?.lights(b,fixtures);
+        window.HKKowloonCityModels?.lights(b,fixtures);
         window.HKToKwaWanModels?.lights(b,fixtures);
         window.HKHoManTinModels?.lights(b,fixtures);
         const p=b.p,[cx,cz]=center(p),top=b.top??(height(cx,cz)+b.h),base=(b.base||0)>2?b.basePD:Math.min(height(cx,cz)-1,b.basePD??Infinity);
-        if(window.HKHoManTinModels?.distant(b,batch,group)||window.HKToKwaWanModels?.distant(b,batch,group)||window.HKHungModels?.distant(b,batch,group)||window.HKCoastModels?.distant(b,batch,group))continue;
+        if(window.HKKaiTakModels?.distant(b,batch,group,height)||window.HKKowloonTongModels?.distant(b,batch,group,height)||window.HKKowloonCityModels?.distant(b,batch,group,height)||window.HKHoManTinModels?.distant(b,batch,group)||window.HKToKwaWanModels?.distant(b,batch,group)||window.HKHungModels?.distant(b,batch,group)||window.HKCoastModels?.distant(b,batch,group))continue;
         const lit=window.HKHoManTinModels?.style(b)!==undefined||window.HKToKwaWanModels?.style(b)!==undefined||window.HKHungModels?.style(b)!==undefined||street?.ids[b.id]||window.HKTaiModels?.replaces(b)||window.HKTaiModels?.style(b)!==undefined||
           window.HKCoastModels?.styled(b)||street?.owners.has(b.id)||frontages.owners.has(b.id);
         const shade=color(b.h>60?'#80969a':'#aea999');
@@ -1381,6 +1429,7 @@ window.HKWorld = (() => {
       }
       batch.mesh(skyMat,group);fixtures.finish(group);return group.children.length?group:null;
     });
+    window.HKKaiTakModels?.allot(stream);
     for(const b of map.buildings){if(b.p?.length>=3)stream.bucket(...center(b.p)).buildings.push(b);}
     for(const type of ['facades','stalls','entrances'])for(const row of street?.data[type]||[])stream.bucket(row[0],row[1])[type].push(row);
     const water=sea(scene,height.underpass);height.underpass?.draw(scene);window.HKNorthWorks?.tunnels(scene,height);

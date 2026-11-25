@@ -2,6 +2,8 @@
 window.HKMongKokStreets=(()=>{
   const data=window.HKMongKokPlaces;
   const catalogs={
+    thai:[['泰式船麵','ก๋วยเตี๋ยวเรือ'],['泰國雜貨','THAI GROCERIES'],['泰式甜品','THAI DESSERTS'],['泰式燒烤','THAI GRILL']],
+    kcFood:[['潮州打冷','CHIU CHOW KITCHEN'],['越式河粉','PHỞ'],['清真咖喱','HALAL CURRY'],['糖水舖','DESSERTS'],['泰國菜館','THAI KITCHEN']],
     food:[['港式茶餐廳','CHA CHAAN TENG'],['韓式小館','KOREAN KITCHEN'],['台式小食','TAIWANESE SNACKS'],['日式食堂','JAPANESE KITCHEN'],['燒味飯店','ROAST MEATS'],['街坊漢堡','BURGER CAFE']],
     sport:[['跑步專門','RUNNING'],['街場波鞋','COURT SHOES'],['運動用品','SPORTS CLUB']],
     electronics:[['影音專門','HI-FI AUDIO'],['數碼相機','CAMERA SHOP'],['潮流服飾','STREET WEAR'],['街頭小食','SNACK BAR']],
@@ -46,7 +48,7 @@ window.HKMongKokStreets=(()=>{
     }
     put(0,2.99,.27,w,.12,.57,'#c1b6a4');put(0,3.52,.13,w,1.03,.25,tint);
     face(signs,at,label(brand,tint),y+3.54,w*.97,.95,.29,0,hours);
-    if(kind==='food'){
+    if(kind==='food'||kind==='thai'||kind==='kcFood'){
       put(-w*.20,1.02,.27,w*.52,.13,.4,'#c0b5a3');
       for(let i=0;i<3;i++)put(w*(-.37+i*.16),1.84,.25,w*.13,.44,.035,i%2?'#b99571':'#e2cf99');
       put(w*.34,1.61,.25,.31,.5,.04,'#e3c891');

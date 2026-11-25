@@ -434,5 +434,5 @@ window.HKDistrictMap=(()=>{
       lastFrame={x,z,yaw,route};
     };
   }
-  return {create,createMini};
+  return {create,createMini,fold};
 })();

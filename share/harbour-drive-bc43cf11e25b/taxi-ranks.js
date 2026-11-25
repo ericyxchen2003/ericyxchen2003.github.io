@@ -69,3 +69,7 @@ for(const part of HKMAP.buildings.filter(b=>b.id===279107)){
   const corners=[[16,0],[22,4],[36,4],[42,0]];
   part.p.splice(i+1,0,...corners.map(([u,d])=>[a[0]+dx*u+dz*d,a[1]+dz*u-dx*d]));
 }
+if(window.HKKaiTak)HKTaxiRankRows.push(
+  [94,'啟德郵輪碼頭','啟德郵輪碼頭地下上落客區','Kai Tak Cruise Terminal',4478,-1111,'kai209720482',[4,13.5,1,2.97]],
+  [101,'沐寧街・啟德一號','沐寧街近啟德一號','Muk Ning Street near One Kai Tak',3188,-3621,'kai903206650',[4,10.3,1,4.82]]
+);
