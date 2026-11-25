@@ -179,3 +179,15 @@
 市區的士起錶 HK$29，包首兩公里。續程每 200 米或慢車等候每分鐘一跳，車資達 HK$102.50 前每跳 HK$2.10，其後 HK$1.40。遊戲按 12 km/h 切換距離和時間計費，停定落客即收錶，只計基本錶價。[運輸署收費表](https://www.td.gov.hk/tc/transport_in_hong_kong/public_transport/taxi/taxi_fare_of_hong_kong/) · [計程錶型式核准指引附錄 B](https://www.td.gov.hk/filemanager/tc/content_4808/item4.39.pdf)
 
 圓方東側車站環迴路的雙向道路按 OSM 地面建築通道及地政總署商場、住宅塔樓的測繪輪廓分層建模。路廳淨高、柱距、照明及平台花園的局部高差作遊戲化簡化。[九龍站設計總圖，Farrells](https://farrells.com/project/kowloon-station-development/) · [九龍站分層剖面，Buildings 圖 6](https://www.mdpi.com/2075-5309/12/2/197)
+
+## 紅磡、黃埔及毗鄰地區
+
+新圖幅向東接上尖東、紅磡站和何文田一帶，涵蓋紅磡灣、黃埔、大環、鶴園、老龍坑及十二號山。海岸和道路採用 OpenStreetMap，地形採用地政總署 5 米格網和高程點，與舊區交界按同一高程銜接。按車行方向分開量度，新圖幅共 770 段車行道，約 43.1 公里。路形另以運輸署道路中心線比對。各處橋面標高、支柱、引道坡度和隧道斷面按資料及遊戲通行淨空近似重建。[OpenStreetMap 資料及授權](https://www.openstreetmap.org/copyright) · [地政總署數碼地形模型](https://data.gov.hk/en-data/dataset/hk-landsd-openmap-5m-grid-dtm) · [運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)
+
+樓宇以地政總署測量輪廓、底部與頂部標高建模。紅館、觀音廟、黃埔號、嘉里酒店和理大創新樓另建外殼。政府合署、校園、酒店及殯儀館補上立面細節。紅磡站南北的士候客位在站前高架層，紅鸞道候客位在公共運輸交匯處內。公園、海濱步道、天橋及行人隧道按可用的步行資料取樣。沿岸座椅、涼亭、燈具和食肆招牌為代表性街景，時新快餐店標示黃埔街舊址。[地政總署建築物](https://portal.csdi.gov.hk/server/rest/services/common/landsd_rcd_1637211194312_35158/MapServer/0) · [真正射影像](https://data.gov.hk/en-data/dataset/hk-landsd-openmap-true-digital-orthophoto) · [康文署香港體育館](https://www.lcsd.gov.hk/en/hkc/aboutus/abouthongkongcoliseum.html) · [觀音廟歷史建築評估](https://www.aab.gov.hk/filemanager/aab/common/historicbuilding/en/122_Appraisal_En.pdf)
+
+## 土瓜灣、馬頭角及宋皇臺
+
+本圖幅接上紅磡和何文田，向北延伸至太子道西，向東至啟德隧道西端。地形以地政總署五米高程格網平滑，再對齊舊區邊界。地面路網、高架和地道依道路方向及層級建模，橋面高程、護牆、匝道坡度和隧道斷面為近似值。道路平面位置另與運輸署中心線比對。[地政總署數碼地形模型](https://data.gov.hk/en-data/dataset/hk-landsd-openmap-5m-grid-dtm) · [運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)
+
+土瓜灣街市暨政府合署重建綠色圓窗帶、紅蘋果裝飾及辦公樓窗列。牛棚藝術村沿用測繪輪廓，另建磚牆和斜屋頂。公共建築入口、街市門面及部分住宅窗戶按遊戲時間亮燈。六個市區的士站依運輸署站點配對至可通車的候客位。[街市實景](https://commons.wikimedia.org/wiki/File:Tokwawan_Market_and_Government_Offices.jpg) · [牛棚藝術村](https://www.heritage.gov.hk/en/about-us/revitalisation-scheme/cattle-depot-artist-village/index.html) · [運輸署的士站](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html)

@@ -12,9 +12,13 @@ window.HKStreetLights=(()=>{
     const ways=[];
     for(const road of map.roads){
       if(road.covered||road.indoor||road.l<0&&!road.underpass)continue;
+      // These narrow cuttings have wall fixtures. A freestanding pole based
+      // on the tunnel floor sits inside the shoulder or sticks out of the bank.
+      if(road.portal&&road.en==='Wuhu Street underpass')continue;
       const sections=[];let total=0;
-      for(let i=1;i<road.p.length;i++){
-        const a=road.p[i-1],b=road.p[i],len=Math.hypot(b[0]-a[0],b[1]-a[1]);
+      const path=road.fork?road.fork.rows.map(([a,b])=>[(a[0]+b[0])/2,(a[1]+b[1])/2]):road.p;
+      for(let i=1;i<path.length;i++){
+        const a=path[i-1],b=path[i],len=Math.hypot(b[0]-a[0],b[1]-a[1]);
         if(len<.05)continue;
         sections.push({a,start:total,dx:(b[0]-a[0])/len,dz:(b[1]-a[1])/len});
         total+=len;
@@ -29,7 +33,13 @@ window.HKStreetLights=(()=>{
         let lo=0,hi=sections.length;
         while(lo+1<hi){const mid=(lo+hi)>>1;if(sections[mid].start<=d)lo=mid;else hi=mid;}
         const {a,start,dx,dz}=sections[lo];
-        return {x:a[0]+dx*(d-start),z:a[1]+dz*(d-start),dx,dz};
+        const row={x:a[0]+dx*(d-start),z:a[1]+dz*(d-start),dx,dz};
+        if(road.fork){
+          const a=road.fork.rows[lo][0],b=road.fork.rows[lo+1][0];
+          const t=(d-start)/((sections[lo+1]?.start??total)-start);
+          row.outer=[a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])];
+        }
+        return row;
       }
       for(let k=0;k<count;k++){
         const target=(k+.5)*interval,mid=section(target),floor=height.surface(mid.x,mid.z,road.l,road.id);
@@ -40,14 +50,15 @@ window.HKStreetLights=(()=>{
         if(covered)continue;
         let head;
         for(const shift of [0,-.2,.2,-.38,.38]){
-          const station=target+shift*interval,{x,z,dx,dz}=section(station);
+          const station=target+shift*interval,{x,z,dx,dz,outer}=section(station);
           const side=k%2?1:-1;
-          for(const s of [side,-side]){
+          for(const s of (outer?[Math.sign((outer[1]-z)*dx-(outer[0]-x)*dz)]:[side,-side])){
             const elevated=road.l>0;
             const rim=elevated?(height.deckEdge?.(x,z,road.id,s,half+.43)??half+.43):half;
             for(const out of (road.l===0?[1.05,1.7,.67,2.45]:[elevated?-.17:.19])){
-              const v=(rim+out)*s,px=x-dz*v,pz=z+dx*v;
-              if(!road.l&&!hasSpace(px,pz))continue;
+              const v=(rim+out)*s;
+              const px=outer?outer[0]-dz*out*s:x-dz*v, pz=outer?outer[1]+dx*out*s:z+dx*v;
+              if(!road.l&&(!hasSpace(px,pz)||window.HKNorthWorks?.excavated(px,pz)))continue;
               const base=height.surface(px,pz,road.l,road.id);
               if(road.l&&sharedRoad(px,pz,road,base))continue;
               const arm=Math.min(2.15,Math.abs(v)-.35),hx=px+dz*arm*s,hz=pz-dx*arm*s;

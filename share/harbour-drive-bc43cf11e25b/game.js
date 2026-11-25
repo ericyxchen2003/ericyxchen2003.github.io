@@ -9,7 +9,7 @@
     const dayClock=HKDayCycle.createClock();
     const hired=()=>taxi.phase==='hired';
     const signals=HKSignals.create(map),world=HKWorld.create($('world'),map,sim,signals,height);
-    const menu=$('titleMenu');
+    const menu=$('titleMenu'),loading=$('loading');
     const film=$('menuFilm'),motionButton=$('menuMotion'),reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
     let motionOverride=null;
     function syncMenuFilm(){
@@ -95,11 +95,13 @@
       menu.hidden=false;syncMenuFilm();$('startDrive').focus({preventScroll:true});
     }
     function startDrive(){
-      if(menu.hidden||panel)return;
-      clearInputs();started=true;menu.hidden=true;syncMenuFilm();
+      // Keep the departure screen on top while the first frame builds nearby scenery.
+      world.setTime(dayClock.minutes);world.frame(0,false);
+      menu.hidden=true;closePanel();started=true;
       showSound();$('world').inert=false;$('hud').hidden=false;
-      world.setTime(dayClock.minutes);world.frame(0,false);hud();$('game').focus({preventScroll:true});
+      hud();loading.hidden=true;$('game').focus({preventScroll:true});
       prev=performance.now();frameId=requestAnimationFrame(tick);
+      if(document.hidden)openPause();
     }
     function showPanel(name,kicker,title){
       districtMap?.close();$('overlay').dataset.panel=name;clearInputs();if(!panel)lastFocus=document.activeElement;panel=name;menu.inert=true;$('panelKicker').textContent=kicker;$('panelTitle').textContent=title;$('overlay').hidden=false;$('panelBody').replaceChildren();$('closePanel').focus({preventScroll:true});
@@ -113,7 +115,7 @@
     }
     function openPause(){
       const returningFromGuide=panel==='help';
-      showPanel('pause','HARBOUR DRIVE','駕駛已暫停');
+      showPanel('pause','HONG KONG TAXI SIMULATOR','駕駛已暫停');
       const p=document.createElement('p');p.className='panelHint';p.textContent=sim.state.roadName+' · 市區的士';$('panelBody').append(p);
       const actions=document.createElement('div');actions.className='panelActions';$('panelBody').append(actions);
       addButton('繼續駕駛','primary',closePanel,actions);
@@ -139,11 +141,60 @@
       $('closePanel').setAttribute('aria-label',backLabel);
       addButton(backLabel,'primary',dismissPanel);
     }
-    function departStand(stand){
-      if(!service.stands.includes(stand))return false;
-      if(hired()){toast('載客中 · 請先完成行程');return false;}
-      service.clear();sim.reset(stand);world.resetCamera();closePanel();arrived=false;hud();
-      toast('已抵達起點 · '+stand.name);return true;
+    let guideStand=null;
+    function setGuideStand(stand){
+      guideStand=stand;
+      $('rankGuide').hidden=!stand;
+      if(stand)$('guideStandName').textContent=stand.name;
+    }
+    $('dismissRankGuide').onclick=()=>{setGuideStand(null);$('game').focus({preventScroll:true});};
+    function updateRankGuide(){
+      if(!guideStand)return;
+      const s=sim.state,sameLevel=s.layer===guideStand.layer;
+      const dy=sameLevel?0:height.surface(s.x,s.z,s.layer)-height.surface(guideStand.x,guideStand.z,guideStand.layer,guideStand.anchor.road.id);
+      const distance=Math.hypot(s.x-guideStand.x,s.z-guideStand.z,dy);
+      const metres=Math.round(distance)+' 米';
+      if($('guideStandDistance').textContent!==metres)$('guideStandDistance').textContent=metres;
+      let action='前往此站，駛入 TAXI 候客位停定。';
+      if(service.withinBay(guideStand)){
+        action=taxi.phase==='waiting'&&taxi.origin===guideStand?'請保持停車，等乘客上車再開車。':'請在候客位停定，乘客會自動上車。';
+      }else if(distance<35){
+        action=sameLevel?'對準地上的 TAXI 標記，停定等客。':'請駛往候客位所在的道路層。';
+      }
+      if($('guideStandAction').textContent!==action)$('guideStandAction').textContent=action;
+    }
+    async function departStand(stand,shift){
+      if(panel!=='map'||!service.stands.includes(stand))return;
+      if(hired()){toast('載客中 · 請先完成行程');return;}
+      if(!started)HKSound.activate();
+      panel='departure';cancelAnimationFrame(frameId);clearInputs();HKSound.step(0,false,true);
+      $('loadingText').textContent='正在載入'+stand.name+'的街景…';
+      loading.classList.add('departing');loading.hidden=false;menu.hidden=true;syncMenuFilm();
+      $('overlay').hidden=true;$('hud').hidden=true;$('world').inert=true;
+      loading.focus({preventScroll:true});
+      let result;
+      try{
+        // A frame between these callbacks lets the browser paint before synchronous 3D work.
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        if(shift){
+          result=await wallet.start(shift.minutes,shift.savedMinute);
+          dayClock.startAt(result.record.minute);savedMinute=Math.floor(dayClock.totalMinutes);
+        }
+        service.clear();sim.reset(stand);setGuideStand(stand);world.resetCamera();arrived=false;
+        startDrive();
+      }catch(error){
+        console.error(error);
+        panel='map';menu.hidden=started;$('hud').hidden=!started;$('world').inert=!started;
+        $('overlay').hidden=false;loading.hidden=true;
+        const status=$('panelBody').querySelector('.dm-distance');
+        if(status){status.setAttribute('role','alert');status.textContent='暫時未能載入站點，請再試一次。';}
+        const retry=$('panelBody').querySelector(shift?'.dm-card .dm-nav':'.dm-card .dm-depart');
+        (retry||$('closePanel')).focus({preventScroll:true});
+        if(started){blockedFrames=2;prev=performance.now();frameId=requestAnimationFrame(tick);}
+        return;
+      }
+      toast('已抵達起點 · '+stand.name);
+      if(result)settled(result);
     }
     const atlas=HKCartography.create(map,sim);
     const drawMiniMap=HKDistrictMap.createMini($('mini'),$('miniPins'),atlas,sim);
@@ -153,24 +204,19 @@
       districtMap??=HKDistrictMap.create(map,sim,atlas);
       if(!started){
         const savedMinuteOnMap=wallet.minute;
-        districtMap.open($('panelBody'),{savedMinute:savedMinuteOnMap,async pickStand(stand,minutes){
-          if(started||panel!=='map'||!departStand(stand))return;
-          HKSound.activate();
-          menu.inert=true;
-          const result=await wallet.start(minutes,savedMinuteOnMap);
-          dayClock.startAt(result.record.minute);savedMinute=Math.floor(dayClock.totalMinutes);
-          menu.inert=false;startDrive();settled(result);
-        }});
+        districtMap.open($('panelBody'),{savedMinute:savedMinuteOnMap,
+          pickStand:(stand,minutes)=>departStand(stand,{minutes,savedMinute:savedMinuteOnMap})});
         return;
       }
       districtMap.open($('panelBody'),{close:closePanel,departStand,hired:hired(),navigate:place=>{
         if(hired())return false;
         const r=sim.navigate(place);
         if(!r)return false;
-        arrived=false;closePanel();toast(r.arrived?'已在目的地附近':'開始導航 · '+r.target.name);return true;
+        setGuideStand(service.stands.includes(place)?place:null);
+        arrived=false;closePanel();hud();toast(r.arrived?'已在目的地附近':'開始導航 · '+r.target.name);return true;
       }});
     }
-    $('startDrive').onclick=()=>{HKSound.activate();if(started)startDrive();else openMap();};$('menuHelp').onclick=openHelp;$('menuSources').onclick=openSources;
+    $('startDrive').onclick=()=>{if(menu.hidden||panel)return;HKSound.activate();if(started)startDrive();else openMap();};$('menuHelp').onclick=openHelp;$('menuSources').onclick=openSources;
     $('miniBtn').onclick=openMap;$('helpBtn').onclick=openHelp;$('pauseBtn').onclick=openPause;$('closePanel').onclick=dismissPanel;$('overlay').onclick=e=>{if(e.target===$('overlay'))dismissPanel();};
     function showSound(){
       const on=HKSound.enabled,button=$('soundBtn'),label=(on?'關閉':'開啟')+'聲音 (V)';
@@ -202,7 +248,7 @@
     }
     const driveKeys=['KeyW','KeyS','KeyA','KeyD','Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyQ','KeyE'];
     window.addEventListener('keydown',e=>{
-      if(panel==='rest')return;
+      if(panel==='rest'||panel==='departure')return;
       if(e.defaultPrevented||e.isComposing||e.keyCode===229||e.metaKey||e.ctrlKey||e.altKey)return;
       if(panel&&e.code==='Tab'){const focusable=[...$('overlay').querySelectorAll('button:not(:disabled),input,select,summary,a[href],[tabindex="0"]')].filter(el=>el.tabIndex>=0&&el.getClientRects().length);if(e.shiftKey&&document.activeElement===focusable[0]){e.preventDefault();focusable.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===focusable.at(-1)){e.preventDefault();focusable[0].focus();}return;}
       if(!menu.hidden){
@@ -211,6 +257,7 @@
       }
       if(panel==='map'&&e.target instanceof HTMLInputElement&&e.code!=='Escape')return;
       if(e.target===headlightSelect&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','Enter','Home','End'].includes(e.code))return;
+      if(e.target===$('dismissRankGuide')&&e.code==='Space')return;
       if(!panel&&driveKeys.includes(e.code)){e.preventDefault();keys[e.code]=true;return;}
       if(e.repeat)return;
       if(e.code==='Escape'||e.code==='KeyP'){e.preventDefault();if(panel)dismissPanel();else openPause();return;}
@@ -257,7 +304,7 @@
       const inTaiKokTsui=window.HKTaiKokTsui && s.x < (s.z < -2850 ? -565 : -615) && s.z < -2085 && s.z > -3350;
       const cultural=window.HKWestKowloon&&s.x< -810&&s.z> -747;
       const westKowloon=window.HKWestKowloon&&s.x< -365&&s.z< -680&&s.z> -1600;
-      const district=cultural?['西九文化區','WEST KOWLOON CULTURAL DISTRICT']:westKowloon?['西九龍','WEST KOWLOON']:inTaiKokTsui?['大角咀','TAI KOK TSUI']:s.z>-955?['尖沙咀','TSIM SHA TSUI']:s.z>-1490?['佐敦','JORDAN']:s.z>-2140?['油麻地','YAU MA TEI']:s.z>-2950?['旺角','MONG KOK']:['太子','PRINCE EDWARD'];
+      const district=window.HKToKwaWanGuide?.districtAt(s.x,s.z)??(window.HKHungGuide?.districtAt(s.x,s.z))??(cultural?['西九文化區','WEST KOWLOON CULTURAL DISTRICT']:westKowloon?['西九龍','WEST KOWLOON']:inTaiKokTsui?['大角咀','TAI KOK TSUI']:s.z>-955?['尖沙咀','TSIM SHA TSUI']:s.z>-1490?['佐敦','JORDAN']:s.z>-2140?['油麻地','YAU MA TEI']:s.z>-2950?['旺角','MONG KOK']:['太子','PRINCE EDWARD']);
       document.querySelector('.district b').textContent=district[0];document.querySelector('.district span').textContent=district[1];
       const signal=world.currentSignal;
       $('signalHUD').hidden=!signal;
@@ -268,6 +315,7 @@
       }
       if(panel!=='map')drawMiniMap();
       const waiting=taxi.phase==='waiting',receipt=taxi.phase==='receipt',money='HK$ '+(taxi.fare/100).toFixed(2);
+      updateRankGuide();
       $('restBtn').hidden=!waiting;
       $('taxiBadge').textContent=hired()?'載客':waiting?'候客':'空車';
       $('taxiReadout').hidden=!hired()&&!receipt;
@@ -288,7 +336,7 @@
         $('navMode').textContent=service.nearDrop()?'靠邊停定，讓乘客下車':'駛往路邊綠色下客位';return;
       }
       if(r){$('target').textContent=r.target.name;$('remaining').textContent=r.arrived?'已抵達':fmt(r.remaining);
-        const turn={'u-turn':'掉頭',right:'右轉',left:'左轉',arrive:'抵達',straight:'直行'};
+        const turn={'keep-left':'靠左分流','keep-right':'靠右分流','u-turn':'掉頭',right:'右轉',left:'左轉',arrive:'抵達',straight:'直行'};
         $('navMode').textContent=r.arrived?'目的地':fmt(r.turnDistance)+' 後'+(turn[r.nextTurn]||'直行');if(r.arrived&&!arrived){arrived=true;toast('已抵達 · '+r.target.name,3);}}else arrived=false;
     }
     window.addEventListener('resize',()=>{blockedFrames=0;});
@@ -299,7 +347,7 @@
         dayClock.advance(elapsed);world.setTime(dayClock.minutes);
         signals.step(dt);const input=held();sim.step(dt,input);
         const event=service.step(elapsed,dayClock.minutes);
-        if(event==='pickup'){arrived=false;HKSound.pickup();toast('乘客已上車 · 前往'+taxi.target.name,4);}
+        if(event==='pickup'){setGuideStand(null);arrived=false;HKSound.pickup();toast('乘客已上車 · 前往'+taxi.target.name,4);}
         world.frame(dt,true,input.brake||input.handbrake,(keys.KeyQ?1:0)-(keys.KeyE?1:0)+dragLook);blockedFrames=0;
         const redLightFine=world.redCrossed&&Math.random()<.5?20000:0; // HK cents
         if(world.redCrossed&&!redLightFine)toast('已越過紅燈停止線',2.4);

@@ -469,5 +469,5 @@ window.HKCoastModels=(()=>{
     for(const [i,j,k] of T.ShapeUtils.triangulateShape(top.map(q=>new T.Vector2(q[0],q[2])),[]))batch.idx.push(index+k,index+j,index+i);
     return true;
   }
-  return {entrance,landscape,distant,styled,replaces:b=>!!b.podiumPart||(!b.foundation&&custom.has(b.id)),style:b=>bronzeArch.has(b.id)?6:b.id===272633?12:b.id===279107||b.id===310911?3:undefined,building};
+  return {geometry:{faces,plate,badge,shell,cap},entrance,landscape,distant,styled,replaces:b=>!!b.podiumPart||(!b.foundation&&custom.has(b.id)),style:b=>bronzeArch.has(b.id)?6:b.id===272633?12:b.id===279107||b.id===310911?3:undefined,building};
 })();
