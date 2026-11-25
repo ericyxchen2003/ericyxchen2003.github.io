@@ -1,7 +1,7 @@
 // All cartography uses the same local metre grid as the vehicle and routing graph.
 window.HKCartography=(()=>{
   const districts=[
-    ...(window.HKHungGuide?.districts||[]), ...(window.HKToKwaWanGuide?.districts||[]),
+    ...(window.HKHoManTinGuide?.districts||[]), ...(window.HKHungGuide?.districts||[]), ...(window.HKToKwaWanGuide?.districts||[]),
     ['尖沙咀','Tsim Sha Tsui',58,-290,'tst'],['尖沙咀東','Tsim Sha Tsui East',694,-348,'尖東 ts teast'],
     ['佐敦','Jordan',-210,-1220],['油麻地','Yau Ma Tei',-180,-1870,'ymt'],['旺角','Mong Kok',-170,-2470,'mk'],
     ['太子','Prince Edward',-214,-3180],['大角咀','Tai Kok Tsui',-915,-2850,'tkt'],
@@ -14,11 +14,11 @@ window.HKCartography=(()=>{
     street:{name:'道路',color:'#77838b',icon:'road'},district:{name:'地區',color:'#557478',icon:'map'},
     hotel:{name:'酒店',color:'#9e6790',icon:'bed'},building:{name:'建築',color:'#77828c',icon:'building'},health:{name:'醫療',color:'#be6972',icon:'cross'}
   };
-  const namedKinds={hotel:'salisbury hh-kerry hh-grand hh-met-hotel',shop:'tkw-market tkw-grand hh-ship hh-metropolis harbour langham ladies sneakers electronics computer sino moko goldfish flower nightmarket oc1 oc2 oc3 metroharbour elements',
-    transit:'tkw-ferry ferry jordan ymt prince olympic westk-station kowloon-station austin-station mkbridge',park:'tkw-hoisham tkw-recreation tkw-artpark park artpark hh-waterfront hh-taiwan',street:'hh-baker hh-sungkit mody nathan gascoigne temple',health:'qeh',
-    building:'tkw-gov tkw-jubilant tkw-sky hh-gov hh-polyu hh-college hh-world hh-intl hh-universal longbeach silversea'};
-  const priority='tkw-market tkw-cattle hh-coliseum hh-kwunyum hh-ship ferry harbour park salisbury science palace mplus westk-station olympic langham moko qeh tinhau theatre elements'.split(' ');
-  const aliases={palace:'西九故宮 香港故宮',ferry:'尖沙咀天星碼頭 天星小輪',science:'科學館',park:'九龍公園 kowloon park',
+  const namedKinds={hotel:'salisbury hh-kerry hh-grand hh-met-hotel',shop:'hmt-plaza hmt-oiman tkw-market tkw-grand hh-ship hh-metropolis harbour langham ladies sneakers electronics computer sino moko goldfish flower nightmarket oc1 oc2 oc3 metroharbour elements',
+    transit:'tkw-ferry ferry jordan ymt prince olympic westk-station kowloon-station austin-station mkbridge',park:'hmt-park hmt-sheung-park hmt-hill-park tkw-hoisham tkw-recreation tkw-artpark park artpark hh-waterfront hh-taiwan',street:'hh-baker hh-sungkit mody nathan gascoigne temple',health:'qeh',
+    building:'hmt-hkmu hmt-jubilee hmt-health hmt-twc hmt-twc-mk hmt-gov hmt-housing hmt-sports tkw-gov tkw-jubilant tkw-sky hh-gov hh-polyu hh-college hh-world hh-intl hh-universal longbeach silversea'};
+  const priority='hmt-hkmu hmt-twc tkw-market tkw-cattle hh-coliseum hh-kwunyum hh-ship ferry harbour park salisbury science palace mplus westk-station olympic langham moko qeh tinhau theatre elements'.split(' ');
+  const aliases={'hmt-hkmu':'香港都会大学 都大 香港公開大學 HKMU OUHK', 'hmt-jubilee':'香港都会大学 银禧 JCC', 'hmt-health':'香港都会大学 健康护理 IOH', 'hmt-twc':'东华学院 京士柏 TWC', 'hmt-twc-mk':'东华学院 旺角 TWC',palace:'西九故宮 香港故宮',ferry:'尖沙咀天星碼頭 天星小輪',science:'科學館',park:'九龍公園 kowloon park',
     'westk-station':'高鐵 西九龍高鐵站 高铁站 hsr', 'union-square':'ICC Union Square', 'mplus':'mplus m plus', 'austin-station':'Austin MTR'};
   const highlightedNames=new Map([
     ['香港文化中心','sight'],['香港太空館','sight'],['香港歷史博物館','sight'],['天主教玫瑰堂','sight'],

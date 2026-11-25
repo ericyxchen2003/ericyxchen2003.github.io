@@ -8,6 +8,8 @@
   const dot = (a, b) => a.dx * b.dx + a.dz * b.dz;
   const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
   const reach = 120;
+  const redAmberSeconds = 1.5, greenSeconds = 18, amberSeconds = 3;
+  const greenEnd = redAmberSeconds + greenSeconds, amberEnd = greenEnd + amberSeconds;
 
   function create(map) {
     const incoming = new Map(), neighbours = new Map(), edges = [], heads = [], groups = [], corridors = new Map();
@@ -64,12 +66,21 @@
     // Exact road nodes determine the entering directions; a signal mapped
     // beside a footpath alone cannot create a new vehicle-controlled junction.
     const sites = [];
+    const directions = new Map((map.signalDirections || []).map(([x,z,bearing]) => {
+      const yaw=bearing*Math.PI/180;
+      return [idOf([x,z]), { dx:Math.sin(yaw), dz:-Math.cos(yaw) }];
+    }));
     const diagonals=map.diagonalCrossings || [], centres=new Set(diagonals.map(path=>idOf(path[1])));
     const signalPoints = new Map((map.nodes?.signals || []).map(p=>[idOf(p),p]));
     for(const path of diagonals)signalPoints.set(idOf(path[1]),path[1]);
     for (const p of signalPoints.values()) {
       const ends = incoming.get(idOf(p));
-      if (ends?.length) sites.push({ p, ends, central: neighbours.get(idOf(p)).size > 2 });
+      if (!ends?.length) continue;
+      const direction = directions.get(idOf(p));
+      // Signs on two-way streets face approaching traffic. If a source bearing
+      // conflicts with every legal approach, retain the existing stop control.
+      const facing = direction ? ends.filter(e=>dot(e,direction)>.5) : ends;
+      sites.push({ p, ends:facing.length ? facing : ends, central: neighbours.get(idOf(p)).size > 2 });
     }
     const components = sites.map((_,i)=>i);
     function root(i) { while (i !== components[i]) i = components[i]; return i; }
@@ -143,17 +154,22 @@
       }
       const scramble=cluster.some(site=>centres.has(idOf(site.p)));
       group.slots=Math.max(2,group.stages.length+(scramble?1:0));
-      group.cycle=group.slots*23;
-      group.offset=(Math.abs(Math.round(cluster[0].p[0]*3+cluster[0].p[1]*5)) % group.cycle);
+      const previousCycle=group.slots*23;
+      // Red onset to the next green includes the red/amber preparation interval.
+      const redToGreen=(previousCycle-15.6-3)*.9;
+      group.cycle=greenSeconds+amberSeconds+redToGreen;
+      group.stageSpacing=group.cycle/group.slots;
+      const positionSeed=Math.abs(Math.round(cluster[0].p[0]*3+cluster[0].p[1]*5));
+      group.offset=(positionSeed%previousCycle)/previousCycle*group.cycle;
       groups.push(group);
     }
     // Start partway into the cycle, so the departure road demonstrates a stop and release.
     let clock=25;
     function timing(h) {
-      const g=groups[h.group], local=(clock+g.offset+g.cycle-h.stage*23)%g.cycle;
-      if (local<1.8) return ["redAmber",1.8-local];
-      if (local<17.4) return ["green",17.4-local];
-      if (local<20.4) return ["amber",20.4-local];
+      const g=groups[h.group], local=(clock+g.offset+g.cycle-h.stage*g.stageSpacing)%g.cycle;
+      if (local<redAmberSeconds) return ["redAmber",redAmberSeconds-local];
+      if (local<greenEnd) return ["green",greenEnd-local];
+      if (local<amberEnd) return ["amber",amberEnd-local];
       return ["red",g.cycle-local];
     }
     function approach(x,z,yaw,range=72) {
@@ -175,7 +191,7 @@
       if(best){const [phase,secondsLeft]=timing(best.head);best.phase=phase;best.secondsLeft=secondsLeft;}
       return best;
     }
-    return { heads,groups,approach,step(dt){if(Number.isFinite(dt)&&dt>0)clock=(clock+dt)%1104000;},
+    return { heads,groups,approach,step(dt){if(Number.isFinite(dt)&&dt>0)clock+=dt;},
       phaseFor(h){return timing(h)[0];}, secondsLeft(h){return timing(h)[1];} };
   }
   global.HKSignals={create};

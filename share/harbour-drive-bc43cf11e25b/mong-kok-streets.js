@@ -201,10 +201,63 @@ window.HKMongKokStreets=(()=>{
     const podium=window.HKWestKowloon?.elements;
     const integratedPaths=new Set(podium?.integratedPaths),deckBridges=new Set(podium?.deckBridges);
     const roadById=new Map(HKMAP.roads.map(r=>[r.id,r]));
-    for(const b of data.bridges){
-      if(integratedPaths.has(String(b.id)))continue;
+    const fit=window.HKFootbridgeFit;
+    const walks=data.bridges.filter(b=>!integratedPaths.has(String(b.id))).map(b=>({...b,...fit?.ways[b.id]}));
+    const owners=new Set(walks.map(b=>String(b.id)));
+    for(const access of fit?.access||[])if(owners.has(access.id.split(':')[0]))walks.push(access);
+    // Join cross-sections in 3D. Stacked concourses can share plan coordinates.
+    const joints=new Map();
+    const direction=(a,b)=>{
+      const x=b[0]-a[0],z=b[1]-a[1],len=Math.hypot(x,z)||1;
+      return [x/len,z/len];
+    };
+    const jointKey=(p,y)=>p[0].toFixed(2)+','+p[1].toFixed(2)+','+Math.round(y*10);
+    for(const b of walks){
       const deck=deckBridges.has(String(b.id))?HKMAP.elementsDeck.top:undefined;
-      const p=b.p,w=b.w,flush=new Set(b.flushSegments);let run=0;
+      b.tops=b.levels||b.p.map((p,i)=>(deck??(height(...p)+b.h[i]))+.18);
+      b.flush=new Set(b.flushSegments);
+      b.keys=b.p.map((pt,i)=>jointKey(pt,b.tops[i]));
+      for(let i=0;i<b.p.length;i++){
+        const key=b.keys[i],links=joints.get(key)||[];
+        if(i>0&&!b.flush.has(i))links.push({b,i,axis:direction(b.p[i],b.p[i-1])});
+        if(i+1<b.p.length&&!b.flush.has(i+1))links.push({b,i,axis:direction(b.p[i],b.p[i+1])});
+        joints.set(key,links);
+      }
+    }
+    // A single shared normal on both sides of a bend closes the deck, fascia
+    // and roof seams. Limit the miter at switchbacks to keep it on the landing.
+    function crossSection(b,i,forward){
+      const links=joints.get(b.keys[i]),sign=forward?1:-1;
+      const a=b.p[i],axis=direction(a,b.p[i+sign]);
+      let mate=null,dot=1;
+      for(const link of links){
+        const d=axis[0]*link.axis[0]+axis[1]*link.axis[1];
+        if(d<dot){dot=d;mate=link;}
+      }
+      const n=[-axis[1]*sign,axis[0]*sign];
+      if(!mate||dot>.72)return n;
+      const mx=(mate.axis[1]-axis[1])*sign,mz=(axis[0]-mate.axis[0])*sign;
+      const div=Math.max(Math.hypot(mx,mz)*.71,mx*n[0]+mz*n[1]);
+      const taper=links.length===2?Math.min(b.w,mate.b.w)/b.w:1;
+      return [mx/div*taper,mz/div*taper];
+    }
+    for(const b of walks){
+      const p=b.p,w=b.w,flush=b.flush;let run=0;
+      const pierAt=new Map();
+      for(const [x,z] of b.posts){
+        let owner=-1,best=Infinity,along=0;
+        for(let i=1;i<p.length;i++){
+          if(flush.has(i))continue;
+          const a=p[i-1],dx=p[i][0]-a[0],dz=p[i][1]-a[1],ll=dx*dx+dz*dz;
+          if(ll<.0025)continue;
+          const t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/ll));
+          const d=Math.hypot(x-a[0]-t*dx,z-a[1]-t*dz);
+          if(d<best){owner=i;best=d;along=t;}
+        }
+        if(owner<0||best>w*.55)continue;
+        if(!pierAt.has(owner))pierAt.set(owner,[]);
+        pierAt.get(owner).push([x,z,along]);
+      }
       for(let i=1;i<p.length;i++){
         const a=p[i-1],e=p[i],dx=e[0]-a[0],dz=e[1]-a[1],len=Math.hypot(dx,dz);if(len<.05)continue;
         if(flush.has(i)){
@@ -229,29 +282,61 @@ window.HKMongKokStreets=(()=>{
           }
           run+=len;continue;
         }
-        const nx=-dz/len,nz=dx/len,h0=(deck??(height(...a)+b.h[i-1]))+.18,h1=(deck??(height(...e)+b.h[i]))+.18;
-        const pt=(t,u,h)=>[a[0]+dx*t+nx*u,h0+(h1-h0)*t+h,a[1]+dz*t+nz*u];
-        const bands=(l,r,y0,y1,c)=>q(pt(0,l,y0),pt(1,l,y0),pt(1,r,y1),pt(0,r,y1),c);
-        bands(-w/2,w/2,0,0,slab);bands(w/2,-w/2,-.41,-.41,soffit);
+        const h0=b.tops[i-1],h1=b.tops[i],start=crossSection(b,i-1,true),finish=crossSection(b,i,false);
+        const pt=(t,u,h)=>[a[0]+dx*t+(start[0]+(finish[0]-start[0])*t)*u,h0+(h1-h0)*t+h,a[1]+dz*t+(start[1]+(finish[1]-start[1])*t)*u];
+        const bands=(l,r,y0,y1,c,low=0,high=1)=>q(pt(low,l,y0),pt(high,l,y0),pt(high,r,y1),pt(low,r,y1),c);
+        if(b.steps&&Math.abs(h1-h0)>.035){
+          const n=Math.max(1,Math.ceil(Math.abs(h1-h0)/.175)),rise=(h1-h0)/n;
+          for(let j=0;j<n;j++){
+            const t=j/n,v=(j+1)/n,lift=Math.max(0,rise);
+            q(pt(t,-w/2,lift),pt(t,w/2,lift),pt(v,w/2,lift-rise),pt(v,-w/2,lift-rise),slab);
+            const u=rise>0?t:v;
+            q(pt(u,-w/2,0),pt(u,w/2,0),pt(u,w/2,Math.abs(rise)),pt(u,-w/2,Math.abs(rise)),soffit);
+          }
+        }else bands(-w/2,w/2,0,0,slab);
+        bands(w/2,-w/2,-.41,-.41,soffit);
+        const openStart=joints.get(b.keys[i-1]).length>2,openEnd=joints.get(b.keys[i]).length>2;
+        const from=openStart?Math.min(1,w*.51/len):0,to=openEnd?Math.max(0,1-w*.51/len):1;
         for(const side of [-1,1]){
           const u=side*w/2;
-          bands(u,u,-.41,.12,edge);bands(u,u,.17,.91,rail);bands(u,u,1.00,1.07,edge);
-          if(b.cover){bands(u,side*.14,2.95,3.46,roof);bands(u,u,2.80,2.95,edge);}
+          bands(u,u,-.41,.12,edge);
+          if(from<to){
+            bands(u,u,.17,.91,rail,from,to);bands(u,u,1,1.07,edge,from,to);
+          }
+          if(b.cover){bands(u,0,2.95,3.46,roof);bands(u,u,2.80,2.95,edge);}
         }
-        for(let d=(3.2-run%3.2)%3.2;d<len;d+=3.2)for(const side of [-1,1]){
-          const h=b.cover?2.91:1.07,v=pt(d/len,side*(w/2-.07),h/2);
-          props.add('box',...v,.095,h,.095,'#a5ada6');
+        const upright=t=>{
+          for(const side of [-1,1]){
+            const h=b.cover?2.88:1.07,v=pt(t,side*(w/2-.05),h/2);
+            props.add('box',...v,.095,h,.095,'#a5ada6');
+          }
+        };
+        for(let d=(3.2-run%3.2)%3.2;d<len-.02;d+=3.2)if(d/len>=from&&d/len<=to)upright(d/len);
+        if(i===p.length-1&&to===1&&((run+len)%3.2)>.18)upright(1);
+        for(const [idx,t] of [[i-1,0],[i,1]]){
+          if(idx!==0&&idx!==p.length-1)continue;
+          q(pt(t,-w/2,-.41),pt(t,w/2,-.41),pt(t,w/2,0),pt(t,-w/2,0),edge);
+          if(b.endRails?.includes(idx)){
+            q(pt(t,-w/2,.17),pt(t,w/2,.17),pt(t,w/2,.91),pt(t,-w/2,.91),rail);
+            q(pt(t,-w/2,1),pt(t,w/2,1),pt(t,w/2,1.07),pt(t,-w/2,1.07),edge);
+          }
+          if(b.lifts?.includes(idx)){
+            const [x,y,z]=pt(t,0,0),base=height(x,z)-.25,high=y+2.75-base,angle=-Math.atan2(dz,dx);
+            props.add('box',x,base+high/2,z,2.2,high,2.5,'#899d9a',angle);
+            props.add('box',x,y+2.82,z,2.45,.2,2.72,'#bdc7bd',angle);
+            const offset=t===0?1.115:-1.115;
+            for(const floor of [base+.25,y])props.add('box',x+dx/len*offset,floor+1.05,z+dz/len*offset,.04,2.1,1.35,'#556764',angle);
+          }
         }
-        if(b.steps&&Math.abs(h1-h0)>.12){
-          const n=Math.max(1,Math.ceil(Math.abs(h1-h0)/.17));
-          for(let j=0;j<n;j++){const t=j/n,end=(j+1)/n,dy=(h1-h0)/n; q(pt(t,-w/2,.025),pt(t,w/2,.025),pt(end,w/2,.025-dy),pt(end,-w/2,.025-dy),slab);}
-        }
-        for(const [x,z] of b.posts){
-          const t=((x-a[0])*dx+(z-a[1])*dz)/(len*len);
-          if(t<0||t>=1||Math.abs((x-a[0])*nx+(z-a[1])*nz)>w*.55)continue;
-          const base=deck??height(x,z),h=h0+(h1-h0)*t-.41-base;
-          if(h>1){props.add('box',x,base+h/2,z,.84,h,.88,'#b6b9ac',-Math.atan2(dz,dx));
-            props.add('box',x,base+h-.24,z,1.08,.48,Math.min(3.2,w*.76),'#a5aba0',-Math.atan2(dz,dx));}
+        for(const [x,z,t] of pierAt.get(i)||[]){
+          // Bury the entire foot of the pier on sloping ground. The underside
+          // of the deck is the bearing elevation, including at the last node.
+          const base=Math.min(height(x-.61,z-.61),height(x-.61,z+.61),height(x+.61,z-.61),height(x+.61,z+.61))-.12;
+          const h=h0+(h1-h0)*t-.39-base;
+          if(h>.48){
+            props.add('box',x,base+h/2,z,.84,h,.88,'#b6b9ac',-Math.atan2(dz,dx));
+            props.add('box',x,base+h-.19,z,1.08,.40,Math.min(2.5,w*.74),'#a5aba0',-Math.atan2(dz,dx));
+          }
         }
         run+=len;
       }
@@ -284,7 +369,7 @@ window.HKMongKokStreets=(()=>{
         }
       }
     }
-    const mesh=buf.mesh(flatBatch(),scene,true);if(mesh)mesh.name='旺角行人天橋及樓梯';
+    const mesh=buf.mesh(flatBatch(),scene,true);if(mesh)mesh.name='行人天橋及樓梯';
   }
   function entrance(signs,x,y,z,ref){
     const entry=label(['港鐵 '+ref,'MTR'],'#9f2637');

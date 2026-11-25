@@ -191,3 +191,8 @@
 本圖幅接上紅磡和何文田，向北延伸至太子道西，向東至啟德隧道西端。地形以地政總署五米高程格網平滑，再對齊舊區邊界。地面路網、高架和地道依道路方向及層級建模，橋面高程、護牆、匝道坡度和隧道斷面為近似值。道路平面位置另與運輸署中心線比對。[地政總署數碼地形模型](https://data.gov.hk/en-data/dataset/hk-landsd-openmap-5m-grid-dtm) · [運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)
 
 土瓜灣街市暨政府合署重建綠色圓窗帶、紅蘋果裝飾及辦公樓窗列。牛棚藝術村沿用測繪輪廓，另建磚牆和斜屋頂。公共建築入口、街市門面及部分住宅窗戶按遊戲時間亮燈。六個市區的士站依運輸署站點配對至可通車的候客位。[街市實景](https://commons.wikimedia.org/wiki/File:Tokwawan_Market_and_Government_Offices.jpg) · [牛棚藝術村](https://www.heritage.gov.hk/en/about-us/revitalisation-scheme/cattle-depot-artist-village/index.html) · [運輸署的士站](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html)
+
+## 何文田
+何文田沿用旺角、紅磡及土瓜灣的相連測繪圖幅，保留窩打老道谷地、何文田山及屋邨山坡。住宅、校舍和基座沿用地政總署建築輪廓與屋頂標高。遊戲街區範圍用於地圖標籤；歷史地名及今日社區有重疊。
+道路以 OpenStreetMap 為本，另按運輸署[道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)核對位置。治民街、忠孝街的士站參考運輸署站點，候客灣及步徑燈具按遊戲車身、地形及通行空間布置。
+香港都會大學的正校園、銀禧學院及賽馬會健康護理學院參考[校方校園資料](https://admissions.hkmu.edu.hk/ug/infoday2026/)及[銀禧學院外牆遮陽設計](https://www.news.gov.hk/en/categories/environment/html/2015/07/20150730_163626.lin.shtml)。東華學院京士柏與旺角校舍參考[校方設施資料](https://www.twc.edu.hk/en/Administration_Units/fmo/college_facility/kings_park_campus)。窗格、入口及晚上亮燈分布經簡化。
