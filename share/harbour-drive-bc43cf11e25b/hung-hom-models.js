@@ -127,15 +127,14 @@ window.HKHungModels=(()=>{
       }
       lit.litPanel(at,0,y+4.55,6.85,4.6,.09,'#c19a65');return;
     }
-    if(b.id===ship||b.id===kerry||b.id===innovation){
-      const p=b.id===innovation?HKHungInnovation:b.p,c=centre(p);
+    if(b.id===innovation){innovationLights(lit);return;}
+    if(b.id===ship||b.id===kerry){
+      const p=b.p,c=centre(p);
       const band=(t,s,width,tint)=>{
-        const shift=b.id===innovation?(t-.5)*2.4:0;
-        rim(lit,ring(p,c,y+t*h,s,shift),ring(p,c,y+t*h+width,s,shift),tint);
+        rim(lit,ring(p,c,y+t*h,s),ring(p,c,y+t*h+width,s),tint);
       };
       if(b.id===ship){band(.32,1.003,.20,'#ddbe8e');band(.62,.794,.14,'#9cbfc8');}
       if(b.id===kerry){band(.209,.988,.19,'#d1b890');band(.748,.981,.13,'#9fada8');}
-      if(b.id===innovation){band(.66,1.003,.15,'#b3c5ce');band(.86,.973,.14,'#9aaeb9');}
       return;
     }
     if(owner.get(b.id)!==b)return;
@@ -239,39 +238,130 @@ window.HKHungModels=(()=>{
     }
     mesh.finish();
   }
+  // The survey polygon includes the low southern podium. The two roof outlines
+  // below follow the Lands Department orthophoto in the map's east/south frame.
+  const innovationWings=[
+    {plan:[[1012,-1066],[1007,-1067],[992,-1062],[968,-1052],[954,-1046],[941,-1032],
+           [937,-1025],[938,-1019],[941,-1018],[955,-1025],[972,-1034],[987,-1042],[998,-1048],[1005,-1058]],
+     west:937,run:75,roofStart:60.6,rise:15.3,
+     roofLights:[[[970,-1051],[1006,-1064],[996,-1052],[984,-1044],[976,-1040]],
+                 [[943,-1029],[948,-1024],[945,-1022],[941,-1026]]]},
+    {plan:[[995,-1043],[988,-1040],[974,-1032],[959,-1023],[944,-1016],[938,-1011],
+           [935,-1002],[936,-999],[942,-998],[954,-1001],[963,-1005],[971,-1012],[979,-1022],[986,-1033]],
+     west:935,run:60,roofStart:42.2,rise:18.5,
+     roofLights:[[[960,-1019],[974,-1026],[978,-1026],[974,-1021],[970,-1018]]]}
+  ].map(wing=>{
+    const curve=new THREE.CatmullRomCurve3(wing.plan.map(([x,z])=>new THREE.Vector3(x,0,z)),true);
+    const outline=curve.getSpacedPoints(64).slice(0,-1).map(v=>[v.x,v.z]);
+    return {...wing,outline,center:centre(outline)};
+  });
+  function innovationRoof(wing,x){
+    return wing.roofStart+wing.rise*(x-wing.west)/wing.run;
+  }
+  function innovationRing(wing,plan,level,projection=0,fascia=false){
+    const [cx,cz]=wing.center;
+    return plan.map(([x,z])=>{
+      const top=innovationRoof(wing,x);
+      // The louvres sweep up at the ends and widen over the spandrels.
+      const bow=Math.sin((x-wing.west)/wing.run*Math.PI);
+      const lift=.55*bow*Math.sin((z-x)*.075);
+      const y=Math.min(level+lift+(fascia?.45*bow:0),top-2.3);
+      const t=Math.max(0,Math.min(1,(y-16)/(top-2.3-16)));
+      const foot=Math.max(0,1-t/.24);
+      const dx=x-cx,dz=z-cz,length=Math.hypot(dx,dz)||1;
+      return [x-dx*.17*foot-2.4*(1-t)+dx/length*projection,y,
+              z-dz*.17*foot+2.0*(1-t)+dz/length*projection];
+    });
+  }
+  function innovationLights(lit){
+    for(const wing of innovationWings){
+      for(const level of [28.8,44.8,56.8]){
+        const lo=innovationRing(wing,wing.outline,level,.49);
+        const hi=innovationRing(wing,wing.outline,level+.16,.49);
+        for(let i=0;i<lo.length;i++){
+          const j=(i+1)%lo.length;
+          if(i%16<10&&hi[i][1]>lo[i][1]&&hi[j][1]>lo[j][1])
+            lit.litQuad(lo[i],lo[j],hi[j],hi[i],'#b8cbd0');
+        }
+      }
+    }
+  }
+  function innovationTower(b,group,near){
+    const mesh=shell(labels.get(innovation)[0],group,'rooms'),y=b.basePD;
+    const podium=HKHungInnovation,c=centre(podium),deck=ring(podium,c,y+2.9,.99);
+    jacket(mesh,ring(podium,c,y-.08,.975),deck,'#c9cac4');cap(mesh,deck,'#dcddd8');
+
+    // Recessed glazing joins the blades beneath the diagonal slot in the roof.
+    const spine=[[938,-1015],[993,-1048],[994,-1042],[941,-1009]];
+    const atriumTop=spine.map(([x,z])=>[x,innovationRoof(innovationWings[1],x)-3,z]);
+    jacket(mesh,spine.map(([x,z])=>[x,y+2.8,z]),atriumTop,'#425960',true);
+    cap(mesh,atriumTop,'#657b82');
+    for(const wing of innovationWings){
+      const plan=near?wing.outline:wing.outline.filter((_,i)=>i%2===0);
+      const r=(level,out=0,fascia=false)=>innovationRing(wing,plan,level,out,fascia);
+      let prev=r(y+2);
+      const glass=['#637c86','#738b93','#627c87','#728991'];
+      for(let floor=0;floor<16;floor++){
+        const level=y+3.9+4*floor;
+        const glassTop=r(level),lip=r(level,.46),bandTop=r(level+.82,.46,true),recess=r(level+.82,0,true);
+        for(let i=0;i<plan.length;i++){
+          const j=(i+1)%plan.length;
+          if(prev[i][1]===recess[i][1]&&prev[j][1]===recess[j][1])continue;
+          const step=64/plan.length;
+          const uv=[i*step*.14,prev[i][1]/53,(i+1)*step*.14,glassTop[i][1]/53];
+          const brushed=floor<2;
+          let sill=prev[i],head=glassTop[i];
+          if(near&&!brushed){
+            sill=mix(prev[i],prev[j],.045);head=mix(glassTop[i],glassTop[j],.045);
+            mesh.quad(prev[i],sill,head,glassTop[i],'#a5b1b3');
+          }
+          mesh.quad(sill,prev[j],glassTop[j],head,brushed?'#bcc3c3':glass[Math.floor(i*step/4)%4],brushed?undefined:uv);
+          mesh.quad(glassTop[i],glassTop[j],lip[j],lip[i],'#a5afb0');
+          mesh.quad(lip[i],lip[j],bandTop[j],bandTop[i],'#e5e7e3');
+          mesh.quad(bandTop[i],bandTop[j],recess[j],recess[i],'#c4ccca');
+        }
+        prev=recess;
+      }
+      const roof=r(Infinity),edge=plan.map(([x,z])=>[x,innovationRoof(wing,x),z]);
+      jacket(mesh,roof,edge,'#dde2df');cap(mesh,edge,'#e8e9e4');
+      for(const skylight of wing.roofLights){
+        cap(mesh,skylight.map(([x,z])=>[x,innovationRoof(wing,x)+.53,z]),'#587078');
+      }
+    }
+    mesh.finish();
+  }
   function modern(b,group,near,props,signs){
-    const isShip=b.id===ship,innov=b.id===innovation;
-    const p=innov?window.HKHungInnovation:b.p,c=centre(p),mesh=shell(labels.get(b.id)[0],group,'rooms');
+    const isShip=b.id===ship;
+    const p=b.p,c=centre(p),mesh=shell(labels.get(b.id)[0],group,'rooms');
     const y=b.basePD,h=b.h;
     const profile=isShip?[[0,.79],[.32,1],[.38,.99],[.39,.80],[.61,.79],[.63,.68],[.82,.65],[.84,.48],[.96,.46]]:
-      innov?[[0,.68],[.13,.77],[.32,.91],[.66,1],[.86,.97],[1,.89]]:
       [[0,.99],[.13,1],[.21,.985],[.74,.978],[.75,.94],[.9,.94],[.91,.86],[1,.854]];
-    const r=(t,s)=>ring(p,c,y+t*h,s,innov?(t-.5)*2.4:0);
+    const r=(t,s)=>ring(p,c,y+t*h,s);
     for(let j=1;j<profile.length;j++){
       const [t,s]=profile[j],[t0,s0]=profile[j-1],glass=isShip?[4,6,8].includes(j):(t-t0)>.04;
       const lo=r(t0,s0),hi=r(t,s);
       if(near&&glass){
         for(let i=0;i<p.length;i++){
-          const j=(i+1)%p.length,w=Math.hypot(p[i][0]-p[j][0],p[i][1]-p[j][1]),n=Math.max(1,Math.round(w/(innov?3.1:2.65)));
+          const j=(i+1)%p.length,w=Math.hypot(p[i][0]-p[j][0],p[i][1]-p[j][1]),n=Math.max(1,Math.round(w/2.65));
           for(let k=0;k<n;k++){
             const u=k/n,v=(k+1)/n,m=u+.055/n;
             const uv=[i*.13+k*.06,lo[i][1]/54,i*.13+(k+1)*.06,hi[i][1]/54];
             mesh.quad(mix(lo[i],lo[j],u),mix(lo[i],lo[j],m),mix(hi[i],hi[j],m),mix(hi[i],hi[j],u),'#a8b8b5');
             const tint=(i*3+k)%7;
             mesh.quad(mix(lo[i],lo[j],m),mix(lo[i],lo[j],v),mix(hi[i],hi[j],v),mix(hi[i],hi[j],m),
-                isShip?'#567482':innov?['#5e7984','#79949a','#73919b'][tint%3]:['#879f9e','#708d90','#839d9d'][tint%3],uv);
+                isShip?'#567482':['#879f9e','#708d90','#839d9d'][tint%3],uv);
           }
         }
-      }else jacket(mesh,lo,hi,isShip?(j===1?'#253a4b':glass?'#6c8992':'#eadfca'):innov?'#68858d':'#799b9f',glass);
+      }else jacket(mesh,lo,hi,isShip?(j===1?'#253a4b':glass?'#6c8992':'#eadfca'):'#799b9f',glass);
       if(near&&glass){
-        const count=Math.max(1,Math.round((t-t0)*h/(innov?2.5:3.2)));
+        const count=Math.max(1,Math.round((t-t0)*h/3.2));
         for(let k=1;k<=count;k++){
           const u=k/count,q=t0+(t-t0)*u,v=s0+(s-s0)*u;
-          jacket(mesh,r(q-.009,v+.0018),r(q,v+.0018),innov?'#e0e1d9':isShip?'#e1d7c2':'#c4c6b4');
+          jacket(mesh,r(q-.009,v+.0018),r(q,v+.0018),isShip?'#e1d7c2':'#c4c6b4');
         }
       }
     }
-    const [tt,ss]=profile.at(-1);cap(mesh,r(tt,ss),innov?'#e2e1dc':isShip?'#d5c9b0':'#aeb4a6');
+    const [tt,ss]=profile.at(-1);cap(mesh,r(tt,ss),isShip?'#d5c9b0':'#aeb4a6');
     mesh.finish();
     if(!near)return;
     const signScale=isShip?.79+(.24/.32)*.21:.99+(.1/.13)*.01;
@@ -286,12 +376,13 @@ window.HKHungModels=(()=>{
         const q=f.at(0,b.top+.24,-1.15);props.add('box',c[0]+(q[0]-c[0])*.84,q[1],c[1]+(q[2]-c[1])*.84,f.w*.6,.46,.68,'#637d59',f.angle);
       }
     }
-    if(!innov)badge(front,signs,y+h*(isShip?.24:.10),.11,Math.min(front.w*.68,13),1.2,labels.get(b.id));
+    badge(front,signs,y+h*(isShip?.24:.10),.11,Math.min(front.w*.68,13),1.2,labels.get(b.id));
   }
   function buildShell(b,group,near,props,signs,height){
     if(b.id===innovation&&owner.get(b.id)!==b)return;
     if(b.id===arena)arenaShell(b,group,near,props,signs,height);
     else if(b.id===temple)templeHall(b,group,near,props,signs,height);
+    else if(b.id===innovation)innovationTower(b,group,near);
     else modern(b,group,near,props,signs);
   }
   function photoRoof(p,y,group,mat,bounds){

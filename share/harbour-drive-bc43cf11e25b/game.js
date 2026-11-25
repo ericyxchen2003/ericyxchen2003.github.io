@@ -345,7 +345,7 @@
       const inTaiKokTsui=window.HKTaiKokTsui && s.x < (s.z < -2850 ? -565 : -615) && s.z < -2085 && s.z > -3350;
       const cultural=window.HKWestKowloon&&s.x< -810&&s.z> -747;
       const westKowloon=window.HKWestKowloon&&s.x< -365&&s.z< -680&&s.z> -1600;
-      const district=window.HKHoManTinGuide?.districtAt(s.x,s.z)??window.HKToKwaWanGuide?.districtAt(s.x,s.z)??(window.HKHungGuide?.districtAt(s.x,s.z))??(cultural?['西九文化區','WEST KOWLOON CULTURAL DISTRICT']:westKowloon?['西九龍','WEST KOWLOON']:inTaiKokTsui?['大角咀','TAI KOK TSUI']:s.z>-955?['尖沙咀','TSIM SHA TSUI']:s.z>-1490?['佐敦','JORDAN']:s.z>-2140?['油麻地','YAU MA TEI']:s.z>-2950?['旺角','MONG KOK']:['太子','PRINCE EDWARD']);
+      const district=window.HKKaiTakGuide?.districtAt(s.x,s.z)??window.HKKowloonTongGuide?.districtAt(s.x,s.z)??window.HKKowloonCityGuide?.districtAt(s.x,s.z)??window.HKHoManTinGuide?.districtAt(s.x,s.z)??window.HKToKwaWanGuide?.districtAt(s.x,s.z)??(window.HKHungGuide?.districtAt(s.x,s.z))??(cultural?['西九文化區','WEST KOWLOON CULTURAL DISTRICT']:westKowloon?['西九龍','WEST KOWLOON']:inTaiKokTsui?['大角咀','TAI KOK TSUI']:s.z>-955?['尖沙咀','TSIM SHA TSUI']:s.z>-1490?['佐敦','JORDAN']:s.z>-2140?['油麻地','YAU MA TEI']:s.z>-2950?['旺角','MONG KOK']:['太子','PRINCE EDWARD']);
       document.querySelector('.district b').textContent=district[0];document.querySelector('.district span').textContent=district[1];
       const signal=world.currentSignal;
       $('signalHUD').hidden=!signal;

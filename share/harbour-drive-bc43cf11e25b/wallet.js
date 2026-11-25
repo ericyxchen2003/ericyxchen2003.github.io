@@ -74,6 +74,13 @@ window.HKWallet = (() => {
       }
       return write(record => ({record: {...empty(), generation: (record.generation ?? 0) + 1}}), true);
     }
+    function setBalance(cents) {
+      if (!Number.isSafeInteger(cents)) throw new RangeError('Expected whole HK cents');
+      const generation = state.generation ?? 0;
+      return write(record => (record.generation ?? 0) === generation
+        ? {record: {...record, balance: cents}}
+        : {record, resetElsewhere: true}, true);
+    }
     return {
       get balance() { return state.balance; },
       get minute() { return state.minute; },

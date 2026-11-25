@@ -14,6 +14,9 @@
   const corners = [[L, W], [L, -W], [-L, W], [-L, -W], [L, 0], [-L, 0], [0, W], [0, -W], [0, 0]];
   const locations = [
     ...(window.HKHungGuide?.places||[]),
+    ...(window.HKKaiTakGuide?.places||[]),
+    ...(window.HKKowloonTongGuide?.places||[]),
+    ...(window.HKKowloonCityGuide?.places||[]),
     ...(window.HKToKwaWanGuide?.places||[]),
     ...(window.HKHoManTinGuide?.places||[]),
     ["salisbury", "半島酒店", "The Peninsula", 114.17156, 22.29474, "Salisbury Road"],

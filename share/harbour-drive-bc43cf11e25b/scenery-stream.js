@@ -1,13 +1,13 @@
 /* Navigation and collisions are resident. Visual assets follow the vehicle or inspector. */
 window.HKScenery=(()=>{
-  const SPAN=200, key=(x,z)=>Math.floor(x/SPAN)+','+Math.floor(z/SPAN);
+  const SPAN=200, drivingRadius=410, key=(x,z)=>Math.floor(x/SPAN)+','+Math.floor(z/SPAN);
   const url=file=>{
     const node=document.getElementById('asset-'+file);
     return node?'data:image/webp;base64,'+node.textContent:'scenery/'+file;
   };
   function create(scene,build,skyline){
     const cells=new Map(),tiles=[],gpu=new THREE.TextureLoader();
-    let textureJobs=0,stamp=-1,revision=0;
+    let textureJobs=0,stamp=-1,revision=0,previousInspectionRadius;
     function bucket(x,z){
       const k=key(x,z);
       if(!cells.has(k)){
@@ -41,14 +41,17 @@ window.HKScenery=(()=>{
       c.group.traverse(o=>{if(o.isInstancedMesh)o.dispose();if(o.isMesh&&!o.geometry.userData.shared)o.geometry.dispose();});
       c.group=null;if(c.sky)c.sky.visible=true;revision++;
     }
-    function update(x,z,dirX=0,dirZ=0,immediate=false){
+    function update(x,z,dirX=0,dirZ=0,immediate=false,inspectionRadius){
       // Hysteresis keeps blocks at an intersection resident through U-turns.
+      const radius=inspectionRadius??drivingRadius,extra=radius-drivingRadius;
+      const trim=previousInspectionRadius!==undefined&&(inspectionRadius===undefined||radius<previousInspectionRadius);
+      previousInspectionRadius=inspectionRadius;
       const aimX=x+dirX,aimZ=z+dirZ,near=(o,px,pz)=>Math.hypot(Math.max(0,Math.abs(px-o.x)-o.half),Math.max(0,Math.abs(pz-o.z)-o.half));
       const queue=[],images=[];
       for(const c of cells.values()){
         const d=near(c,x,z),rank=Math.min(d,near(c,aimX,aimZ)+60);
-        if(c.group&&d>830&&near(c,aimX,aimZ)>670)release(c);
-        if(!c.group&&rank<410)queue.push([rank,c,d]);
+        if(c.group&&(trim&&rank>=radius||d>830+extra&&near(c,aimX,aimZ)>670+extra))release(c);
+        if(!c.group&&rank<radius)queue.push([rank,c,d]);
       }
       queue.sort((a,b)=>a[0]-b[0]);
       const start=performance.now();
@@ -57,9 +60,11 @@ window.HKScenery=(()=>{
         const group=build(c);group.name='街景 '+key(c.x,c.z);scene.add(group);c.group=group;
         if(c.sky)c.sky.visible=false;revision++;
       }
+      // Unlimited building detail does not need every high-resolution ground photo resident.
+      const terrainExtra=Number.isFinite(radius)?extra:1500-drivingRadius;
       for(const t of tiles){
         const d=near(t,x,z),rank=Math.min(d,near(t,aimX,aimZ)+65);
-        t.wanted=rank<560||(t.loaded&&d<950);
+        t.wanted=rank<560+terrainExtra||(!trim&&t.loaded&&d<950+terrainExtra);
         if(!t.wanted&&t.loaded){t.mat.map=t.base;t.loaded.dispose();t.loaded=null;revision++;}
         if(t.wanted&&!t.loaded&&!t.pending&&performance.now()>=t.retry)images.push([rank,t]);
       }
@@ -70,5 +75,5 @@ window.HKScenery=(()=>{
     }
     return {bucket,putTerrain,initialize,update,get stats(){return {blocks:cells.size,active:[...cells.values()].filter(c=>c.group).length,terrain:tiles.filter(t=>t.loaded).length,terrainTotal:tiles.length,revision};}};
   }
-  return {create,url};
+  return {create,url,drivingRadius};
 })();

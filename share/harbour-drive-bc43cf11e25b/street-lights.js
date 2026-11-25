@@ -102,7 +102,7 @@ window.HKStreetLights=(()=>{
         if(head){heads.push(head);const key=cell(head.x,head.z);if(!cells.has(key))cells.set(key,[]);cells.get(key).push(head);}
       }
     }
-    for(const [x,z] of window.HKHoManTin?.parkLamps||[]){
+    for(const [x,z] of [...(window.HKHoManTin?.parkLamps||[]),...(window.HKKowloonGarden?.lamps||[]),...(window.HKTongParkLamps||[]),...(window.HKKaiTakParks?.lamps||[])]){
       if(!hasSpace(x,z))continue;
       const base=height(x,z);
       if((height.overhead(x,z)??Infinity)-base<5)continue;
