@@ -56,7 +56,7 @@ window.HKTaxiService=(()=>{
       const best=options.sort((a,b)=>a.score-b.score)[0]||null;
       frontages.set(b,best);return best;
     }
-    const vacant={phase:'vacant',origin:null,target:null,wait:0,expectedWaitSeconds:0,fare:0,referenceFare:0,fine:0,metres:0,slow:0,fast:0};
+    const vacant={phase:'vacant',origin:null,target:null,wait:0,expectedWaitSeconds:0,fare:0,minimumFare:0,referenceFare:0,fine:0,metres:0,slow:0,fast:0};
     const state={...vacant};
     let arrivalFactor=0,lastOdo=0,lastTarget=null,retry=0,receiptAge=0;
     function dispatch(rank){
@@ -70,7 +70,8 @@ window.HKTaxiService=(()=>{
         if(metres===null||!sim.navigate(p,rank.anchor))continue;
         // At the 40/70 km/h limits the meter bills distance on every road.
         // With no waiting, the shortest legal route therefore minimizes the fare.
-        state.referenceFare=Math.round(fareCents(metres,0)*1.5);
+        state.minimumFare=fareCents(metres,0);
+        state.referenceFare=Math.round(state.minimumFare*1.5);
         state.target=p;lastTarget=b;return true;
       }
       return false;
@@ -83,6 +84,22 @@ window.HKTaxiService=(()=>{
       const body=.94*Math.abs(Math.cos(angle))+2.4*Math.abs(Math.sin(angle));
       return Math.abs(dx*s.dx+dz*s.dz)<=2.2&&Math.abs(lateral)<=.45&&Math.abs(Math.cos(angle))>.95&&
         bay.offset+lateral-through>=body+1.29+.2;
+    }
+    function nearestStand(){
+      const here=stands.find(withinBay);
+      if(here)return {stand:here,metres:0};
+      const from=sim.currentRoadAnchor();
+      if(!from)return null;
+      const candidates=stands.map(stand=>({stand,lowerBound:Math.hypot(stand.anchor.x-from.x,stand.anchor.z-from.z)}))
+        .sort((a,b)=>a.lowerBound-b.lowerBound);
+      let best=null;
+      for(const {stand,lowerBound} of candidates){
+        // The road distance cannot be shorter than the straight line between anchors.
+        if(best && lowerBound>=best.metres)break;
+        const metres=sim.shortestRoadDistance(from,stand.anchor);
+        if(metres!==null && (!best || metres<best.metres))best={stand,metres};
+      }
+      return best;
     }
     function clear(){
       Object.assign(state,vacant);
@@ -130,7 +147,7 @@ window.HKTaxiService=(()=>{
         return 'pickup';
       }
     }
-    return {state,stands,step,withinBay,nearDrop,clear};
+    return {state,stands,step,withinBay,nearDrop,nearestStand,clear};
   }
   return {create,fareCents,maxWaitSeconds:daytime.max,meanWaitSeconds:daytime.mean};
 })();

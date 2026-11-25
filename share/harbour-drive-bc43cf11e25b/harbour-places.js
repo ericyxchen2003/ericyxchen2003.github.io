@@ -383,22 +383,29 @@ window.HKHarbourPlaces=(()=>{
       });
       // The two public bridges meet the garden at podium level. The eastern
       // staircase descends only after it reaches the waterfront pavement.
-      function footbridge(a,c,ya,yc,width){
+      function footbridge(a,c,ya,yc,width,piers,opening){
         const f=frame(a,c),L=f.length,h=width/2,n=Math.ceil(L/2.45);
         b.quad(f.at(0,ya,-h),f.at(0,ya,h),f.at(L,yc,h),f.at(L,yc,-h),'#bcb6a6');
         b.quad(f.at(0,ya-.68,-h),f.at(L,yc-.68,-h),f.at(L,yc-.68,h),f.at(0,ya-.68,h),'#adaea6');
+        for(const fraction of piers){
+          const u=L*fraction,pt=f.at(u,0,0),bottom=ground(pt[0],pt[2])-.25,bearing=ya+(yc-ya)*fraction-.65;
+          box(f,u,(bearing+bottom)/2,0,.95,bearing-bottom,1.05,'#b3b5a9');
+          box(f,u,bearing-.24,0,1.25,.53,width*.68,'#a7afa4');
+        }
         for(const d of [h,-h]){
           b.quad(f.at(0,ya-.68,d),f.at(0,ya,d),f.at(L,yc,d),f.at(L,yc-.68,d),'#b1b2a8');
-          b.beam(f.at(0,ya+1.18,d),f.at(L,yc+1.18,d),.075,'#acb9b6');
           for(let j=0;j<n;j++){
             const u=j*L/n,v=(j+1)*L/n,h0=ya+(yc-ya)*j/n,h1=ya+(yc-ya)*(j+1)/n;
+            const mid=f.at((u+v)/2,0,d);
+            if(opening&&Math.hypot(mid[0]-opening[0],mid[2]-opening[1])<3.7)continue;
+            b.beam(f.at(u,h0+1.18,d),f.at(v,h1+1.18,d),.075,'#acb9b6');
             b.quad(f.at(u+.06,h0+.16,d),f.at(v-.06,h1+.16,d),f.at(v-.06,h1+.94,d),f.at(u+.06,h0+.94,d),'#829a94');
             b.beam(f.at(u,h0,d),f.at(u+.39,h0+1.16,d),.071,'#abafa3');
           }
         }
       }
-      footbridge([521,45],[563,16],14.63,y+.04,5.3);
-      footbridge([624,-16.5],[667.8,18.4],y+.035,y+.035,5.65);
+      footbridge([521,45],[563,16],14.63,y+.04,5.3,[.20]);
+      footbridge([624,-16.5],[667.8,18.4],y+.035,y+.035,5.65,[.20],[662.88,10.87]);
       const stairs=frame([667.8,18.4],[682.4,29.2]),finish=ground(682.4,29.2);
       const steps=Math.ceil((y-finish)/.17);
       for(let j=0;j<steps;j++){

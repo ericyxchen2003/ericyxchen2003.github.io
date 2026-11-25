@@ -15,6 +15,7 @@
   const locations = [
     ...(window.HKHungGuide?.places||[]),
     ...(window.HKToKwaWanGuide?.places||[]),
+    ...(window.HKHoManTinGuide?.places||[]),
     ["salisbury", "半島酒店", "The Peninsula", 114.17156, 22.29474, "Salisbury Road"],
     ["ferry", "天星碼頭", "Star Ferry Pier", 114.169194, 22.294144, "Salisbury Road"],
     ["harbour", "海港城", "Harbour City", 114.16877, 22.29831, "Canton Road"],
@@ -186,6 +187,8 @@
     const segments = [], nodes = [], nodeIDs = new Map();
     const edges = [], rules = turnRules(map === global.HKMAP ? global.HKTurnData : map.turnData);
     const ground = [...(map.land || []), ...(map.piers || [])];
+    // These decks have independently fitted rims on the two sides of their median.
+    const deckConnections = new Map(map.roads.filter(r => r.medianRail).map(r => [r.id, new Set([r.id])]));
     let traffic = [];
     const roadsGrid = new Grid(), wallsGrid = new Grid(), transitions = new Grid();
     function nodeFor(point) {
@@ -227,6 +230,15 @@
       }
     }
     if (!segments.length) throw Error("Map contains no drivable roads.");
+    for (const road of map.roads) {
+      const connected = deckConnections.get(road.id);
+      if (!connected) continue;
+      for (const [x,z] of road.p) {
+        for (const s of roadsGrid.at(x,z)) {
+          if ((s.a[0]===x && s.a[1]===z) || (s.b[0]===x && s.b[1]===z)) connected.add(s.road.id);
+        }
+      }
+    }
     for (const n of nodes) {
       if ((n.levels & (n.levels - 1)) === 0) continue;
       const [x, z] = n.point, reach = n.half + L + 2;
@@ -291,16 +303,24 @@
       }
       return best;
     }
-    function pavementAt(x, z, mask) {
+    function pavementAt(x, z, mask, connected) {
       for (const s of roadsGrid.at(x, z)) {
         if (!(mask & s.bit)) continue;
+        if (connected && !connected.has(s.road.id)) continue;
         if (s.road.fork) {
           if (inRing(x,z,s.road.fork.outline)) return true;
           continue;
         }
         const along = clamp((x - s.a[0]) * s.dx + (z - s.a[1]) * s.dz, 0, s.len);
         const ex = x - s.a[0] - along * s.dx, ez = z - s.a[1] - along * s.dz;
-        if (ex * ex + ez * ez <= (s.half + 0.28) ** 2) return true;
+        const gap2 = ex * ex + ez * ez;
+        if (gap2 > (s.half + .28) ** 2) continue;
+        if (s.road.medianRail && groundHeight?.deckEdge) {
+          const side = s.dx * ez - s.dz * ex;
+          const rim = groundHeight.deckEdge(x-ex,z-ez,s.road.id,side,s.half+.43);
+          if (gap2 > (rim - .42) ** 2) continue; // inner face of the concrete rail
+        }
+        return true;
       }
       return false;
     }
@@ -329,8 +349,13 @@
       return ground.some(area => inRing(x, z, area.p) &&
         !(area.holes || []).some(hole => inRing(x, z, hole)));
     }
-    function obstructed(x, z, yaw, layer = 0, levels = levelBit(layer), keepToRoad = layer !== 0) {
+    function obstructed(x, z, yaw, layer = 0, levels = levelBit(layer), keepToRoad = layer !== 0, checkDeck = true) {
       if (global.HKWestTunnels?.hitsWall(x,z,yaw,layer,groundHeight,L,W)) return "barrier";
+      let connected;
+      if (layer > 0 && keepToRoad && checkDeck && roadsGrid.at(x,z).some(s => s.road.medianRail)) {
+        const owner = roadAtLevel(x,z,levelBit(layer));
+        connected = deckConnections.get(owner?.road.id);
+      }
       const fx = Math.sin(yaw), fz = -Math.cos(yaw);
       for (const [longitudinal, lateral] of corners) {
         const cx = x + fx * longitudinal - fz * lateral;
@@ -339,7 +364,7 @@
             cx > map.bounds[2] || cz > map.bounds[3] || map.outsideExtension?.(cx,cz))) return "boundary";
         if ((layer===0 && levels===1 && global.HKNorthWorks?.blocked(cx,cz)) || groundHeight?.underpass?.blocks(cx,cz,layer)) return "barrier";
         if (keepToRoad) {
-          if (!pavementAt(cx, cz, levels)) return "deck";
+          if (checkDeck && !pavementAt(cx, cz, levels, connected)) return "deck";
         } else if (!supportedGround(cx, cz) && !((levels & ~1) && pavementAt(cx, cz, levels & ~1))) {
           return "water";
         }
@@ -380,7 +405,7 @@
     }
 
     let route = null, routeLengths = [], routeProgress = 0, rerouteTime = 0;
-    let collisionTime = 0, reverseDelay = 0, streetTimer = 0;
+    let collisionTime = 0, reverseDelay = 0, streetTimer = 0, deckBlockedTime = 0;
     function updateStreet() {
       const hit = roadAtLevel(state.x, state.z, levelBit(state.layer));
       state.roadName = hit?.road.n || hit?.road.en || "無名道路";
@@ -413,7 +438,7 @@
       position ||= [anchor.x, anchor.z];
       Object.assign(state, { x: position[0], z: position[1], yaw:bay?bay.yaw:yaw, speed: 0, steer: 0,
         gear: "D", odometer: 0, collision: false, collisionKind: "", layer: s.layer });
-      route = null; collisionTime = 0; reverseDelay = 0; streetTimer = 0;
+      route = null; collisionTime = 0; reverseDelay = 0; streetTimer = 0; deckBlockedTime = 0;
       updateStreet();
       return state;
     }
@@ -496,12 +521,15 @@
     function shortestRoadDistance(from,to) {
       return findPath(from,to,roadMetres)?.cost ?? null;
     }
+    function currentRoadAnchor() {
+      return roadAtLevel(state.x,state.z,levelBit(state.layer)) ||
+        nearestRoad(state.x,state.z,s=>s.layer===state.layer);
+    }
     function previewRoute(id, startAnchor) {
       const target=typeof id==='object'?id:places.find(p=>p.id===id);
       const destination=target?.anchor||snaps.get(target?.id);
       if(!destination)return null;
-      const origin=startAnchor||roadAtLevel(state.x,state.z,levelBit(state.layer))||
-        nearestRoad(state.x,state.z,s=>s.layer===state.layer)||nearestRoad(state.x,state.z);
+      const origin=startAnchor||currentRoadAnchor()||nearestRoad(state.x,state.z);
       const path=findPath(origin,destination);
       return path?{...path,target,layer:destination.segment.layer}:null;
     }
@@ -569,6 +597,36 @@
       const playerY=groundHeight.surface(x,z,layer),otherY=groundHeight.surface(other.x,other.z,otherLayer);
       return playerY<otherY+(other.kind==='bus'?4.45:1.75)&&otherY<playerY+bodyHeight;
     }
+    // If neither gear can clear an edge, straighten the taxi on this same span.
+    // Check the body throughout the correction, including stationary traffic.
+    function freeDeckEdge(direction) {
+      const {x,z,yaw,layer} = state, bit = levelBit(layer);
+      const backX=x-direction*.10*Math.sin(yaw), backZ=z+direction*.10*Math.cos(yaw);
+      if (obstructed(backX,backZ,yaw,layer,levelsAt(backX,backZ,layer)) !== 'deck') return;
+      const hit=roadAtLevel(x,z,bit);
+      // On a fork the graph centreline can be on the other side of the nose.
+      if (!hit || hit.segment.road.fork || hit.distance > hit.segment.half + W) return;
+      const s=hit.segment, forward=Math.sin(yaw)*s.dx-Math.cos(yaw)*s.dz>=0?1:-1;
+      const roadYaw=Math.atan2(s.dx*forward,-s.dz*forward);
+      const turn=Math.atan2(Math.sin(roadYaw-yaw),Math.cos(roadYaw-yaw));
+      const limit=Math.min(hit.distance,2*W+.25);
+      for(let shift=0; ; shift=Math.min(shift+.20,limit)){
+        const t=hit.distance?shift/hit.distance:0, dx=(hit.x-x)*t, dz=(hit.z-z)*t;
+        const tx=x+dx,tz=z+dz;
+        if (!obstructed(tx,tz,roadYaw,layer,bit)) {
+          const steps=Math.max(1,Math.ceil((shift+L*Math.abs(turn))/.20));
+          for(let i=0;i<=steps;i++){
+            const u=i/steps, px=x+dx*u,pz=z+dz*u,angle=yaw+turn*u;
+            if(obstructed(px,pz,angle,layer,bit,true,false) ||
+              traffic.some(other=>trafficOverlap(px,pz,angle,layer,other))) return;
+          }
+          Object.assign(state,{x:tx,z:tz,yaw:roadYaw,steer:0});
+          collisionTime=0;state.collisionKind='';
+          return;
+        }
+        if(shift>=limit) return;
+      }
+    }
     function substep(dt, inputs) {
       const throttle = clamp(Number(inputs.throttle || 0), 0, 1), brake = clamp(Number(inputs.brake || 0), 0, 1);
       const steerInput = clamp(Number(inputs.right || 0) - Number(inputs.left || 0), -1, 1);
@@ -592,7 +650,7 @@
       const resistance = 0.34 + 0.0021 * v * v;
       v -= Math.sign(v) * Math.min(Math.abs(v), resistance * dt);
       v = clamp(v, -4.5, 120 / 3.6);
-      if (v === 0) { state.speed = 0; return; }
+      if (v === 0) { state.speed = 0; deckBlockedTime=0; return; }
       const yawRate = v / 2.68 * Math.tan(state.steer);
       const newYaw = state.yaw + clamp(yawRate, -1.72, 1.72) * dt;
       const middle = (state.yaw + newYaw) / 2;
@@ -610,8 +668,13 @@
       if (obstacle) {
         state.speed = 0;
         if (Math.abs(v) > 0.35 || !collisionTime) { collisionTime = 0.65; state.collisionKind = obstacle; }
+        if(obstacle==='deck' && state.layer>0 && (throttle||brake) && speed<.1){
+          deckBlockedTime+=dt;
+          if(deckBlockedTime>=.4){deckBlockedTime=0;freeDeckEdge(Math.sign(v));}
+        }else deckBlockedTime=0;
         return;
       }
+      deckBlockedTime=0;
       Object.assign(state, { x, z, yaw: Math.atan2(Math.sin(newYaw), Math.cos(newYaw)), speed: v, layer });
       state.odometer += Math.abs(v * dt);
       state.gear = v < -0.01 ? "R" : "D";
@@ -630,7 +693,7 @@
       return state;
     }
     reset();
-    return { state, places, step, reset, nearestRoad, mapPoint, shortestRoadDistance, previewRoute, navigate, trafficOverlap, rules,
+    return { state, places, step, reset, nearestRoad, currentRoadAnchor, mapPoint, shortestRoadDistance, previewRoute, navigate, trafficOverlap, rules,
       // Ambient traffic still follows the carriageway through bends and junctions.
       canOccupy(x, z, yaw, layer = 0, onCarriageway = true) { return !obstructed(x, z, yaw, layer, levelsAt(x,z,layer), onCarriageway || layer !== 0); },
       setTraffic(vehicles) { traffic = vehicles; }, cancelRoute() { route = null; }, get route() { return route; } };

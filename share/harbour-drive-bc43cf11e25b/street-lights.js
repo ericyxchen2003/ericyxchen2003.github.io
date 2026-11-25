@@ -102,6 +102,20 @@ window.HKStreetLights=(()=>{
         if(head){heads.push(head);const key=cell(head.x,head.z);if(!cells.has(key))cells.set(key,[]);cells.get(key).push(head);}
       }
     }
+    for(const [x,z] of window.HKHoManTin?.parkLamps||[]){
+      if(!hasSpace(x,z))continue;
+      const base=height(x,z);
+      if((height.overhead(x,z)??Infinity)-base<5)continue;
+      let covered=false;
+      nearby(x,z,12,p=>{if(Math.hypot(p.x-x,p.z-z)<12&&Math.abs(base-p.base)<3)covered=true;});
+      if(covered)continue;
+      props.add('pole',x,base+2.05,z,.065,4.1,.065,'#52635a');
+      props.add('box',x,base+4.1,z,.55,.16,.55,'#6e7c72');
+      const head={x,z,y:base+4.01,angle:0,base,road:null,layer:0},key=cell(x,z);
+      heads.push(head);
+      if(!cells.has(key))cells.set(key,[]);
+      cells.get(key).push(head);
+    }
     return {heads,nearby,...lightField(heads)};
   }
 

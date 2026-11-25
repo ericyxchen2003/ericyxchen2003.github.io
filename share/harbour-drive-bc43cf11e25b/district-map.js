@@ -95,6 +95,7 @@ window.HKDistrictMap=(()=>{
       let startMinutes=savedMinute===null?HKDayCycle.defaultStart:null;
       const v=picking?{...drivingView,k:0}:drivingView;
       const basePins=atlas.pins.filter(p=>!picking||p.kind==='taxi').sort((a,b)=>b.priority-a.priority);
+      const nearest=basePins.find(p=>p.key===actions.nearest?.stand.id);
       const searchRows=picking?searchable.filter(row=>row.p.kind==='taxi'):searchable;
       const root=$el('div','dm');
       root.innerHTML='<div class="dm-surface"><canvas class="dm-canvas" tabindex="0" aria-label="街區地圖，可用方向鍵平移，加減鍵縮放"></canvas><div class="dm-pins"></div></div>'+
@@ -139,6 +140,7 @@ window.HKDistrictMap=(()=>{
         }
         v.k=minZoom();v.x=(bounds[0]+bounds[2])/2;v.z=(bounds[1]+bounds[3])/2;refresh();
       }
+      let firstLayout=true;
       function resize(){
         v.w=root.clientWidth;v.h=root.clientHeight;v.dpr=Math.min(window.devicePixelRatio||1,2);
         if(!v.w||!v.h)return;
@@ -146,6 +148,16 @@ window.HKDistrictMap=(()=>{
         if(picking&&!v.k)fit();
         else if(!picking&&(!v.k||!lastCar||Math.hypot(sim.state.x-lastCar.x,sim.state.z-lastCar.z)>110)){v.k=0;relocate(true);}
         else v.k=clamp(v.k,minZoom(),4.8);
+        if(firstLayout && nearest){
+          const car=sim.state,top=Math.min(166,v.h*.42),bottom=48,side=52;
+          const visible=p=>{const [x,y]=project(p.x,p.z);return x>=side&&x<=v.w-side&&y>=top&&y<=v.h-bottom;};
+          if(!visible(nearest)||!visible(car)){
+            v.k=clamp(Math.min(v.k,(v.w-side*2)/Math.max(1,Math.abs(car.x-nearest.x)),
+              (v.h-top-bottom)/Math.max(1,Math.abs(car.z-nearest.z))),minZoom(),4.8);
+            v.x=(car.x+nearest.x)/2;v.z=(car.z+nearest.z)/2+(bottom-top)/(2*v.k);constrain();
+          }
+        }
+        firstLayout=false;
         if(!picking)lastCar={x:sim.state.x,z:sim.state.z};refresh();
       }
       function button(label,iconId,fn,cls=''){
@@ -198,7 +210,8 @@ window.HKDistrictMap=(()=>{
           card.append(meta,dismiss,title,sub,address,shifts,row);confirm.focus({preventScroll:true});refresh();return;
         }
         const length=preview?.points.reduce((a,pt,i,path)=>a+(i?Math.hypot(pt[0]-path[i-1][0],pt[1]-path[i-1][1]):0),0);
-        const stat=$el('div','dm-distance',preview?'駕駛路程　'+metric(length):destination?'目前位置未有可達路線':'附近沒有可供導航的道路');
+        const routeLabel=p===nearest?'最快路線　':'駕駛路程　';
+        const stat=$el('div','dm-distance',preview?routeLabel+metric(length):destination?'目前位置未有可達路線':'附近沒有可供導航的道路');
         if(preview&&length>2){
           const overview=button('查看全程','fit',()=>{
             const xs=preview.points.map(pt=>pt[0]),zs=preview.points.map(pt=>pt[1]);
@@ -258,6 +271,14 @@ window.HKDistrictMap=(()=>{
         const cat=cats()[key],b=button(label,cat.icon,()=>{input.value='';search();clearSelection();setCategory(category===key?'':key);},'dm-chip');
         b.style.setProperty('--cat',cat.color);b.setAttribute('aria-pressed','false');b.append(label);filters.append(b);buttons.set(key,b);
       }
+      let nearestButton;
+      if(nearest){
+        nearestButton=$el('button','dm-nearest');nearestButton.type='button';
+        const info=$el('span','dm-nearest-info');
+        info.append($el('small','','最近的士站 · 最短路程 '+metric(actions.nearest.metres)),$el('b','',nearest.name));
+        nearestButton.append(categorySymbol(nearest),info);find.append(nearestButton);
+        on(nearestButton,'click',()=>{select(nearest);card.querySelector('.dm-nav').focus({preventScroll:true});});
+      }
       const stack=$el('div','dm-stack');
       const plus=button('放大','plus',()=>zoom(1.55)),minus=button('縮小','minus',()=>zoom(1/1.55));stack.append(plus,minus);
       tools.append(button('顯示全區','fit',fit,'dm-tool'));
@@ -274,24 +295,34 @@ window.HKDistrictMap=(()=>{
         if(v.k<.3)for(const p of atlas.districts){
           const [x,y]=project(p.x,p.z);if(onScreen(x,y,10)&&reserve(x,y,p.name.length*15+12,24))text(p.name,x,y,'#455757','650 15px sans-serif');
         }
-        const streets=zoomPins.filter(p=>(!category||category===p.kind)&&p.key!==selection?.key);
+        const showNearest=nearest&&(!category||category==='taxi');
+        if(nearestButton)nearestButton.hidden=!showNearest||!!selection;
+        const streets=zoomPins.filter(p=>(!category||category===p.kind)&&p.key!==selection?.key&&p!==nearest);
+        if(showNearest&&nearest.key!==selection?.key)streets.unshift(nearest);
         if(selection)streets.unshift(selection);
         const shown=new Set();
         for(const p of streets){
-          const [x,y]=project(p.x,p.z),selected=selection?.key===p.key;
+          const [x,y]=project(p.x,p.z),selected=selection?.key===p.key,recommended=p===nearest;
           if(!onScreen(x,y,10))continue;
           const font='600 12px -apple-system, BlinkMacSystemFont, sans-serif';ctx.font=font;
-          const tw=Math.ceil(ctx.measureText(p.name).width),space=v.k<.23?18:v.k<.45?9:4;
-          const named=x+tw+24<v.w&&reserve(x+(tw+5)/2,y,tw+30+space,25+space);
-          if(!picking&&!selected&&!named&&(!p.priority||v.k<.3))continue;
-          if(!selected&&!named&&!reserve(x,y,21+space,21+space)&&!picking)continue;
+          const label=recommended?'最近 · '+p.name:p.name;
+          const tw=Math.ceil(ctx.measureText(label).width),space=v.k<.23?18:v.k<.45?9:4;
+          const leftLabel=recommended&&x+tw+24>v.w&&x-tw-24>=0;
+          const labelX=x+(leftLabel?-1:1)*(tw+5)/2;
+          const overCar=recommended&&Math.hypot(x-carX,y-carY)<22;
+          const named=(leftLabel||x+tw+24<v.w)&&reserve(labelX,overCar?y-27:y,tw+30+space,25+space);
+          if(!recommended&&!picking&&!selected&&!named&&(!p.priority||v.k<.3))continue;
+          if(!recommended&&!selected&&!named&&!reserve(x,y,21+space,21+space)&&!picking)continue;
           let b=pinNodes.get(p.key);
           if(!b){
-            b=$el('button','dm-pin');b.type='button';b.dataset.id=p.key;b.title=p.name;b.setAttribute('aria-label',p.name);
-            b.append(categorySymbol(p),$el('span','dm-pin-name',p.name));pinsEl.append(b);pinNodes.set(p.key,b);
+            b=$el('button','dm-pin');b.type='button';b.dataset.id=p.key;b.title=label;b.setAttribute('aria-label',label);
+            b.classList.toggle('is-nearest',recommended);
+            b.append(categorySymbol(p),$el('span','dm-pin-name',label));pinsEl.append(b);pinNodes.set(p.key,b);
             on(b,'click',()=>{hideResults();select(p,picking);});
           }
-          b.hidden=false;b.classList.toggle('is-selected',selected);b.lastChild.hidden=!named&&!selected;
+          b.hidden=false;b.classList.toggle('is-selected',selected);b.classList.toggle('label-left',leftLabel);
+          b.lastChild.hidden=!named&&!selected&&!recommended;
+          if(recommended)b.classList.toggle('over-car',overCar);
           b.style.left=x+'px';b.style.top=y+'px';shown.add(p.key);
         }
         for(const [id,b] of pinNodes)if(!shown.has(id))b.hidden=true;

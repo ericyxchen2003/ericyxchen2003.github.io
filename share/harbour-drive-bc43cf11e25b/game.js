@@ -46,15 +46,18 @@
         HKSound.payment();
         messages.push('車資入帳 +'+HKWallet.format(fare));
       }
-      if(fareFine)messages.push('車資超出參考價，罰款 −'+HKWallet.format(fareFine));
+      if(fareFine)messages.push('車資超出參考價上限，罰款 −'+HKWallet.format(fareFine));
       if(redLightFine)messages.push('衝紅燈，罰款 −'+HKWallet.format(redLightFine));
       if(result.fee)messages.push('的士日租 −'+HKWallet.format(result.fee));
       if(messages.length)toast(messages.join('　·　'),4);
     }
     function saveDriving(fare=0,fareFine=0,redLightFine=0){
+      if(!started||confirmClear.disabled)return;
       const minute=dayClock.totalMinutes;
       savedMinute=Math.floor(minute);
-      wallet.settle(minute,fare,fareFine+redLightFine).then(result=>settled(result,fare,fareFine,redLightFine));
+      wallet.settle(minute,fare,fareFine+redLightFine).then(result=>{
+        if(!handleExternalReset(result))settled(result,fare,fareFine,redLightFine);
+      });
     }
     const restDialog=$('restDialog');
     restDialog.oncancel=event=>event.preventDefault();
@@ -69,7 +72,9 @@
       restDialog.style.setProperty('--rest-duration',durationMs+'ms');
       restDialog.showModal();
       await new Promise(resolve=>setTimeout(resolve,durationMs));
+      if(panel!=='rest')return;
       const result=await wallet.settle(wakeMinute);
+      if(handleExternalReset(result))return;
       settled(result);
       savedMinute=Math.floor(dayClock.totalMinutes);
       service.clear();
@@ -83,7 +88,7 @@
       if(document.hidden)openPause();
       else $('game').focus({preventScroll:true});
     };
-    window.addEventListener('pagehide',()=>{if(started)saveDriving();});
+    window.addEventListener('pagehide',()=>saveDriving());
     function clearInputs(){dragLook=0;dragId=null;for(const k in keys)delete keys[k];for(const k in touch)delete touch[k];document.querySelectorAll('.touch .active').forEach(b=>b.classList.remove('active'));}
     function closePanel(){districtMap?.close();delete $('overlay').dataset.panel;panel='';$('overlay').hidden=true;menu.inert=false;syncMenuFilm();clearInputs();prev=performance.now();if(lastFocus?.isConnected)lastFocus.focus({preventScroll:true});else $('game').focus({preventScroll:true});}
     function showMenu(){
@@ -94,6 +99,39 @@
       $('startLabel').textContent=started?'繼續駕駛':'開始駕駛';
       menu.hidden=false;syncMenuFilm();$('startDrive').focus({preventScroll:true});
     }
+    const clearDialog=$('clearSaveDialog'),confirmClear=$('confirmClear'),cancelClear=$('cancelClear');
+    function handleExternalReset(result){
+      if(result.resetElsewhere)resetToMenu('本機存檔已在另一個分頁重設。');
+      return result.resetElsewhere;
+    }
+    function resetToMenu(message){
+      started=false;savedMinute=null;
+      dayClock.startAt(HKDayCycle.defaultStart);
+      service.clear();setGuideStand(null);sim.reset();arrived=false;
+      restDialog.close();clearDialog.close();loading.hidden=true;
+      showWallet();showMenu();$('saveNotice').textContent=message;
+    }
+    $('clearSave').onclick=()=>{
+      $('saveNotice').textContent='';$('clearSaveError').hidden=true;
+      clearDialog.showModal();cancelClear.focus();
+    };
+    cancelClear.onclick=()=>clearDialog.close();
+    clearDialog.oncancel=event=>{if(confirmClear.disabled)event.preventDefault();};
+    confirmClear.onclick=async()=>{
+      if(confirmClear.disabled||!clearDialog.open)return;
+      confirmClear.disabled=cancelClear.disabled=true;
+      $('clearSaveError').hidden=true;
+      try{
+        await wallet.reset();
+      }catch{
+        $('clearSaveError').textContent='未能清除本機存檔，請再試一次。';
+        $('clearSaveError').hidden=false;
+        return;
+      }finally{
+        confirmClear.disabled=cancelClear.disabled=false;
+      }
+      resetToMenu(wallet.persistent?'本機存檔已清除。':'本次遊戲已重設。瀏覽器儲存空間無法使用。');
+    };
     function startDrive(){
       // Keep the departure screen on top while the first frame builds nearby scenery.
       world.setTime(dayClock.minutes);world.frame(0,false);
@@ -176,12 +214,14 @@
       try{
         // A frame between these callbacks lets the browser paint before synchronous 3D work.
         await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        if(panel!=='departure')return;
         if(shift){
           result=await wallet.start(shift.minutes,shift.savedMinute);
+          if(handleExternalReset(result))return;
           dayClock.startAt(result.record.minute);savedMinute=Math.floor(dayClock.totalMinutes);
         }
         service.clear();sim.reset(stand);setGuideStand(stand);world.resetCamera();arrived=false;
-        startDrive();
+        $('saveNotice').textContent='';startDrive();
       }catch(error){
         console.error(error);
         panel='map';menu.hidden=started;$('hud').hidden=!started;$('world').inert=!started;
@@ -208,7 +248,8 @@
           pickStand:(stand,minutes)=>departStand(stand,{minutes,savedMinute:savedMinuteOnMap})});
         return;
       }
-      districtMap.open($('panelBody'),{close:closePanel,departStand,hired:hired(),navigate:place=>{
+      const nearest=hired()?null:service.nearestStand();
+      districtMap.open($('panelBody'),{close:closePanel,departStand,hired:hired(),nearest,navigate:place=>{
         if(hired())return false;
         const r=sim.navigate(place);
         if(!r)return false;
@@ -274,7 +315,7 @@
     window.addEventListener('keyup',e=>{delete keys[e.code];});
     window.addEventListener('blur',clearInputs);document.addEventListener('visibilitychange',()=>{
       clearInputs();
-      if(document.hidden&&started)saveDriving();
+      if(document.hidden)saveDriving();
       if(document.hidden&&menu.hidden&&!panel)openPause();
     });
     $('world').addEventListener('wheel',e=>{e.preventDefault();if(!panel)world.zoomBy(Math.exp(Math.max(-.15,Math.min(.15,e.deltaY*.003))));},{passive:false});
@@ -304,7 +345,7 @@
       const inTaiKokTsui=window.HKTaiKokTsui && s.x < (s.z < -2850 ? -565 : -615) && s.z < -2085 && s.z > -3350;
       const cultural=window.HKWestKowloon&&s.x< -810&&s.z> -747;
       const westKowloon=window.HKWestKowloon&&s.x< -365&&s.z< -680&&s.z> -1600;
-      const district=window.HKToKwaWanGuide?.districtAt(s.x,s.z)??(window.HKHungGuide?.districtAt(s.x,s.z))??(cultural?['西九文化區','WEST KOWLOON CULTURAL DISTRICT']:westKowloon?['西九龍','WEST KOWLOON']:inTaiKokTsui?['大角咀','TAI KOK TSUI']:s.z>-955?['尖沙咀','TSIM SHA TSUI']:s.z>-1490?['佐敦','JORDAN']:s.z>-2140?['油麻地','YAU MA TEI']:s.z>-2950?['旺角','MONG KOK']:['太子','PRINCE EDWARD']);
+      const district=window.HKHoManTinGuide?.districtAt(s.x,s.z)??window.HKToKwaWanGuide?.districtAt(s.x,s.z)??(window.HKHungGuide?.districtAt(s.x,s.z))??(cultural?['西九文化區','WEST KOWLOON CULTURAL DISTRICT']:westKowloon?['西九龍','WEST KOWLOON']:inTaiKokTsui?['大角咀','TAI KOK TSUI']:s.z>-955?['尖沙咀','TSIM SHA TSUI']:s.z>-1490?['佐敦','JORDAN']:s.z>-2140?['油麻地','YAU MA TEI']:s.z>-2950?['旺角','MONG KOK']:['太子','PRINCE EDWARD']);
       document.querySelector('.district b').textContent=district[0];document.querySelector('.district span').textContent=district[1];
       const signal=world.currentSignal;
       $('signalHUD').hidden=!signal;
@@ -322,12 +363,12 @@
       $('taxiCaption').textContent=receipt?'本程車資':'跳錶車資';
       $('taxiValue').textContent=money;
       $('referenceReadout').hidden=!hired()&&!receipt;
-      if(hired()||receipt)$('referenceValue').textContent=HKWallet.format(taxi.referenceFare);
+      if(hired()||receipt)$('referenceValue').textContent=HKWallet.formatRange(taxi.minimumFare,taxi.referenceFare);
       const r=sim.route;$('mission').hidden=!r&&!waiting&&!hired()&&!receipt;
       $('cancelNav').hidden=hired()||!r;
       if(waiting||receipt){
         $('target').textContent=waiting?taxi.origin.name:taxi.target.name;
-        $('navMode').textContent=waiting?'等待時間（預計等待'+taxi.expectedWaitSeconds+'秒）':taxi.fine?'超出參考價 · 罰款 '+HKWallet.format(taxi.fine):'乘客已下車 · 行程完成';
+        $('navMode').textContent=waiting?'等待時間（預計等待'+taxi.expectedWaitSeconds+'秒）':taxi.fine?'超出參考價上限 · 罰款 '+HKWallet.format(taxi.fine):'乘客已下車 · 行程完成';
         $('remaining').textContent=waiting?waitTime(taxi.wait):money;
         arrived=false;return;
       }
