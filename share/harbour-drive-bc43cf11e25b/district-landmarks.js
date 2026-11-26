@@ -77,6 +77,7 @@ window.HKDetails=(()=>{
 
   // Signs share one canvas atlas, including the plate numbers and names on bus flags.
   function atlas(scale=1){
+    if(window.HKScenery?.compact)scale*=.5;
     const T=THREE,W=2048,H=2048,cellW=512,cellH=128,slots=64,pages=[];
     function add(paint){
       let page=pages.at(-1);

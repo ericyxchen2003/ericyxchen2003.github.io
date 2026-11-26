@@ -116,8 +116,9 @@ window.HKFrontages=(()=>{
   function interiorAtlas(){
     if(interiors)return interiors;
     const w=384,h=256,cells=[...Object.keys(trades),'books','seafood'],canvas=document.createElement('canvas');
-    canvas.width=2048;canvas.height=2048;
-    const c=canvas.getContext('2d'),uv={};
+    const scale=window.HKScenery?.compact ? .5 : 1;
+    canvas.width=canvas.height=2048*scale;
+    const c=canvas.getContext('2d'),uv={};c.scale(scale,scale);
     const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=8;
     // Deep shop elevations with stocked shelves, lit merchandise and a
     // perspective floor. They sit behind separate counters, windows and doors.

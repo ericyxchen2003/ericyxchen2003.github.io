@@ -74,7 +74,7 @@
 .dm .dm-chip svg{width:15px;height:15px;color:var(--cat)}
 .dm-chip:hover{background:#f7fafb}.dm-chip[aria-pressed=true]{border-color:#608eb3;background:#e5f1fa;color:#21577f}
 .dm-results{position:absolute;top:55px;left:0;right:0;z-index:3;max-height:min(58vh,420px);overflow:auto;padding:5px 0;background:white;border:1px solid #d2dadb;border-radius:13px;box-shadow:var(--shadow)}
-.dm-result{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer}
+.dm-result{width:100%;text-align:left;background:white;display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer}
 .dm-result:hover,.dm-result[aria-selected=true]{background:#eef5f9}
 .dm-result-text{display:grid;gap:2px;min-width:0}
 .dm-result-text>*{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
