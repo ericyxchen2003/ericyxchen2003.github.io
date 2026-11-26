@@ -1472,8 +1472,8 @@ window.HKWorld = (() => {
     const compact=HKScenery.compact;
     const renderer=new T.WebGLRenderer({canvas,antialias:!compact,powerPreference:'high-performance',alpha:false});
     renderer.outputColorSpace=T.SRGBColorSpace;renderer.shadowMap.enabled=!compact;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,compact?1:1.55));renderer.setClearColor(0xc3d6cf);
-    const scene=new T.Scene();scene.fog=new T.FogExp2(0xd3dbd1,compact ? .0026 : .00121);
+    renderer.setClearColor(0xc3d6cf);
+    const scene=new T.Scene();scene.fog=new T.FogExp2(0xd3dbd1,compact ? .0022 : .00121);
     const cam=new T.PerspectiveCamera(65,1,.08,compact?900:3100),sky=addSky(scene);
     const hemi=new T.HemisphereLight(0xf4f6ee,0xa8aea3,1.60);scene.add(hemi);
     const sun=new T.DirectionalLight(0xfff1db,2.12);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-205,right:205,top:205,bottom:-205,near:1,far:740});sun.shadow.camera.updateProjectionMatrix();sun.shadow.bias=-.00026;sun.shadow.normalBias=.20;scene.add(sun,sun.target);
@@ -1700,7 +1700,13 @@ window.HKWorld = (() => {
         canvas.dataset.view=inside?'driver':'chase';
       }
       function resize(){
-        const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;setLens();renderer.getDrawingBufferSize(size);params.value.copy(size);
+        const w=canvas.clientWidth,h=canvas.clientHeight;
+        if(!w||!h)return;
+        const ratio=HKScenery.renderRatio(w,h);
+        if(renderer.getPixelRatio()!==ratio||canvas.width!==Math.floor(w*ratio)||canvas.height!==Math.floor(h*ratio))
+          renderer.setDrawingBufferSize(w,h,ratio);
+        if(compact)driver.resizeMirrors(ratio);
+        cam.aspect=w/h;setLens();renderer.getDrawingBufferSize(size);params.value.copy(size);
       }
       resize();window.addEventListener('resize',resize);
       let currentSignal=null,redCrossed=false,lastFront=null,forceSnap=true;
@@ -1755,7 +1761,7 @@ window.HKWorld = (() => {
         vessels[0].position.x=-305+Math.sin(clock*.012)*56;vessels[0].position.z=405+Math.sin(clock*.012)*45;
         routeDraw(sim.route);renderer.render(scene,cam);
       }
-      return {frame,setTime,setVehicle,stream,get headlightMode(){return lights.mode;},get headlightsOn(){return lights.on;},
+      return {frame,setTime,setVehicle,resize,stream,get headlightMode(){return lights.mode;},get headlightsOn(){return lights.on;},
         setHeadlights(mode){lights.setHeadlights(mode);lights.follow(car,sim.state.layer<0);},
         get redCrossed(){return redCrossed;},get currentSignal(){return mode===0?currentSignal:null;},resetCamera(){forceSnap=true;currentSignal=null;lastFront=null;},
         orbitCar(delta){if(mode!==0)orbitOffset-=delta;},

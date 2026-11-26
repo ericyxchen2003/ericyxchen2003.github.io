@@ -286,6 +286,14 @@ window.HKCockpit = (() => {
     const mirrorNormal=new T.Vector3(),mirrorRotation=new T.Quaternion();
     const seat=new T.Vector3(.330,1.249,.310);
     let headYaw=0,mirrorAge=Infinity;
+    function resizeMirrors(ratio){
+      for(const m of mirrors){
+        const w=Math.round((m.side?128:256)*ratio),h=Math.round(80*ratio);
+        if(m.target.width===w&&m.target.height===h)continue;
+        m.target.setSize(w,h);
+        m.age=1000;mirrorAge=Infinity;
+      }
+    }
 
     function update(car,state,cam,dt,glance,snap) {
       cabin.position.copy(car.position);cabin.quaternion.copy(car.quaternion);cabin.updateMatrixWorld();
@@ -332,7 +340,7 @@ window.HKCockpit = (() => {
         car.visible=wasVisible;renderer.shadowMap.needsUpdate=needsShadow;cabin.visible=true;next.age=0;mirrorAge=0;
       }
     }
-    return {cabin,update,setVehicle};
+    return {cabin,update,setVehicle,resizeMirrors};
   }
   return {create};
 })();

@@ -33,6 +33,16 @@
     let dragId=null,dragX=0,dragLook=0;
     const keys={},touch={},held=()=>({throttle:keys.KeyW||keys.ArrowUp||touch.throttle,brake:keys.KeyS||keys.ArrowDown||touch.brake,left:keys.KeyA||keys.ArrowLeft||touch.left,right:keys.KeyD||keys.ArrowRight||touch.right,handbrake:keys.Space});
     let panel='',toastTimer=0,lastCollision=0,arrived=false,uiTimer=0,districtMap=null,lastFocus=null,blockedFrames=0;
+    const qualityControl=$('menuQuality'),menuQuality=qualityControl.querySelector('select');
+    function bindQuality(select){
+      select.value=HKScenery.phoneQuality;
+      select.onchange=()=>{
+        HKScenery.setPhoneQuality(select.value);
+        menuQuality.value=HKScenery.phoneQuality;
+        world?.resize();blockedFrames=0;
+      };
+    }
+    if(HKScenery.compact){qualityControl.hidden=false;bindQuality(menuQuality);}
     const bars=[];for(let i=0;i<18;i++){const bar=document.createElement('i');bars.push(bar);$('meter').append(bar);}
     function toast(msg,seconds=2){$('toast').textContent=msg;$('toast').classList.add('show');toastTimer=seconds;}
     let savedMinute=null;
@@ -170,6 +180,10 @@
       addButton('街區地圖','subbtn',openMap,actions);
       const garage=hired()?null:addButton('車庫','subbtn',openGarage,actions);
       addButton('主選單','subbtn',showMenu,actions);
+      if(HKScenery.compact){
+        const control=qualityControl.cloneNode(true);control.removeAttribute('id');
+        bindQuality(control.querySelector('select'));actions.append(control);
+      }
       if(previousPanel==='help')guide.focus({preventScroll:true});
       if(previousPanel==='garage')garage?.focus();
     }
@@ -401,6 +415,14 @@
     headlightSelect.onchange=()=>{setHeadlights(headlightSelect.value);$('game').focus({preventScroll:true});};
     function switchView(){toast(world.cameraMode());hud();}
     $('viewBtn').onclick=switchView;
+    const touchScreen=matchMedia('(any-pointer: coarse)');
+    function guardDrivingGesture(e){
+      if(!touchScreen.matches||!started||!menu.hidden||panel)return;
+      const element=e.target.nodeType===Node.ELEMENT_NODE?e.target:e.target.parentElement;
+      if(!element?.closest('input,textarea,select,[contenteditable]'))e.preventDefault();
+    }
+    $('game').addEventListener('selectstart',guardDrivingGesture);
+    $('game').addEventListener('contextmenu',guardDrivingGesture);
     for(const b of document.querySelectorAll('[data-key]')){
       b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);touch[b.dataset.key]=true;b.classList.add('active');};
       b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>{touch[b.dataset.key]=false;b.classList.remove('active');};

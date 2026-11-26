@@ -3,6 +3,30 @@ window.HKScenery=(()=>{
   const SPAN=200, drivingRadius=410, key=(x,z)=>Math.floor(x/SPAN)+','+Math.floor(z/SPAN);
   // Phones share a much smaller graphics budget with the browser tab.
   const compact=window.matchMedia?.('(pointer: coarse)').matches && Math.min(innerWidth,innerHeight)<=820;
+  const phoneProfiles={
+    smooth:{scale:1,pixels:1000000},
+    balanced:{scale:1.5,pixels:1100000},
+    high:{scale:2,pixels:1650000}
+  };
+  const qualityKey='harbour-drive.phone-quality';
+  let phoneQuality='balanced';
+  if(compact){
+    try{
+      const saved=localStorage.getItem(qualityKey);
+      if(Object.hasOwn(phoneProfiles,saved))phoneQuality=saved;
+    }catch{/* Storage can be unavailable for local copies. */}
+  }
+  function setPhoneQuality(value){
+    if(!compact||!Object.hasOwn(phoneProfiles,value))return;
+    phoneQuality=value;
+    try{localStorage.setItem(qualityKey,value);}catch{/* Use the selection for this session. */}
+  }
+  function renderRatio(width,height){
+    const native=window.devicePixelRatio||1;
+    if(!compact)return Math.min(native,1.55);
+    const {scale,pixels}=phoneProfiles[phoneQuality];
+    return Math.min(native,scale,Math.sqrt(pixels/(width*height)));
+  }
   const url=(file,mime='image/webp',fallback='scenery/'+file)=>{
     const node=document.getElementById('asset-'+file);
     return node?'data:'+mime+';base64,'+node.textContent:fallback;
@@ -45,7 +69,7 @@ window.HKScenery=(()=>{
         textureJobs--;t.pending=false;
         if(token!==t.token||!t.wanted){tex.dispose();return;}
         const [u0,v0,u1,v1]=t.texture.uv;
-        tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;
+        tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=compact?8:4;
         tex.repeat.set(1/(u1-u0),1/(v1-v0));tex.offset.set(-u0/(u1-u0),-v0/(v1-v0));
         t.loaded=tex;t.mat.map=tex;revision++;
       },undefined,()=>{textureJobs--;t.pending=false;t.retry=performance.now()+3000;});
@@ -114,5 +138,5 @@ window.HKScenery=(()=>{
     }
     return {bucket,putTerrain,putGround,initialize,update,get stats(){return {blocks:cells.size,active:[...cells.values()].filter(c=>c.group).length,terrain:tiles.filter(t=>t.loaded).length,terrainTotal:tiles.length,revision};}};
   }
-  return {create,url,drivingRadius,compact,removeGroup};
+  return {create,url,drivingRadius,compact,removeGroup,renderRatio,setPhoneQuality,get phoneQuality(){return phoneQuality;}};
 })();
