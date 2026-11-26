@@ -1,6 +1,6 @@
 // Navigation endpoints use public carriageways. The summit is reached on foot.
 window.HKKowloonTongGuide={
-  districts:[['九龍塘','Kowloon Tong',770,-4510,'九龙塘 又一村 九龍仔 Kowloon Tong']],
+  districts:[['九龍塘','Kowloon Tong',770,-4510,'九龙塘 九龍仔 Kowloon Tong']],
   places:[
     ['kt-festival','又一城','Festival Walk',442,-4528,'Tat Chee Avenue'],
     ['kt-cityu','香港城市大學','City University of Hong Kong',397,-4557,'Tat Chee Avenue'],
@@ -23,8 +23,7 @@ window.HKKowloonTongGuide={
   districtAt(x,z){
     if(x< -525||x>1650||z< -6270||z> -3440||x>=1300&&z>= -4290)return null;
     if(z< -5210)return ['筆架山','BEACON HILL'];
-    if(x<0&&z> -4750)return ['又一村','YAU YAT TSUEN'];
     return ['九龍塘','KOWLOON TONG'];
   }
 };
-if(window.HKTaxiRankRows)HKTaxiRankRows.push(...[[95,"金城道","金城道","Kam Shing Road",1037.6,-4827.4,"kt152359917",[2,37.5,1,2.97]],[106,"九龍塘站・多福道","九龍塘站・多福道","To Fuk Road",650.9,-4484,"kt1495848938",[1,0.7,1,2.97]],[166,"白雲街","白雲街","Pak Wan Street",-425,-4525.4,"ktn30075672.1",[13,0.7,-1,4.7]],[168,"大坑西街","大坑西街","Tai Hang Sai Street",8.9,-4085.6,963535972,[8,22.3,-1,4.82]]]);
+if(window.HKTaxiRankRows)HKTaxiRankRows.push(...[[95,"金城道","金城道","Kam Shing Road",1037.6,-4827.4,"kt152359917",[2,37.5,1,2.97]],[106,"九龍塘站・多福道","九龍塘站・多福道","To Fuk Road",650.9,-4484,"kt1495848938",[1,0.7,1,2.97]],[166,"石硤尾・白雲街","白雲街","Pak Wan Street",-425,-4525.4,"ktn30075672.1",[13,0.7,-1,4.7]],[168,"石硤尾・大坑西街","大坑西街","Tai Hang Sai Street",8.9,-4085.6,963535972,[8,22.3,-1,4.82]]]);

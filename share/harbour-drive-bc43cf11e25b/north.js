@@ -151,6 +151,7 @@
           quad(lip(left,0),lip(right,0),front(right,0),front(left,0),'#465353');
           quad(front(left,0),front(right,0),front(right,.24),front(left,.24),'#c4c8bd');
           for(const [k,q] of section.entries()){
+            if(r.sharedWalls?.[i===0?1:i] & (1<<k))continue;
             const post=(out,h)=>[q.cap[0]+(k?1:-1)*nx*out+dx/len*offset,q.pavement[1]+h,q.cap[2]+(k?1:-1)*nz*out+dz/len*offset];
             quad(post(0,0),post(.42,0),post(.42,5.55),post(0,5.55),'#7c8784');
           }

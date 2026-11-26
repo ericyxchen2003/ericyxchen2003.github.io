@@ -693,13 +693,19 @@ window.HKYauPlaces=(()=>{
       }
       const storeNames=[['隆記電器','ELECTRICAL GOODS'],['老字號涼茶','HERBAL TEA'],['華興布莊','FABRIC SHOP'],['茶餐室','TEA & TOAST'],
         ['上海理髮','BARBER SHOP'],['膠片相機','FILM CAMERAS'],['文記冰室','BING SUTT'],['利民辦館','PROVISIONS']];
+      const trades=['tech','cafe','tailor','cafe',null,'tech','cafe','market'];
+      const interiors=HKFrontages.interiorAtlas(),shutter={timedMaterial:HKShopLights.shutter,uv:[0,0,1,1]};
       for(const [i,st] of market.fronts.entries()){
         const f=station(st),w=st[4],floor=ground(st[0],st[1]),col=cloth[(i*5)%12];
         patch(f,-w/2,w/2,floor-.22,floor+3.32,.035,'#b6aa8c');
         patch(f,-w*.42,w*.42,floor+.15,floor+2.42,.053,'#455652');
         const hours=HKShopLights.hours(st[0],st[1]);
-        b.shopWindow(f,-w*.39,w*.02,floor+.58,floor+2.27,.073,'#c7ad83',hours);
         patch(f,-w*.39,w*.02,floor+.58,floor+2.27,.068,i%3?'#80958b':'#ad9b75');
+        const trade=trades[i%8];
+        if(trade){
+          shopSign(hours,f,-w*.185,floor+1.425,.078,w*.41,1.69,{mat:interiors.material,uv:interiors.uv[trade+Math.floor(i/8)%2]});
+        }else b.shopWindow(f,-w*.39,w*.02,floor+.58,floor+2.27,.073,'#c7ad83',hours);
+        shopSign(hours,f,0,floor+1.21,.23,w*.84,2.42,shutter);
         for(let k=0;k<4;k++)box(f,w*(-.38+k*.105),floor+1.38,.08,.045,1.75,.08,'#d6c8aa');
         box(f,w*.19,floor+1.4,.08,.84,2.4,.07,'#536963');
         box(f,w*.19,floor+1.04,.14,.05,.49,.05,'#dbc69c');
@@ -710,6 +716,8 @@ window.HKYauPlaces=(()=>{
           const blade=localFrame(f,w*.35,.1,w*.35,1.45);
           box(blade,blade.length/2,floor+4.1,0,blade.length,.85,.10,col);
           shopSign(hours,blade,blade.length/2,floor+4.1,.057,blade.length,.81,storeNames[i%8][0],'',col,'#ffdf99');
+          const reverse=localFrame(f,w*.35,1.45,w*.35,.1);
+          shopSign(hours,reverse,reverse.length/2,floor+4.1,.057,reverse.length,.81,storeNames[i%8][0],'',col,'#ffdf99');
           bar(f,w*.35,floor+4.94,.05,w*.35,floor+4.56,1.33,.034,iron);
         }
       }

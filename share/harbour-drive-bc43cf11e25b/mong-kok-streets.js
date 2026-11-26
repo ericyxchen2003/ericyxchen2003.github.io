@@ -2,6 +2,12 @@
 window.HKMongKokStreets=(()=>{
   const data=window.HKMongKokPlaces;
   const catalogs={
+    sspPC:[['電腦硬件','PC HARDWARE'],['主機板・記憶體','COMPONENTS']],
+    sspParts:[['音響維修','HI-FI REPAIR'],['電子零件','RADIO PARTS'],['二手唱片','RECORDS']],
+    sspCafe:[['手沖咖啡','COFFEE ROASTERS'],['版畫小室','PRINT STUDIO'],['生活選物','DESIGN GOODS']],
+    sspFood:[['豬潤麵','NOODLE SHOP'],['豆腐花','TOFU PUDDING'],['咖央多士','KAYA TOAST'],['蝦籽撈麵','SHRIMP ROE NOODLES']],
+    fabric:[['成衣批發','GARMENT WHOLESALE'],['針織時裝','KNITWEAR'],['服裝陳列室','FASHION SHOWROOM'],['布辦行','FABRIC SAMPLES']],
+    sspFabric:[['布辦・花邊','FABRIC & LACE'],['鈕扣行','BUTTONS'],['皮革材料','LEATHER GOODS']],
     thai:[['泰式船麵','ก๋วยเตี๋ยวเรือ'],['泰國雜貨','THAI GROCERIES'],['泰式甜品','THAI DESSERTS'],['泰式燒烤','THAI GRILL']],
     kcFood:[['潮州打冷','CHIU CHOW KITCHEN'],['越式河粉','PHỞ'],['清真咖喱','HALAL CURRY'],['糖水舖','DESSERTS'],['泰國菜館','THAI KITCHEN']],
     food:[['港式茶餐廳','CHA CHAAN TENG'],['韓式小館','KOREAN KITCHEN'],['台式小食','TAIWANESE SNACKS'],['日式食堂','JAPANESE KITCHEN'],['燒味飯店','ROAST MEATS'],['街坊漢堡','BURGER CAFE']],
@@ -31,14 +37,24 @@ window.HKMongKokStreets=(()=>{
   function face(signs,at,entry,y,w,h,v,u=0,hours){
     signs.quad(entry,[at(u-w/2,y-h/2,v),at(u+w/2,y-h/2,v),at(u+w/2,y+h/2,v),at(u-w/2,y+h/2,v)],hours);
   }
-  function storefront(r,props,signs,height){
+  const interiorKinds={
+    sspPC:'tech',sspParts:['tech','tech','books'],sspCafe:['cafe','books','market'],sspFood:'cafe',
+    fabric:'fashion',sspFabric:'tailor',thai:['cafe','market','bakery','cafe'],kcFood:'cafe',food:'cafe',
+    sport:'shoes',electronics:['tech','tech','fashion','cafe'],ladies:'fashion',
+    local:['cafe','market','bakery'],nathan:['jewels','watch','cafe','books']
+  };
+  function storefront(r,props,signs,height,interiors){
     const [x,z,a,width,kind,id]=r,at=axes(x,z,a),y=height(x,z),w=Math.min(width,10);
     const seed=Math.abs(Math.round(x*17+z*31)),brand=catalogs[kind][seed%catalogs[kind].length],tint=palette[seed%palette.length];
     const put=(u,h,v,ww,hh,d,col)=>props.add('box',...at(u,y+h,v),ww,hh,d,col,-a);
     put(0,1.56,.06,w,3.12,.14,'#263a3f');
     put(-w*.2,1.32,.15,w*.55,2.38,.12,kind==='fish'?'#428d89':'#526e70');
     const hours=HKShopLights.hours(x,z);
-    props.shopPanel(at,-w*.2,y+1.38,.218,w*.53,2.16,kind==='fish'?'#749fa4':'#cbb89a',hours);
+    const kinds=interiorKinds[kind],trade=Array.isArray(kinds)?kinds[seed%catalogs[kind].length]:kinds;
+    if(trade){
+      const tag={mat:interiors.material,uv:interiors.uv[trade+(seed%2)]};
+      face(signs,at,tag,y+1.38,w*.53,2.16,.216,-w*.2,hours);
+    }else props.shopPanel(at,-w*.2,y+1.38,.218,w*.53,2.16,kind==='fish'?'#749fa4':'#cbb89a',hours);
     for(const side of [-1,1])put(side*(w*.5-.07),1.52,.16,.11,3.04,.22,'#b2aca2');
     put(w*.28,1.32,.17,w*.30,2.58,.12,'#273c40');
     put(w*.30,1.22,.25,.05,.45,.055,'#cbbda2');
@@ -47,8 +63,9 @@ window.HKMongKokStreets=(()=>{
       for(let i=0;i<5;i++)put((i-2)*w/5,2.74,.91,w*.095,.18,.07,'#e5cdb0');
     }
     put(0,2.99,.27,w,.12,.57,'#c1b6a4');put(0,3.52,.13,w,1.03,.25,tint);
-    face(signs,at,label(brand,tint),y+3.54,w*.97,.95,.29,0,hours);
-    if(kind==='food'||kind==='thai'||kind==='kcFood'){
+    face(signs,at,HKDetails.shopBoard(...brand,tint,'#fff4d9',w*.97,.95,trade),y+3.54,w*.97,.95,.29,0,hours);
+    props.shopShutter(at,0,y+1.34,.48,w-.18,2.70,hours);
+    if(kind==='food'||kind==='thai'||kind==='kcFood'||kind==='sspFood'||kind==='sspCafe'){
       put(-w*.20,1.02,.27,w*.52,.13,.4,'#c0b5a3');
       for(let i=0;i<3;i++)put(w*(-.37+i*.16),1.84,.25,w*.13,.44,.035,i%2?'#b99571':'#e2cf99');
       put(w*.34,1.61,.25,.31,.5,.04,'#e3c891');
@@ -60,7 +77,7 @@ window.HKMongKokStreets=(()=>{
           put(u,h,.28,.38,.13,.15,palette[(seed+i+row)%7]);put(u-.04,h-.07,.30,.49,.045,.17,'#eee6da');
         }
       }
-    }else if(kind==='electronics'){
+    }else if(kind==='electronics'||kind==='sspPC'||kind==='sspParts'){
       for(let i=0;i<3;i++){put(w*(-.34+.15*i),1.38,.23,w*.13,.69,.09,'#172c35');put(w*(-.34+.15*i),1.4,.285,w*.115,.56,.025,i===1?'#6d9db3':'#86a6a1');}
     }else if(kind==='fish'){
       for(let row=0;row<2;row++)for(let i=0;i<3;i++){
@@ -80,8 +97,9 @@ window.HKMongKokStreets=(()=>{
       put(-w*.37,5.94,.50,.09,.10,1,'#5b605c');
       props.add('box',...bx,.16,1.25,.92,tint,-a);
       const blade=axes(bx[0],bx[2],a+Math.PI/2);
-      face(signs,blade,label(brand,tint),bx[1],.88,.95,.09,0,hours);
-      face(signs,blade,label(brand,tint),bx[1],.88,.95,-.09,0,hours);
+      const tag=HKDetails.shopBoard(...brand,tint,'#fff4d9',.88,1.19,trade);
+      face(signs,blade,tag,bx[1],.88,1.19,.09,0,hours);
+      face(signs,(u,y,v)=>blade(-u,y,v),tag,bx[1],.88,1.19,-.09,0,hours);
     }
   }
   function stall(r,props,height,signs,hasSpace){
@@ -105,13 +123,14 @@ window.HKMongKokStreets=(()=>{
     props.shopPanel(at,0,y+2.03,.56,.86,.085,'#ffe3ac',hours);
     if(i%3===0)for(let j=-2;j<=2;j++)put(j*.55,2.31,0,.17,.025,1.58,'#e5d6b9');
     if(i%4===0){
-      const sign=label(i%8===0?['手袋・皮具','HANDBAGS']:['時裝・精品','FASHION'],cloth);
+      const sign=label(r[4]==='parts'?['二手影音','AUDIO & RADIO']:i%8===0?['手袋・皮具','HANDBAGS']:['時裝・精品','FASHION'],cloth);
       face(signs,at,sign,y+1.94,1.3,.40,.79,0,hours);
     }put(0,2.06,.76,2.82,.34,.055,cloth);
     put(0,.83,0,2.54,.11,1.18,'#b39b7b');put(0,.44,-.04,2.45,.66,1.01,'#655d52');
     for(let j=0;j<5;j++){
       const u=-1.02+j*.50,c=palette[(i+j)%7];
-      if(i%2){put(u,1.48,-.44,.35,.56,.10,c);put(u,1.65,-.44,.47,.14,.12,c);put(u,1.84,-.44,.15,.12,.07,'#ccb58c');}
+      if(r[4]==='parts'){put(u,1.08,.09,.39,.36,.28,'#434d4c');put(u,1.10,.24,.26,.14,.035,j%2?'#7a958b':'#aab1a4');put(u+.12,1.01,.25,.05,.05,.04,'#dbcda9');}
+      else if(i%2){put(u,1.48,-.44,.35,.56,.10,c);put(u,1.65,-.44,.47,.14,.12,c);put(u,1.84,-.44,.15,.12,.07,'#ccb58c');}
       else {put(u,1.03,.17,.36,.27,.28,c);put(u,1.22,.17,.15,.09,.07,'#ab9878');}
     }
   }

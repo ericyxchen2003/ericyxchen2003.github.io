@@ -5,20 +5,20 @@ window.HKCrownComfort=(()=>{
   const T=THREE, axles=[-1.395,1.390], tire=.305;
   const paint='#c82436',shadowRed='#9c2130',silver='#cbd1d0',rubber='#22272a',polished='#bdc5c6';
   // A small lettered livery atlas avoids a material for each emblem or lamp lens.
-  function markings(){
+  function markings(hybrid=false){
     const cv=document.createElement('canvas');cv.width=1024;cv.height=512;
     const c=cv.getContext('2d'),tiles={},pos=[],uv=[];
     function tile(name,x,y,w,h,draw){c.save();c.translate(x,y);c.beginPath();c.rect(0,0,w,h);c.clip();draw(w,h);c.restore();tiles[name]=[x,y,w,h];}
     function rect(x,y,w,h,col){c.fillStyle=col;c.fillRect(x,y,w,h);}
     function word(str,x,y,px,col,font='Arial'){c.fillStyle=col;c.font='bold '+px+'px '+font;c.textAlign='center';c.textBaseline='middle';c.fillText(str,x,y);}
     tile('doors',0,0,250,185,()=>{word('的 士',125,48,81,'#fffaf0','sans-serif');word('TAXI',125,133,82,'#fffaf0');});
-    tile('roof',255,0,250,90,()=>{rect(0,0,250,90,'#b92036');word('T A X I',125,46,63,'#fff9ee');});
+    tile('roof',255,0,250,90,()=>{rect(0,0,250,90,hybrid?'#f0eee1':'#b92036');word(hybrid?'TAXI':'T A X I',125,46,hybrid?82:63,hybrid?'#bd1f33':'#fff9ee');});
     tile('seats',515,0,156,110,()=>{
       c.beginPath();c.moveTo(4,105);c.bezierCurveTo(6,-18,149,-18,152,105);c.closePath();c.fillStyle='#116d51';c.fill();c.lineWidth=5;c.strokeStyle='white';c.stroke();
       word('TAXI',78,28,21,'white');word('4',78,59,45,'white');word('S E A T S',78,91,16,'white');});
-    tile('frontPlate',0,192,335,78,()=>{rect(0,0,335,78,'#e9ebdf');word('HD 1995',167,41,66,'#202327');});
-    tile('rearPlate',342,191,145,116,()=>{rect(0,0,145,116,'#ffd05d');word('HD',72,29,52,'#212425');word('1995',72,85,49,'#212425');});
-    tile('model',505,195,326,47,()=>word('C R O W N   C O M F O R T',163,24,22,'#eeeee8'));
+    tile('frontPlate',0,192,335,78,()=>{rect(0,0,335,78,'#e9ebdf');word(hybrid?'HD 2019':'HD 1995',167,41,66,'#202327');});
+    tile('rearPlate',342,191,145,116,()=>{rect(0,0,145,116,'#ffd05d');word('HD',72,29,52,'#212425');word(hybrid?'2019':'1995',72,85,49,'#212425');});
+    tile('model',505,195,326,47,()=>word(hybrid?'H Y B R I D':'C R O W N   C O M F O R T',163,24,22,'#eeeee8'));
     tile('lamp',0,325,350,150,()=>{
       const glow=c.createLinearGradient(0,0,0,150);glow.addColorStop(0,'#c0cbd0');glow.addColorStop(.31,'#edf0e5');glow.addColorStop(.50,'#a5b0ac');glow.addColorStop(.57,'#f4f5e9');glow.addColorStop(1,'#a9b9bc');
       c.fillStyle=glow;c.fillRect(0,0,350,150);
@@ -30,18 +30,22 @@ window.HKCrownComfort=(()=>{
       for(let y=10;y<150;y+=19)rect(0,y,350,1,'rgba(255,255,248,.53)');
     });
     const tex=new T.CanvasTexture(cv);tex.colorSpace=T.SRGBColorSpace;tex.anisotropy=4;
-    function place(name,x,y,z,w,h,ry=0){
-      const [tx,ty,tw,th]=tiles[name],cs=Math.cos(ry),sn=Math.sin(ry);
-      for(const [u,v] of [[0,0],[1,0],[1,1],[0,0],[1,1],[0,1]]){
-        pos.push(x+(u-.5)*w*cs,y+(v-.5)*h,z-(u-.5)*w*sn);
+    function placeQuad(name,corners){
+      const [tx,ty,tw,th]=tiles[name],coords=[[0,0],[1,0],[1,1],[0,1]];
+      for(const i of [0,1,2,0,2,3]){
+        const [u,v]=coords[i];pos.push(...corners[i]);
         uv.push((tx+1+u*(tw-2))/cv.width,1-(ty+1+(1-v)*(th-2))/cv.height);
       }
+    }
+    function place(name,x,y,z,w,h,ry=0){
+      const cs=Math.cos(ry),sn=Math.sin(ry);
+      placeQuad(name,[[-.5,-.5],[.5,-.5],[.5,.5],[-.5,.5]].map(([u,v])=>[x+u*w*cs,y+v*h,z-u*w*sn]));
     }
     function finish(){
       const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(pos,3));geo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));
       return new T.Mesh(geo,new T.MeshBasicMaterial({map:tex,alphaTest:.40,polygonOffset:true,polygonOffsetFactor:-1}));
     }
-    return {place,finish};
+    return {place,placeQuad,finish};
   }
   function create(Parts){
     const car=new T.Group();car.name='Crown Comfort · 市區四座的士';
@@ -212,6 +216,11 @@ window.HKCrownComfort=(()=>{
     glass.material=new T.MeshPhongMaterial({vertexColors:true,transparent:true,opacity:.32,specular:0xa8bdce,shininess:90,depthWrite:false,side:T.DoubleSide});glass.renderOrder=1;
     const brakes=brakeParts.finish('煞車燈');brakes.material=new T.MeshBasicMaterial({vertexColors:true});brakes.visible=false;
     car.add(body,trim.finish('車身裝飾與座椅'),glass,marks.finish(),brakes);
+    return fitRunningGear(Parts,car,brakes,axles);
+  }
+
+  function fitRunningGear(Parts,car,brakes,axlePositions,multiSpoke=false){
+    const oval=new T.SphereGeometry(1,18,12);
     const wheel=new Parts(),axis=Math.PI/2;
     wheel.cylinder(0,0,0,tire,tire,.175,'#292d30',36,0,0,axis);
     wheel.cylinder(.090,0,0,.222,.226,.017,'#262d32',36,0,0,axis);
@@ -219,15 +228,17 @@ window.HKCrownComfort=(()=>{
     const sidewall=new T.TorusGeometry(.248,.0025,6,36);wheel.mesh(sidewall,'#3b3e40',.092,0,0,1,1,1,0,Math.PI/2);
     wheel.mesh(new T.TorusGeometry(.209,.005,8,36),polished,.113,0,0,1,1,1,0,Math.PI/2);
     wheel.cylinder(.112,0,0,.080,.093,.019,'#9ca6a7',20,0,0,axis);
-    for(let j=0;j<7;j++){const a=j*Math.PI*2/7,cs=Math.cos(a),sn=Math.sin(a);
+    const slots=multiSpoke?17:7;
+    for(let j=0;j<slots;j++){const a=j*Math.PI*2/slots,cs=Math.cos(a),sn=Math.sin(a);
       const pt=(r,t)=>[.110,cs*r-sn*t,sn*r+cs*t];
-      wheel.quad(pt(.12,-.023),pt(.176,-.033),pt(.184,.027),pt(.129,.031),'#485155');
+      if(multiSpoke)wheel.quad(pt(.083,-.008),pt(.197,-.019),pt(.198,.021),pt(.105,.008),'#42474a');
+      else wheel.quad(pt(.12,-.023),pt(.176,-.033),pt(.184,.027),pt(.129,.031),'#485155');
     }
     for(let j=0;j<5;j++){const a=j*Math.PI*2/5;wheel.cylinder(.121,.066*Math.cos(a),.066*Math.sin(a),.012,.012,.010,'#61686b',8,0,0,axis);}
     const wheelMesh=wheel.finish('輪圈');const wheels=[];
-    for(const z of axles)for(const s of [-1,1]){
+    for(const z of axlePositions)for(const s of [-1,1]){
       const pivot=new T.Group();pivot.position.set(s*.726,tire,z);const disc=wheelMesh.clone();disc.rotation.y=s<0?Math.PI:0;
-      const spin=new T.Group();spin.add(disc);pivot.add(spin);car.add(pivot);wheels.push({pivot,spin,front:z===axles[0]});
+      const spin=new T.Group();spin.add(disc);pivot.add(spin);car.add(pivot);wheels.push({pivot,spin,front:z===axlePositions[0]});
     }
     const rider=new Parts();
     rider.mesh(oval,'#4e7874',-.35,.92,.83,.168,.212,.103,.07);
@@ -245,5 +256,5 @@ window.HKCrownComfort=(()=>{
     }
     return {car,update};
   }
-  return {create};
+  return {create,markings,fitRunningGear};
 })();

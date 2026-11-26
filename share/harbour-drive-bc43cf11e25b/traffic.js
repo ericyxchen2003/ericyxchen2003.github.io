@@ -7,17 +7,15 @@
   const key = p => p[0] + "/" + p[1];
   const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
-  function create(map, sim, signals) {
-    const rules = sim.rules;
-    const edges = [], junctions = new Map(), vehicles = [], tracks = [];
-    let rng = 18277633;
-    function random() {
-      rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0;
-      return rng / 4294967296;
-    }
+  function roadGraph(map, rules) {
+    const edges = [], junctions = new Map();
     for (const road of map.roads) {
       if ((road.l < 0 && !road.underpass) || road.cls === "service") continue;
       const lanes = Math.max(1, Number(road.lanes) || (road.one ? 1 : 2));
+      // A shared single track offers no separate return lane. Until passing
+      // places are mapped, keep ambient through traffic on other streets.
+      // Player access and taxi routing still use the original road graph.
+      if (!road.one && lanes === 1) continue;
       const half = road.w / 2;
       const speedLimit = global.HKDriving.roadSpeedLimit(road);
       const laneWidth = road.w / lanes, laneCount = road.one ? lanes : Math.max(1, Math.floor(lanes / 2));
@@ -29,11 +27,63 @@
         const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
         if (len < 0.08) return;
         const dx = (b[0] - a[0]) / len, dz = (b[1] - a[1]) / len;
-        const edge = { a, b, len, dx, dz, road, half, laneWidth, laneCount, speedLimit, token: rules.token(road, index) };
+        const edge = { id: edges.length, a, b, len, dx, dz, road, half, laneWidth, laneCount, speedLimit, token: rules.token(road, index) };
         const start = key(a);
         if (!junctions.has(start)) junctions.set(start, []);
         junctions.get(start).push(edge); edges.push(edge);
       }
+    }
+    return { edges, junctions };
+  }
+
+  function compileAccess({edges, junctions}, rules) {
+    const masks = new Uint8Array(edges.length);
+    for (const mode of [1, 2, 4]) {
+      const predecessors = new Map(), exits = new Uint16Array(edges.length), dead = [];
+      const allowed = edge => (mode !== 2 || edge.road.w >= 5.8) && !(rules.access(edge.road) & mode);
+      for (const edge of edges) {
+        if (!allowed(edge)) continue;
+        const state = rules.advance(0, edge.token, mode);
+        for (const next of junctions.get(key(edge.b)) || []) {
+          if (!allowed(next) || edge.dx * next.dx + edge.dz * next.dz <= -.74 || rules.advance(state, next.token, mode) < 0) continue;
+          exits[edge.id]++;
+          if (!predecessors.has(next.id)) predecessors.set(next.id, []);
+          predecessors.get(next.id).push(edge.id);
+        }
+        if (!exits[edge.id]) dead.push(edge.id);
+      }
+      // Removing one dead end only affects ways that could turn into it.
+      for (let i = 0; i < dead.length; i++) {
+        for (const id of predecessors.get(dead[i]) || []) if (--exits[id] === 0) dead.push(id);
+      }
+      for (let id = 0; id < exits.length; id++) if (exits[id]) masks[id] |= mode;
+    }
+    return masks;
+  }
+
+  // Include geometry, order and turn restrictions so a changed district or a
+  // custom map can always fall back to compiling the same legal network.
+  function signature(map) {
+    let hash = 2166136261;
+    const mix = n => { hash = Math.imul(hash ^ n, 16777619); };
+    const string = s => { for (let i = 0; i < s.length; i++) mix(s.charCodeAt(i)); };
+    for (const road of map.roads) {
+      string(String(road.id)); string(road.cls);
+      mix(road.l); mix(road.one); mix(road.lanes); mix(road.w * 1000); mix(Boolean(road.underpass));
+      mix(Boolean(road.fork)); mix(Boolean(road.surveyMesh)); mix(Boolean(road.bore)); mix(road.p.length);
+      for (const [x, z] of road.p) { mix(Math.round(x * 1000)); mix(Math.round(z * 1000)); }
+    }
+    string(JSON.stringify(map === global.HKMAP ? global.HKTurnData : map.turnData) || '');
+    return hash >>> 0;
+  }
+
+  function create(map, sim, signals) {
+    const rules = sim.rules, graph = roadGraph(map, rules), { edges, junctions } = graph;
+    const vehicles = [], tracks = [];
+    let rng = 18277633;
+    function random() {
+      rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0;
+      return rng / 4294967296;
     }
     // Count distinct physical arms, including inbound-only approaches.
     const arms = new Map();
@@ -46,21 +96,11 @@
       registerArm(edge.a, edge.b);
       registerArm(edge.b, edge.a);
     }
-    function viableNetwork(minWidth, mode) {
-      const live = new Set(edges.filter(e => e.road.w >= minWidth && !(rules.access(e.road) & mode)));
-      let changed = true;
-      while (changed) {
-        changed = false;
-        for (const e of live) {
-          const next = junctions.get(key(e.b)) || [];
-          if (!next.some(n => live.has(n) && rules.advance(rules.advance(0, e.token, mode), n.token, mode) >= 0 && e.dx * n.dx + e.dz * n.dz > -0.74)) {
-            live.delete(e); changed = true;
-          }
-        }
-      }
-      return live;
-    }
-    const fleets = { taxi: viableNetwork(0, 1), sedan: viableNetwork(0, 4), bus: viableNetwork(5.8, 2) };
+    const data = map === global.HKMAP && global.HKStreetLayout;
+    const packed = data && data.signature === signature(map) ? atob(data.modes) : '';
+    const masks = packed.length === edges.length ? Uint8Array.from(packed, ch => ch.charCodeAt(0)) : compileAccess(graph, rules);
+    const fleet = mode => new Set(edges.filter((edge, i) => masks[i] & mode));
+    const fleets = { taxi: fleet(1), sedan: fleet(4), bus: fleet(2) };
     const mode = { taxi: 1, bus: 2, sedan: 4 };
     function lane(edge, along, vehicle) {
       const index = Math.min(edge.laneCount - 1, Math.floor(vehicle.laneChoice * edge.laneCount));
@@ -161,6 +201,7 @@
       const vehicle = { id: i, kind, laneChoice: kind === "bus" ? 0.12 : random(), color: kind === "sedan" ? colours[i % colours.length] : undefined,
         halfLength: kind === "bus" ? 5.92 : 2.32, halfWidth: kind === "bus" ? 1.29 : 0.89,
         cruiseFraction: kind === "bus" ? .90 + random() * .09 : .93 + random() * .07 };
+      if(kind==='bus')vehicle.operator=i%24===8?'citybus':'kmb';
       const da = i < 7 ? [22, 94] : i < 16 ? [84, 204] : [160, 350];
       if (spawn(vehicle, player, ...da) || spawn(vehicle, player, 15, 500)) vehicles.push(vehicle);
     }
@@ -232,39 +273,61 @@
     // Very short OSM links can make the centre of an offset lane double back
     // during a turn. Rejoin the same legal turn along a swept, continuous arc.
     function repairBend(v, track, player) {
-      const here = sample(track, 0), probe = sample(track, .1);
-      if (!probe || sim.canOccupy(probe.x, probe.z, probe.yaw, probe.edge.road.l)) return;
-      for (const reach of [4, 7, 11, 15]) {
+      const here = sample(track, 0);
+      if (!here) return;
+      for (const reach of [1.5, 2.5, 4, 7, 11, 15]) {
         const end = sample(track, reach);
         if (!end || end.edge.road.l !== here.edge.road.l) continue;
         const span = distance(v, end);
-        if (span < 1 || span > reach + .1) continue;
-        const handle = span / 3;
-        const cx = v.x + Math.sin(v.yaw) * handle, cz = v.z - Math.cos(v.yaw) * handle;
-        const dx = end.x - Math.sin(end.yaw) * handle, dz = end.z + Math.cos(end.yaw) * handle;
-        const arc = [here], parts = Math.ceil(reach / .35);
-        for (let i = 1; i <= parts; i++) {
-          const t = i / parts, u = 1 - t, at = sample(track, t * reach);
-          const x = u*u*u*v.x + 3*u*u*t*cx + 3*u*t*t*dx + t*t*t*end.x;
-          const z = u*u*u*v.z + 3*u*u*t*cz + 3*u*t*t*dz + t*t*t*end.z;
-          const last = arc.at(-1), yaw = Math.atan2(x - last.x, last.z - z);
-          const p = { ...at, x, z, yaw };
-          if (distance(at, p) > 2.2 || at.edge.road.l !== here.edge.road.l ||
-              !sim.canOccupy(x, z, yaw, at.edge.road.l) || collide(p, v, player)) break;
-          for (let n = last.index + 1; n <= at.index; n++) {
-            if (track.points[n].junctionRadius) p.junctionRadius = track.points[n].junctionRadius;
-          }
-          arc.push(p);
+        if (span < Math.max(1, reach * .33) || span > reach + .1) continue;
+        // Compare against the turn's pavement corridor. Equal fractions of a
+        // folded lane and a smooth arc need not represent the same location.
+        const original = [here, ...track.points.slice(here.index + 1, end.index + 1), end];
+        if (original.some(p => p.edge.road.l !== here.edge.road.l)) continue;
+        const segments = original.slice(1).map((b, i) => {
+          const a = original[i], dx = b.x - a.x, dz = b.z - a.z;
+          return { a, dx, dz, lengthSq: Math.max(.00001, dx * dx + dz * dz) };
+        });
+        function withinLane(x, z) {
+          return segments.some(({ a, dx, dz, lengthSq }) => {
+            const vx = x - a.x, vz = z - a.z;
+            const t = Math.max(0, Math.min(1, (vx * dx + vz * dz) / lengthSq));
+            return Math.hypot(vx - t * dx, vz - t * dz) <= 2.2;
+          });
         }
-        if (arc.length !== parts + 1) continue;
-        track.points = arc.concat(track.points.slice(end.index + 1));
-        track.index = 0; track.offset = 0; track.pass = null; track.ticket = null;
-        track.hold = 0; dispatchIn = 0;
-        return;
+        const handle = span / 3;
+        const chord = Math.atan2(end.x - v.x, v.z - end.z);
+        const turn = Math.atan2(Math.sin(chord - v.yaw), Math.cos(chord - v.yaw));
+        for (const adjust of [0, .22, .44]) {
+          const yaw = v.yaw + Math.max(-adjust, Math.min(adjust, turn));
+          const cx = v.x + Math.sin(yaw) * handle, cz = v.z - Math.cos(yaw) * handle;
+          const dx = end.x - Math.sin(end.yaw) * handle, dz = end.z + Math.cos(end.yaw) * handle;
+          const arc = [here], parts = Math.ceil(reach / .18);
+          for (let i = 1; i <= parts; i++) {
+            const t = i / parts, u = 1 - t, at = sample(track, t * reach);
+            const x = u*u*u*v.x + 3*u*u*t*cx + 3*u*t*t*dx + t*t*t*end.x;
+            const z = u*u*u*v.z + 3*u*u*t*cz + 3*u*t*t*dz + t*t*t*end.z;
+            const last = arc.at(-1), yaw = Math.atan2(x - last.x, last.z - z);
+            const p = { ...at, x, z, yaw };
+            if (!withinLane(x, z) ||
+                !sim.canOccupy(last.x, last.z, yaw, at.edge.road.l) ||
+                !sim.canOccupy(x, z, yaw, at.edge.road.l) || collide(p, v, player)) break;
+            for (let n = last.index + 1; n <= at.index; n++) {
+              if (track.points[n].junctionRadius) p.junctionRadius = track.points[n].junctionRadius;
+            }
+            arc.push(p);
+          }
+          if (arc.length !== parts + 1) continue;
+          track.points = arc.concat(track.points.slice(end.index + 1));
+          track.index = 0; track.offset = 0; track.pass = null; track.ticket = null;
+          track.hold = 0; track.blockedByRoad = false; dispatchIn = 0;
+          return;
+        }
       }
     }
     // Reserve just the planned manoeuvre. Parallel lanes can be used together,
     // whereas crossing paths and two lanes merging into one must take turns.
+    const junctionPadding = .55;
     function junctionPlan(v, track) {
       let metres = -track.offset, entry = Infinity, exit = 0, first = null;
       const reach = Math.max(34, stoppingDistance(v) + v.halfLength + 10);
@@ -283,20 +346,25 @@
       for (let m = Math.max(0, entry); m < exit + 2.6; m += 2.6) {
         const pose = sample(track, Math.min(m, exit));
         if (!pose) break;
-        path.push({ x: pose.x, z: pose.z, yaw: pose.yaw, layer: pose.edge.road.l,
-          kind: v.kind, halfLength: v.halfLength + .55, halfWidth: v.halfWidth + .12 });
+        path.push({ at: Math.min(m, exit), x: pose.x, z: pose.z, yaw: pose.yaw, layer: pose.edge.road.l,
+          kind: v.kind, halfLength: v.halfLength + junctionPadding, halfWidth: v.halfWidth + .12 });
         x0 = Math.min(x0, pose.x); x1 = Math.max(x1, pose.x);
         z0 = Math.min(z0, pose.z); z1 = Math.max(z1, pose.z);
       }
       if (!path.length) return null;
       return { first, entry, exit, path, x0: x0 - pad, x1: x1 + pad, z0: z0 - pad, z1: z1 + pad };
     }
-    function bodyOverlap(a, b) {
-      return sim.trafficOverlap(a.x, a.z, a.yaw, a.layer, b, a.halfLength, a.halfWidth, a.kind === 'bus' ? 4.45 : 1.75);
+    function bodyOverlap(a, b, halfLength = a.halfLength) {
+      return sim.trafficOverlap(a.x, a.z, a.yaw, a.layer, b, halfLength, a.halfWidth, a.kind === 'bus' ? 4.45 : 1.75);
     }
     function conflicts(a, b) {
       if (a.x0 > b.x1 || b.x0 > a.x1 || a.z0 > b.z1 || b.z0 > a.z1) return false;
-      return a.path.some(p => b.path.some(q => bodyOverlap(p, q)));
+      return a.path.some(p => b.path.some(q => {
+        // Consecutive cars in the same lane already keep their following gap.
+        // Two padded ends touching must not make the leader yield to its follower.
+        const sharedPadding = Math.cos(p.yaw - q.yaw) > .85 ? junctionPadding : 0;
+        return bodyOverlap(p, q, p.halfLength - sharedPadding);
+      }));
     }
     function stoppingDistance(v) {
       return v.speed * v.speed / (2 * braking) + v.speed * .3;
@@ -320,7 +388,14 @@
           const beforeEntry = track.passLeft >= track.pass.exit - track.pass.entry - .25;
           const blocked = track.stopped > 3 || (mustStop && lamp.distance <= track.passLeft);
           if (track.passLeft > 0 && !(beforeEntry && blocked)) {
-            granted.push(track.pass);
+            const pass = track.pass, progress = pass.exit - track.passLeft;
+            if (progress > pass.path[0].at) {
+              // Keep the current body and the remaining sweep. The rear clears
+              // already-travelled pavement progressively, even on long turns.
+              while (pass.path.length > 1 && pass.path[1].at <= progress) pass.path.shift();
+              Object.assign(pass.path[0], { at: progress, x: v.x, z: v.z, yaw: v.yaw, layer: v.layer });
+            }
+            granted.push(pass);
             continue;
           }
           track.pass = null;
@@ -366,7 +441,7 @@
         }
         extend(track, v);
         const signal = frontSignal(v);
-        if (recycle && track.stopped > 1 && v.waitingForSignal == null) repairBend(v, track, player);
+        if (recycle && track.stopped > 1 && track.blockedByRoad) repairBend(v, track, player);
         if (recycle && !track.pass && !track.ticket && (!signal || signal.distance > 21)) { tryLaneChange(v, track, player); track = tracks[v.id]; }
         const speed = v.speed;
         let desired = cruiseSpeed(v, track, dt);
@@ -406,8 +481,10 @@
         v.speed += Math.max(-rate * dt, Math.min(rate * dt, desired - speed));
         if (stopRoom < .045) v.speed = 0;
         const advance = Math.min(stopRoom, v.speed * dt);
-        const pose = sample(track,advance);
-        if (pose && !collide(pose, v, player) && sim.canOccupy(pose.x, pose.z, pose.yaw, pose.edge.road.l)) {
+        const pose = sample(track, advance);
+        const free = pose && !collide(pose, v, player);
+        track.blockedByRoad = free && !sim.canOccupy(pose.x, pose.z, pose.yaw, pose.edge.road.l);
+        if (free && !track.blockedByRoad) {
           v.x = pose.x; v.z = pose.z; v.yaw = pose.yaw; v.layer = pose.edge.road.l;
           track.index = pose.index; track.offset = pose.offset;
           if (track.pass) track.passLeft -= advance;
@@ -418,5 +495,7 @@
     }
     return { vehicles, step };
   }
-  global.HKTraffic = { create };
+  global.HKTraffic = { create, signature, bake(map, sim) {
+    return { signature: signature(map), modes: compileAccess(roadGraph(map, sim.rules), sim.rules) };
+  } };
 })(typeof window === "object" ? window : globalThis);

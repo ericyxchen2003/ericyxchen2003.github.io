@@ -102,7 +102,7 @@ window.HKStreetLights=(()=>{
         if(head){heads.push(head);const key=cell(head.x,head.z);if(!cells.has(key))cells.set(key,[]);cells.get(key).push(head);}
       }
     }
-    for(const [x,z] of [...(window.HKHoManTin?.parkLamps||[]),...(window.HKKowloonGarden?.lamps||[]),...(window.HKTongParkLamps||[]),...(window.HKKaiTakParks?.lamps||[])]){
+    for(const [x,z] of [...(window.HKHoManTin?.parkLamps||[]),...(window.HKKowloonGarden?.lamps||[]),...(window.HKTongParkLamps||[]),...(window.HKKaiTakParks?.lamps||[]),...(window.HKShamShuiPoParks?.lamps||[]),...(window.HKShekKipMeiParks?.lamps||[]),...(window.HKCheungShaWanParks?.lamps||[])]){
       if(!hasSpace(x,z))continue;
       const base=height(x,z);
       if((height.overhead(x,z)??Infinity)-base<5)continue;
@@ -116,6 +116,7 @@ window.HKStreetLights=(()=>{
       if(!cells.has(key))cells.set(key,[]);
       cells.get(key).push(head);
     }
+    window.HKShekKipMeiParks?.furnish?.(height,props,heads);
     return {heads,nearby,...lightField(heads)};
   }
 
@@ -137,20 +138,22 @@ window.HKStreetLights=(()=>{
     const cols=Math.ceil(Math.sqrt(groups*nz/nx)),width=cols*nx,height=Math.ceil(groups/cols)*nz;
     const data=new Uint8Array(width*height*4);
     for(const p of heads){
-      const ix0=Math.ceil((p.x-range-x0)/spacing),ix1=Math.floor((p.x+range-x0)/spacing);
-      const iz0=Math.ceil((p.z-range-z0)/spacing),iz1=Math.floor((p.z+range-z0)/spacing);
+      const reach=p.flood?65:range;
+      const ix0=Math.ceil((p.x-reach-x0)/spacing),ix1=Math.floor((p.x+reach-x0)/spacing);
+      const iz0=Math.ceil((p.z-reach-z0)/spacing),iz1=Math.floor((p.z+reach-z0)/spacing);
       for(let iy=Math.ceil((p.base-5-y0)/vertical);iy<ny&&y0+iy*vertical<p.y+3.5;iy++){
         const y=y0+iy*vertical,dy=y-p.y;
         // Keep a flyover's wash on its own deck; a downlight falls off above its housing.
         const fall=Math.max(0,Math.min(1,(y-p.base+4.5)/4.5,(3.5-dy)/4));
+        const beam=p.flood?Math.max(0,Math.min(1,-dy/(p.y-p.base))):0;
         const group=iy>>2,row=Math.floor(group/cols)*nz,col=group%cols*nx;
         for(let iz=iz0;iz<=iz1;iz++){
-          const dz=z0+iz*spacing-p.z;
+          const dz=z0+iz*spacing-p.z-(p.aimZ||0)*beam;
           for(let ix=ix0;ix<=ix1;ix++){
-            const dx=x0+ix*spacing-p.x,d2=dx*dx+dz*dz+dy*dy;
-            if(d2>=range*range)continue;
-            const edge=1-d2*d2/range**4;
-            const value=125*fall*edge*edge/(d2+33);
+            const dx=x0+ix*spacing-p.x-(p.aimX||0)*beam,d2=dx*dx+dz*dz+dy*dy;
+            if(d2>=reach*reach)continue;
+            const edge=1-d2*d2/reach**4;
+            const value=p.flood?1.05*fall*edge*edge/(1+d2/1050):125*fall*edge*edge/(d2+33);
             const k=((row+iz)*width+col+ix)*4+(iy&3);
             data[k]=Math.min(255,data[k]+Math.round(255*value/scale));
           }

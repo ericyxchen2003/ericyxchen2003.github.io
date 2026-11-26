@@ -73,3 +73,14 @@ if(window.HKKaiTak)HKTaxiRankRows.push(
   [94,'啟德郵輪碼頭','啟德郵輪碼頭地下上落客區','Kai Tak Cruise Terminal',4478,-1111,'kai209720482',[4,13.5,1,2.97]],
   [101,'沐寧街・啟德一號','沐寧街近啟德一號','Muk Ning Street near One Kai Tak',3188,-3621,'kai903206650',[4,10.3,1,4.82]]
 );
+if(window.HKShamShuiPo)HKTaxiRankRows.push(
+  [170,'西九龍中心','西九龍中心地下的士站','Dragon Centre taxi rank',-1029,-3885,'ssp1208420331',[5,30.3,1,2.97]],
+  [167,'深旺道・海達','深旺道北行海達公共運輸交匯處外','Sham Mong Road outside Hoi Tat Interchange',-1839,-3677,'ssp445936711',[2,31.1,1,4.5]]
+);
+if(window.HKCheungShaWan)HKTaxiRankRows.push(
+  [160,'青山道・大南西街','青山道近大南西街','Castle Peak Road near Tai Nan West Street',-2187,-4707,'csw1064213930',[9,25.5,1,6]],
+  [161,'長順街','長沙灣廣場外長順街','Cheung Shun Street outside Cheung Sha Wan Plaza',-2179,-4532,'csw1038154665',[2,19.9,1,4.5]],
+  [162,'幸祥街','長沙灣幸祥街','Hang Cheung Street',-1659,-4445,'csw151705863',[2,40.7,-1,4.7]],
+  [163,'海麗邨','海麗邨公共運輸交匯處','Hoi Lai Estate Public Transport Interchange',-2318,-4010,'csw104289413',[4,3.1,1,2.97]],
+  [169,'集輝街','長沙灣集輝街','Tsap Fai Street',-1783,-4909,'skm151355612',[1,43.1,1,2.97]]
+);

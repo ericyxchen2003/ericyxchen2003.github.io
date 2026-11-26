@@ -4,6 +4,10 @@ window.HKTaxiService=(()=>{
   const stopped=.12;
   const earliestPickup=5; // Real seconds continuously stopped in the bay.
   const daytime={mean:10,max:20},overnight={mean:20,max:40};
+  const luggageRate=600; // HK cents per piece, separate from the meter.
+  function drawFineCents(random=Math.random){
+    return random()<.5?5000:0;
+  }
   function fareCents(fastMetres,slowSeconds){
     // Distance starts its next band just beyond the included distance. A minute
     // of low-speed operation contributes one increment, including in the flagfall.
@@ -56,8 +60,11 @@ window.HKTaxiService=(()=>{
       const best=options.sort((a,b)=>a.score-b.score)[0]||null;
       frontages.set(b,best);return best;
     }
-    const vacant={phase:'vacant',origin:null,target:null,wait:0,expectedWaitSeconds:0,fare:0,minimumFare:0,referenceFare:0,fine:0,metres:0,slow:0,fast:0};
-    const state={...vacant};
+    const vacant={phase:'vacant',origin:null,target:null,wait:0,expectedWaitSeconds:0,fare:0,minimumFare:0,referenceFare:0,fine:0,metres:0,slow:0,fast:0,luggage:0};
+    const state={...vacant,
+      get luggageFee(){return this.luggage*luggageRate;},
+      get totalFare(){return this.fare+this.luggageFee;}
+    };
     let arrivalFactor=0,lastOdo=0,lastTarget=null,retry=0,receiptAge=0;
     function dispatch(rank){
       const start=Math.min(buildings.length-1,Math.floor(random()*buildings.length));
@@ -121,7 +128,7 @@ window.HKTaxiService=(()=>{
         else state.fast+=delta;
         state.fare=fareCents(state.fast,state.slow);
         if(nearDrop()&&Math.abs(car.speed)<=stopped){
-          if(state.fare>state.referenceFare&&random()<.5)state.fine=20000;
+          if(state.fare>state.referenceFare)state.fine=drawFineCents(random);
           state.phase='receipt';receiptAge=0;sim.cancelRoute();return 'complete';
         }
         retry-=seconds;
@@ -143,11 +150,13 @@ window.HKTaxiService=(()=>{
       state.wait+=seconds;
       if(state.wait+1e-9>=due){
         if(!dispatch(rank)){clear();return;}
+        const chance=car.vehicle?.luggageChance??0;
+        state.luggage=chance>0&&random()<chance?1:0;
         state.phase='hired';state.fare=2900;lastOdo=car.odometer;retry=3;
         return 'pickup';
       }
     }
     return {state,stands,step,withinBay,nearDrop,nearestStand,clear};
   }
-  return {create,fareCents,maxWaitSeconds:daytime.max,meanWaitSeconds:daytime.mean};
+  return {create,fareCents,drawFineCents,luggageRate,maxWaitSeconds:daytime.max,meanWaitSeconds:daytime.mean};
 })();
