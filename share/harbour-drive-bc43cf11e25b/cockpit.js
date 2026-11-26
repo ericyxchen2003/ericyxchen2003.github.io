@@ -269,7 +269,7 @@ window.HKCockpit = (() => {
       }
     }
     // A shared budget refreshes one visible mirror at a time.
-    const rear=new T.PerspectiveCamera(31,3.2,.25,1050);
+    const rear=new T.PerspectiveCamera(31,3.2,.25,HKScenery.compact?430:1050);
     const mx=-.065,my=1.463,mz=-.537;
     bar([mx,1.555,-.45],[mx,my+.026,mz-.017],.007,rubber);
     const mirror=new T.Group();mirror.position.set(mx,my,mz);mirror.rotation.y=.14;cabin.add(mirror);
@@ -313,7 +313,7 @@ window.HKCockpit = (() => {
         const priority=m.age/(m.side?.48:.20);
         if(priority>best){next=m;best=priority;}
       }
-      if(next&&(snap||mirrorAge>=.135)){
+      if(next&&(snap||mirrorAge>=(HKScenery.compact ? .26 : .135))){
         const side=next.side;rear.aspect=side?(hybridActive?.194/.106:1.65):3.2;rear.fov=side?(hybridActive?34:42):31;rear.updateProjectionMatrix();
         if(side)rear.position.setFromMatrixPosition(next.face.matrixWorld);
         else rear.position.set(0,1.28,1.13).applyMatrix4(cabin.matrixWorld);

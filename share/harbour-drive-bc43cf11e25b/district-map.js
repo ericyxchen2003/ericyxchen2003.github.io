@@ -241,9 +241,9 @@ window.HKDistrictMap=(()=>{
         }
         matches=rows.sort((a,b)=>b.score-a.score||a.p.name.length-b.p.name.length).slice(0,picking?rows.length:6).map(r=>r.p);
         for(const [i,p] of matches.entries()){
-          const item=$el('div','dm-result');item.id='dm-result-'+i;item.setAttribute('role','option');item.setAttribute('aria-selected','false');
+          const item=$el('button','dm-result');item.type='button';item.tabIndex=-1;item.id='dm-result-'+i;item.setAttribute('role','option');item.setAttribute('aria-selected','false');
           const desc=$el('span','dm-result-text');desc.append($el('b','',p.name),$el('small','',p.en&&p.en!==p.name?p.en:cats()[p.kind].name));
-          item.append(categorySymbol(p),desc);on(item,'pointerdown',e=>e.preventDefault());on(item,'click',()=>choose(p));results.append(item);
+          item.append(categorySymbol(p),desc);on(item,'mousedown',e=>e.preventDefault());on(item,'click',()=>choose(p));results.append(item);
         }
         if(!matches.length)results.append($el('p','dm-empty','找不到相符地點'));
         results.hidden=false;input.setAttribute('aria-expanded','true');

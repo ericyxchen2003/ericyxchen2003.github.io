@@ -216,9 +216,8 @@ window.HKMongKokStreets=(()=>{
     if(kind==='computer'){props.add('box',...f.at(0,y+1.84,.22),Math.min(w,5.5),1.5,.33,'#202b38',-f.a);face(signs,f.at,label(['數碼廣場','DIGITAL • IT'],'#315882'),y+1.84,Math.min(w*.95,5.2),1.2,.40);}
   }
   function bridges(scene,height,kit,props){
-    const {Batch,flatBatch,color}=kit,buf=new Batch();
+    const {Batch,flatBatch,color}=kit;
     const slab=color('#b8bab0'),soffit=color('#8e9690'),roof=color('#81a398'),rail=color('#8aaba9'),edge=color('#cdd6c9');
-    const q=(a,b,c,d,shade)=>buf.quad(a,b,c,d,shade);
     const podium=window.HKWestKowloon?.elements;
     const integratedPaths=new Set(podium?.integratedPaths),deckBridges=new Set(podium?.deckBridges);
     const roadById=new Map(HKMAP.roads.map(r=>[r.id,r]));
@@ -262,7 +261,7 @@ window.HKMongKokStreets=(()=>{
       const taper=links.length===2?Math.min(b.w,mate.b.w)/b.w:1;
       return [mx/div*taper,mz/div*taper];
     }
-    for(const b of walks){
+    function drawWalk(b,q,props){
       const p=b.p,w=b.w,flush=b.flush;let run=0;
       const pierAt=new Map();
       for(const [x,z] of b.posts){
@@ -362,7 +361,7 @@ window.HKMongKokStreets=(()=>{
         run+=len;
       }
     }
-    for(const tunnel of data.subways){
+    function drawSubway(tunnel,q){
       const p=tunnel.p,dist=[0];for(let i=1;i<p.length;i++)dist.push(dist[i-1]+Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]));
       const len=dist.at(-1),w=tunnel.w*.5;
       for(let i=1;i<p.length;i++){
@@ -390,7 +389,32 @@ window.HKMongKokStreets=(()=>{
         }
       }
     }
-    const mesh=buf.mesh(flatBatch(),scene,true);if(mesh)mesh.name='行人天橋及樓梯';
+    const material=flatBatch();
+    function finish(buf,parent){
+      const mesh=buf.mesh(material,parent,true);if(mesh)mesh.name='行人天橋及樓梯';
+    }
+    if(!window.HKScenery?.compact){
+      const buf=new Batch(),q=buf.quad.bind(buf);
+      for(const way of walks)drawWalk(way,q,props);
+      for(const way of data.subways)drawSubway(way,q);
+      finish(buf,scene);return;
+    }
+    // Keep each complete walkway and its supports together when a tile is unloaded.
+    const tiles=new Map(),groups=new Map();
+    function register(way,draw){
+      const p=way.p,cell=Math.floor(p[0][0]/180)+'/'+Math.floor(p[0][1]/180);
+      if(!tiles.has(cell))tiles.set(cell,{bounds:[Infinity,Infinity,-Infinity,-Infinity],ways:[]});
+      const tile=tiles.get(cell),b=tile.bounds;
+      for(const [x,z] of p){b[0]=Math.min(b[0],x);b[1]=Math.min(b[1],z);b[2]=Math.max(b[2],x);b[3]=Math.max(b[3],z);}
+      tile.ways.push([way,draw]);
+    }
+    for(const way of walks)register(way,drawWalk);
+    for(const way of data.subways)register(way,drawSubway);
+    return HKRoadTiles.stream([...tiles.values()],function* build(tile,index){
+      const parent=new THREE.Group(),buf=new Batch(),q=buf.quad.bind(buf),supports=kit.instances(parent);
+      for(const [way,draw] of tile.ways){draw(way,q,supports);yield;}
+      finish(buf,parent);supports.flush();groups.set(index,parent);scene.add(parent);
+    },{radius:700,firstRadius:170,release(index){HKScenery.removeGroup(groups.get(index));groups.delete(index);}});
   }
   function entrance(signs,x,y,z,ref){
     const entry=label(['港鐵 '+ref,'MTR'],'#9f2637');

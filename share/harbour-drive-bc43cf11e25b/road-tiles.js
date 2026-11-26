@@ -34,25 +34,33 @@ window.HKRoadTiles = (() => {
     return Array.from(tiles.values());
   }
 
-  function stream(tiles, build) {
-    const pending = tiles.map((tile, index) => ({tile, index, distance: 0, steps: null}));
-    let lastX = Infinity, lastZ = Infinity;
+  function stream(tiles, build, {radius=Infinity, release, firstRadius=320}={}) {
+    const jobs = tiles.map((tile, index) => ({tile, index, distance: 0, steps: null, done: false}));
+    let pending = [], lastX = Infinity, lastZ = Infinity;
     return function update(x, z, immediate) {
-      if (!pending.length) return false;
       if (immediate || Math.hypot(x - lastX, z - lastZ) > 45) {
         lastX = x; lastZ = z;
-        for (const job of pending) {
+        pending = [];
+        for (const job of jobs) {
           const [west, north, east, south] = job.tile.bounds;
           job.distance = Math.hypot(Math.max(west - x, x - east, 0), Math.max(north - z, z - south, 0));
+          if (job.distance > radius + 180 && (job.done || job.steps)) {
+            job.steps?.return(); job.steps = null; job.done = false;
+            release?.(job.index);
+          }
+          if (!job.done && job.distance <= radius) pending.push(job);
         }
         pending.sort((a, b) => b.distance - a.distance);
       }
+      if (!pending.length) return false;
       const start = performance.now();
       do {
         const job = pending.at(-1);
         job.steps ??= build(job.tile, job.index);
-        if (job.steps.next().done) pending.pop();
-      } while (pending.length && (immediate && pending.at(-1).distance <= 320 || performance.now() - start < 3));
+        if (job.steps.next().done) {
+          job.done = true; job.steps = null; pending.pop();
+        }
+      } while (pending.length && (immediate && pending.at(-1).distance <= firstRadius || performance.now() - start < 3));
       return true;
     };
   }

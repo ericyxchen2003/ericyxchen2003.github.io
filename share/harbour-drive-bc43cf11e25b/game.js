@@ -14,7 +14,7 @@
     const film=$('menuFilm'),motionButton=$('menuMotion'),reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
     let motionOverride=null;
     function syncMenuFilm(){
-      const enabled=motionOverride??!reducedMotion.matches;
+      const enabled=motionOverride??(!reducedMotion.matches&&!HKScenery.compact);
       const label=enabled?'暫停背景動畫':'播放背景動畫';
       motionButton.title=label;motionButton.setAttribute('aria-label',label);
       motionButton.querySelector('use').setAttribute('href',enabled?'#i-pause':'#i-play');
@@ -26,7 +26,7 @@
     }
     film.addEventListener('playing',()=>film.classList.add('ready'));
     film.addEventListener('error',()=>{film.classList.remove('ready');motionButton.hidden=true;});
-    motionButton.onclick=()=>{motionOverride=!(motionOverride??!reducedMotion.matches);syncMenuFilm();};
+    motionButton.onclick=()=>{motionOverride=!(motionOverride??(!reducedMotion.matches&&!HKScenery.compact));syncMenuFilm();};
     reducedMotion.addEventListener('change',()=>{motionOverride=null;syncMenuFilm();});
     document.addEventListener('visibilitychange',syncMenuFilm);
     let started=false,frameId=0,prev=0;
@@ -360,7 +360,7 @@
         resumePreparation?.();resumePreparation=null;
         // The film is paused here. Let the map paint, then use the player's
         // selection time for scene preparation, including the larger batches.
-        requestAnimationFrame(()=>setTimeout(()=>ensureWorld().catch(()=>{}),0));
+        if(!HKScenery.compact)requestAnimationFrame(()=>setTimeout(()=>ensureWorld().catch(()=>{}),0));
         const savedMinuteOnMap=wallet.minute;
         districtMap.open($('panelBody'),{savedMinute:savedMinuteOnMap,vehicleId:wallet.vehicle.id,peakRent:wallet.peakRent,
           pickStand:(stand,minutes)=>departStand(stand,{minutes,savedMinute:savedMinuteOnMap})});
