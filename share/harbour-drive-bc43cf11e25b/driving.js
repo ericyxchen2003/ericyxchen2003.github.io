@@ -4,6 +4,50 @@
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
   const magnitude = Math.hypot;
   const key = (x, z) => x + "/" + z;
+  // Full-throttle acceleration in m/s² at successive road speeds (km/h).
+  // Both profiles use the same integrator for pedals, drag and steering.
+  const speedBands = [0, 18, 40, 65, 90, 120];
+  const handling = {
+    comfort: {pull:[2.60,2.85,2.35,1.87,1.42,1.05], lift:.17, drag:.00036, brake:7.5},
+    hybrid:  {pull:[3.35,3.25,2.48,1.72,1.30,.94], lift:.48, drag:.00042, brake:7.8}
+  };
+  function tractiveAcceleration(v, profile) {
+    const kmh=v*3.6;
+    let i=1;
+    while(i<speedBands.length-1 && kmh>speedBands[i])i++;
+    const t=clamp((kmh-speedBands[i-1])/(speedBands[i]-speedBands[i-1]),0,1);
+    return profile.pull[i-1]+(profile.pull[i]-profile.pull[i-1])*t;
+  }
+  function pedalSpeed(v, dt, throttle, brake, handbrake, reverseAllowed, profile) {
+    if (handbrake) v -= Math.sign(v) * Math.min(Math.abs(v), 12.5 * dt);
+    else if (throttle && !brake) v += throttle * (v < 0 ? 7.5 : tractiveAcceleration(v, profile)) * dt;
+    else if (brake) {
+      if (v > 0.02) v = Math.max(0, v - profile.brake * brake * dt);
+      else v = reverseAllowed ? v - 2.8 * brake * dt : 0;
+    }
+    const lift = v > 0 && !brake ? (1-throttle)*profile.lift*Math.min(1,v/2) : 0;
+    const resistance = .14 + profile.drag*v*v + lift;
+    v -= Math.sign(v) * Math.min(Math.abs(v), resistance * dt);
+    return clamp(v, -4.5, 120 / 3.6);
+  }
+  // Flat-road figures for the garage, using the driving pedals and no reversing.
+  function performanceFigures(id) {
+    const profile = handling[id] ?? handling.comfort, dt = 1/90;
+    function run(from, to, throttle, brake) {
+      let speed=from/3.6, distance=0;
+      for(let tick=1;tick<=90*120;tick++){
+        speed=pedalSpeed(speed,dt,throttle,brake,false,false,profile);
+        distance+=speed*dt;
+        if(throttle ? speed>=to/3.6 : speed<=to/3.6) return {seconds:tick*dt,distance};
+      }
+      return {seconds:Infinity,distance:Infinity};
+    }
+    return {
+      accelerationSeconds:run(0,50,1,0).seconds,
+      brakingMetres:run(50,0,0,1).distance,
+      coastingSeconds:run(50,30,0,0).seconds
+    };
+  }
   const CELL = 25;
   const levelBit = layer => 1 << (layer < 0 ? 15 - layer : layer);
   const L = 2.27;
@@ -14,6 +58,9 @@
   const corners = [[L, W], [L, -W], [-L, W], [-L, -W], [L, 0], [-L, 0], [0, W], [0, -W], [0, 0]];
   const locations = [
     ...(window.HKHungGuide?.places||[]),
+    ...(window.HKCheungShaWanGuide?.places||[]),
+    ...(window.HKShekKipMeiGuide?.places||[]),
+    ...(window.HKShamShuiPoGuide?.places||[]),
     ...(window.HKKaiTakGuide?.places||[]),
     ...(window.HKKowloonTongGuide?.places||[]),
     ...(window.HKKowloonCityGuide?.places||[]),
@@ -297,14 +344,46 @@
       }
       return mask;
     }
-    function roadAtLevel(x, z, mask) {
+    function roadAtLevel(x, z, mask, onPavement = false) {
       let best = null;
       for (const s of roadsGrid.at(x, z)) {
         if (!(mask & s.bit)) continue;
         const hit = project(s, x, z);
+        if (onPavement && hit.distance > s.half + .28) continue;
         if (!best || hit.distance < best.distance) best = hit;
       }
       return best;
+    }
+    function drivingLayer(x, z, levels) {
+      const layer = state.layer, currentBit = levelBit(layer);
+      if (levels === currentBit) return layer;
+      const next = roadAtLevel(x, z, levels);
+      if (!next || next.segment.layer === layer || next.distance > next.segment.half + .28) return layer;
+      // At an angled fork the rear wheels can still be on the narrow
+      // incoming lane after the centre has cleared its last cross-section.
+      const from = roadAtLevel(state.x, state.z, currentBit, true) ??
+        roadAtLevel(state.x, state.z, currentBit);
+      if (!from || from.distance > from.segment.half + L) return layer;
+
+      // Nearby ramp mouths can overlap an unrelated street in plan view.
+      // The taxi must move onto the outgoing arm of its own junction.
+      const target = next.segment;
+      const joined = transitions.at(x,z).some(node => {
+        if (!node.incident.includes(from.segment) || !node.incident.includes(target) ||
+            (x-node.x)**2 + (z-node.z)**2 > node.reach**2) return false;
+        const sign = target.a[0] === node.x && target.a[1] === node.z ? 1 : -1;
+        return sign * ((x-state.x)*target.dx + (z-state.z)*target.dz) > 0 &&
+          sign * ((x-node.x)*target.dx + (z-node.z)*target.dz) > 0;
+      });
+      if (!joined) return layer;
+      if (groundHeight?.surface) {
+        const oldY = groundHeight.surface(state.x, state.z, layer, from.road.id);
+        const newY = groundHeight.surface(x, z, target.layer, target.road.id);
+        // Each tick travels at most 0.38 m. Allow crossfall and small
+        // differences between the two sampled surfaces at a real landing.
+        if (Math.abs(newY - oldY) > 1) return layer;
+      }
+      return target.layer;
     }
     function pavementAt(x, z, mask, connected) {
       for (const s of roadsGrid.at(x, z)) {
@@ -558,6 +637,7 @@
       for (let i = 1; i < points.length; i++) {
         if (route.layers[i - 1] !== state.layer) continue;
         const a = points[i - 1], b = points[i], len = routeLengths[i] - routeLengths[i - 1];
+        if (len === 0) continue;
         const dx = (b[0] - a[0]) / len, dz = (b[1] - a[1]) / len;
         const t = clamp((state.x - a[0]) * dx + (state.z - a[1]) * dz, 0, len);
         const distance = magnitude(a[0] + dx * t - state.x, a[1] + dz * t - state.z);
@@ -567,6 +647,14 @@
           nearest = distance; progress = along; score = distance + continuityPenalty; index = i;
         }
       }
+      // Keep the last measured distance while off route or between layers.
+      // Projecting onto an unrelated segment can jump back to the start.
+      if (route.total > 0 && nearest > 23) {
+        rerouteTime += dt;
+        if (rerouteTime > 1.2) navigate(target);
+        return;
+      }
+      rerouteTime = 0;
       routeProgress = progress;
       route.remaining = Math.max(0, route.total - progress);
       route.progress = route.total ? progress / route.total : 1;
@@ -588,8 +676,6 @@
           break;
         }
       }
-      rerouteTime = nearest > 23 ? rerouteTime + dt : 0;
-      if (rerouteTime > 1.2) navigate(target);
     }
 
     function trafficOverlap(x,z,yaw,layer,other,halfLength=L,halfWidth=W,bodyHeight=1.75){
@@ -635,37 +721,24 @@
       const steerInput = clamp(Number(inputs.right || 0) - Number(inputs.left || 0), -1, 1);
       const handbrake = Boolean(inputs.handbrake);
       const speed = Math.abs(state.speed);
+      const profile = handling[state.vehicle?.id] ?? handling.comfort;
+      state.driveDemand = brake && state.speed>0 ? -2*brake : throttle || (speed>1 ? -.12 : 0);
       const desired = steerInput * (0.62 / (1 + speed * 0.09));
       const steeringRate = steerInput ? 1.24 / (1 + Math.min(0.30, speed * 0.017)) : 2.6;
       state.steer += clamp(desired - state.steer, -steeringRate * dt, steeringRate * dt);
-      let v = state.speed;
-      if (handbrake) v -= Math.sign(v) * Math.min(Math.abs(v), 12.5 * dt);
-      else if (throttle && !brake) {
-        reverseDelay = 0;
-        const acceleration = v < 0 ? 7.5 : 4.7 / (1 + Math.max(0, v) * 0.048) + Math.max(0, v - 70 / 3.6) * .095;
-        v += throttle * acceleration * dt;
-      } else if (brake) {
-        if (v > 0.02) {
-          v = Math.max(0, v - 8.6 * brake * dt); reverseDelay = 0.30;
-        } else if (reverseDelay <= 0) v -= 2.8 * brake * dt;
-        else { v = 0; reverseDelay -= dt; }
-      } else { reverseDelay = 0; }
-      const resistance = 0.34 + 0.0021 * v * v;
-      v -= Math.sign(v) * Math.min(Math.abs(v), resistance * dt);
-      v = clamp(v, -4.5, 120 / 3.6);
+      const v = pedalSpeed(state.speed,dt,throttle,brake,handbrake,reverseDelay<=0,profile);
+      if (!handbrake) {
+        if (!brake) reverseDelay=0;
+        else if (state.speed>0.02) reverseDelay=.30;
+        else if (reverseDelay>0) reverseDelay-=dt;
+      }
       if (v === 0) { state.speed = 0; deckBlockedTime=0; return; }
       const yawRate = v / 2.68 * Math.tan(state.steer);
       const newYaw = state.yaw + clamp(yawRate, -1.72, 1.72) * dt;
       const middle = (state.yaw + newYaw) / 2;
       const x = state.x + Math.sin(middle) * v * dt, z = state.z - Math.cos(middle) * v * dt;
       const levels = levelsAt(x, z, state.layer);
-      let layer = state.layer;
-      if (levels !== (levelBit(layer))) {
-        const road = roadAtLevel(x, z, levels);
-        if (road && road.distance <= road.segment.half + .28 && road.segment.layer!==layer &&
-            transitions.at(x,z).some(n=>(n.mask&(levelBit(layer)))&&n.incident.includes(road.segment)&&
-              (x-n.x)**2+(z-n.z)**2<=n.reach**2)) layer = road.segment.layer;
-      }
+      const layer = drivingLayer(x, z, levels);
       const obstacle = obstructed(x, z, newYaw, layer, levels)
         || (traffic.some(other=>trafficOverlap(x,z,newYaw,layer,other)) ? "traffic" : "");
       if (obstacle) {
@@ -701,5 +774,5 @@
       canOccupy(x, z, yaw, layer = 0, onCarriageway = true) { return !obstructed(x, z, yaw, layer, levelsAt(x,z,layer), onCarriageway || layer !== 0); },
       setTraffic(vehicles) { traffic = vehicles; }, cancelRoute() { route = null; }, get route() { return route; } };
   }
-  global.HKDriving = { create, intersects, roadSpeedLimit };
+  global.HKDriving = { create, intersects, roadSpeedLimit, performanceFigures };
 })(typeof window === "object" ? window : globalThis);

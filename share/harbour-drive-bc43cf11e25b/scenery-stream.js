@@ -1,9 +1,9 @@
 /* Navigation and collisions are resident. Visual assets follow the vehicle or inspector. */
 window.HKScenery=(()=>{
   const SPAN=200, drivingRadius=410, key=(x,z)=>Math.floor(x/SPAN)+','+Math.floor(z/SPAN);
-  const url=file=>{
+  const url=(file,mime='image/webp',fallback='scenery/'+file)=>{
     const node=document.getElementById('asset-'+file);
-    return node?'data:image/webp;base64,'+node.textContent:'scenery/'+file;
+    return node?'data:'+mime+';base64,'+node.textContent:fallback;
   };
   function create(scene,build,skyline){
     const cells=new Map(),tiles=[],gpu=new THREE.TextureLoader();
@@ -12,7 +12,7 @@ window.HKScenery=(()=>{
       const k=key(x,z);
       if(!cells.has(k)){
         const ix=Math.floor(x/SPAN),iz=Math.floor(z/SPAN);
-        cells.set(k,{x:(ix+.5)*SPAN,z:(iz+.5)*SPAN,buildings:[],facades:[],stalls:[],entrances:[],props:[],half:SPAN/2,group:null});
+        cells.set(k,{x:(ix+.5)*SPAN,z:(iz+.5)*SPAN,buildings:[],shops:[],facades:[],stalls:[],entrances:[],props:[],half:SPAN/2,group:null});
       }
       return cells.get(k);
     }

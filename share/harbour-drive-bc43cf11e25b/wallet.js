@@ -1,8 +1,13 @@
 // Keep the driver's money and the game time it was settled through in one record.
 window.HKWallet = (() => {
   'use strict';
-  const openingCents = 50000, dailyCents = 5000, morning = 360, day = 1440;
-  const empty = () => ({balance: openingCents, minute: null});
+  const openingCents = 50000, morning = 360, day = 1440;
+  const vehicles = [
+    {id:'comfort', name:'Crown Comfort', body:'經典四門房車 · 鬆油後滑行較遠', dailyRent:5000, luggageChance:0},
+    {id:'hybrid', name:'Comfort Hybrid', body:'高頂混能的士 · 起步輕快，鬆油回收減速', dailyRent:6500, luggageChance:.25}
+  ];
+  const vehicleFor = id => vehicles.find(v => v.id === id) ?? vehicles[0];
+  const empty = () => ({balance: openingCents, minute: null, vehicle:'comfort'});
   const money = new Intl.NumberFormat('en-HK', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   const format = cents => 'HK$ ' + money.format(cents / 100);
   const formatRange = (low, high) => format(low) + '～' + money.format(high / 100);
@@ -13,10 +18,12 @@ window.HKWallet = (() => {
     const next = Math.floor(previous / day) * day + shift;
     return next < previous ? next + day : next;
   }
-  function feeBetween(previous, next) {
+  const rentalDay = minute => Math.floor((minute - morning) / day);
+  function feeBetween(previous, next, vehicleId, peakRent = 0) {
     if (previous === null) return 0;
-    const mornings = Math.floor((next - morning) / day) - Math.floor((previous - morning) / day);
-    return dailyCents * Math.max(0, mornings);
+    const mornings = rentalDay(next) - rentalDay(previous);
+    const rate = vehicleFor(vehicleId).dailyRent;
+    return mornings > 0 ? Math.max(peakRent, rate) + (mornings - 1) * rate : 0;
   }
   function connect() {
     return new Promise((resolve, reject) => {
@@ -58,15 +65,27 @@ window.HKWallet = (() => {
       });
     }
     await write(record => ({record}));
-    function settle(requestedMinute, fare = 0, fine = 0) {
+    function settle(requestedMinute, fare = 0, fine = 0, nextVehicle) {
       const generation = state.generation ?? 0;
       return write(record => {
         // A drive from before a reset cannot restore its clock or collect fares.
         if ((record.generation ?? 0) !== generation) return {record, resetElsewhere: true};
         const minute = Math.max(record.minute ?? 0, requestedMinute ?? record.minute ?? HKDayCycle.defaultStart);
-        const fee = feeBetween(record.minute, minute);
-        return {record: {...record, balance: record.balance + fare - fine - fee, minute}, fee};
-      });
+        const current = vehicleFor(record.vehicle), period = rentalDay(minute);
+        const fee = feeBetween(record.minute, minute, current.id, record.peakRent);
+        const requestedChange = nextVehicle !== undefined && nextVehicle !== current.id;
+        const switchBlocked = requestedChange && record.lastSwitchDay === period;
+        const switched = requestedChange && !switchBlocked;
+        const vehicle = switched ? nextVehicle : current.id;
+        let peakRent = fee ? 0 : record.peakRent ?? 0;
+        // Only time spent after this boundary belongs to the new rental day.
+        const periodStart = morning + period * day;
+        if (record.minute !== null && minute > Math.max(periodStart, record.minute))
+          peakRent = Math.max(peakRent, current.dailyRent);
+        if (switched) peakRent = Math.max(peakRent, vehicleFor(vehicle).dailyRent);
+        const lastSwitchDay = switched ? period : record.lastSwitchDay;
+        return {record: {...record, balance: record.balance + fare - fine - fee, minute, vehicle, lastSwitchDay, peakRent}, fee, switchBlocked};
+      }, nextVehicle !== undefined);
     }
     async function reset() {
       if (!db) {
@@ -84,12 +103,19 @@ window.HKWallet = (() => {
     return {
       get balance() { return state.balance; },
       get minute() { return state.minute; },
+      get vehicle() { return vehicleFor(state.vehicle); },
+      get peakRent() { return state.peakRent ?? 0; },
+      canSwitch(minute) { return state.lastSwitchDay !== rentalDay(Math.max(minute, state.minute ?? 0)); },
       get persistent() { return Boolean(db); },
       // Use the departure the driver saw on the map. Another tab passing
       // that time while the map is open must not roll this choice to tomorrow.
       start(shift, shownMinute = state.minute) { return settle(departure(shownMinute, shift)); },
+      selectVehicle(id, minute) {
+        if (!vehicles.some(v => v.id === id)) throw new RangeError('Unknown taxi');
+        return settle(minute, 0, 0, id);
+      },
       settle, reset
     };
   }
-  return {open, departure, feeBetween, format, formatRange};
+  return {open, departure, feeBetween, format, formatRange, vehicles};
 })();

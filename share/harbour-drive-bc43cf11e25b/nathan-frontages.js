@@ -112,8 +112,10 @@ window.HKFrontages=(()=>{
     return {bays:bays.filter(b=>b.height>=2.70),owners,cuts,head:i=>bays[i].floor+bays[i].height};
   }
 
+  let interiors;
   function interiorAtlas(){
-    const w=384,h=256,cells=Object.keys(trades),canvas=document.createElement('canvas');
+    if(interiors)return interiors;
+    const w=384,h=256,cells=[...Object.keys(trades),'books','seafood'],canvas=document.createElement('canvas');
     canvas.width=2048;canvas.height=2048;
     const c=canvas.getContext('2d'),uv={};
     const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=8;
@@ -201,6 +203,25 @@ window.HKFrontages=(()=>{
         }else{
           for(let j=0;j<3;j++){const x=72+j*92;rect(x-8,128,38,36,'#98644e');rect(x-13,151,50,9,'#714f40');oval(x+30,143,24,5,'#e1cfac');rect(x+27,147,4,35,'#665d4c');rect(x+20,135,7,7,'#f2dfbf');rect(x+37,130,3,10,'#ad5241');}
         }
+      }else if(kind==='books'){
+        rect(42,45,300,151,'#795c47');
+        for(let row=0;row<3;row++){
+          const base=94+row*46;
+          for(let x=49;x<328;){
+            const thick=5+rand()*9,hh=22+rand()*16;
+            rect(x,base-hh,thick,hh,palette[Math.floor(rand()*palette.length)]);
+            rect(x+1,base-hh+5,thick-2,2,'#f1deba');x+=thick+2;
+          }
+          shelf(43,base,298);
+        }
+      }else if(kind==='seafood'){
+        rect(44,47,297,144,'#92603e');
+        for(let row=0;row<2;row++)for(let i=0;i<7;i++){
+          const x=64+i*42,y=90+row*63;
+          rect(x-14,y-28,28,44,'#c5ac83');rect(x-12,y-15,24,30,'#af7145');
+          for(let j=0;j<17;j++)oval(x-10+rand()*20,y-11+rand()*23,2+rand()*2,1.7,'#e0b477');
+          rect(x-15,y-29,30,5,'#6c4e3a');rect(x-8,y-9,16,8,'#ead5a5');shelf(x-19,y+17,41);
+        }
       }else if(kind==='exchange'||kind==='bank'){
         rect(48,53,167,111,'#263e39');text(kind==='exchange'?'CURRENCY   BUY   SELL':'CUSTOMER SERVICES',131,65,12,'#f2dc98');
         for(let i=0;i<5;i++){rect(51,76+i*16,160,1,'#59716a');text(['HKD','USD','JPY','EUR','GBP'][i],74,84+i*16,10,'#d5d8bb');for(let j=0;j<2;j++)for(let n=0;n<5;n++)rect(117+j*47+n*4,81+i*16,2,4,'#d8c575');}
@@ -218,44 +239,14 @@ window.HKFrontages=(()=>{
       c.save();c.translate(x,y);c.beginPath();c.rect(0,0,w,h);c.clip();paint(kind,v);c.restore();
       uv[kind+v]=[(x+1)/2048,1-(y+h-1)/2048,(x+w-1)/2048,1-(y+1)/2048];
     }});
-    return {uv,material:new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide,toneMapped:false})};
+    return interiors={uv,material:new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide,toneMapped:false})};
   }
 
-  function draw(plan,scene,height,{tileBins,flatBatch,color}){
+  function draw(plan,scene,height,{tileBins,flatBatch,color},interiors){
     const group=new THREE.Group();group.name='彌敦道地舖';scene.add(group);
-    const bins=tileBins(115),interiors=interiorAtlas(),atlas=HKDetails.atlas(.5),art=new Map(),letters=new Map(),tints=new Map();
+    const bins=tileBins(115),shutters=tileBins(115),letters=new Map(),tints=new Map();
     const tint=s=>{if(!tints.has(s))tints.set(s,color(s));return tints.get(s);};
     const white=tint('#ffffff'),records=[];
-    function board(zh,en,bg,ink,type,vertical,quiet){
-      const key=[zh,en,bg,ink,type,vertical,quiet].join('/');
-      if(art.has(key))return art.get(key);
-      const tag=atlas.add((c,w,h)=>{
-        if(vertical){c.translate(w,0);c.rotate(Math.PI/2);[w,h]=[h,w];}
-        c.fillStyle=bg;c.fillRect(0,0,w,h);
-        c.strokeStyle=ink;c.globalAlpha=.62;c.lineWidth=2;c.strokeRect(5,5,w-10,h-10);c.globalAlpha=1;
-        if(vertical){
-          const chars=Array.from(zh).slice(0,5),stride=Math.min(96,(h-45)/chars.length),top=(h-stride*chars.length)/2;
-          for(let j=0;j<chars.length;j++){
-            c.font='bold '+Math.min(88,stride*.92)+'px "Songti TC","PingFang HK",serif';
-            c.textAlign='center';c.textBaseline='middle';c.fillStyle=ink;c.fillText(chars[j],w/2,top+(j+.5)*stride,w-14);
-          }
-          return;
-        }
-        const icon=type==='pharmacy'||type==='watch'||type==='exchange';
-        let cx=w*.5,space=w-30;
-        if(icon&&!quiet){
-          cx=w*.59;space=w*.74;c.fillStyle=ink;c.strokeStyle=ink;c.lineWidth=4;
-          if(type==='pharmacy'){c.fillRect(34,31,18,57);c.fillRect(15,50,56,18);}
-          if(type==='watch'){c.beginPath();c.arc(44,60,25,0,Math.PI*2);c.stroke();c.beginPath();c.moveTo(44,41);c.lineTo(44,60);c.lineTo(57,66);c.stroke();}
-          if(type==='exchange'){c.font='bold 54px Georgia';c.textAlign='center';c.textBaseline='middle';c.fillText('$',45,60);}
-        }
-        c.textAlign='center';c.textBaseline='middle';c.fillStyle=ink;
-        c.font=(quiet?'500 ':'bold ')+(quiet?53:65)+'px "'+(type==='jewels'||type==='tailor'?'Songti TC':'PingFang HK')+'","Heiti TC",serif';
-        c.fillText(zh,cx,47,space);
-        c.font=(quiet?'500 25px Georgia':'bold 24px Arial');c.fillText(en,cx,97,space);
-      });art.set(key,tag);return tag;
-    }
-
     for(const b of plan.bays){
       const {nx,nz,w,trade,seed}=b,tx=nz,tz=-nx,H=b.height,lo=-w/2,hi=w/2;
       const classic=b.theme==='street'||b.theme==='arcade',quiet=!classic,lobby=trade==='lobby';
@@ -277,6 +268,10 @@ window.HKFrontages=(()=>{
       const signs=letters.get(labelCell),hours=HKShopLights.hours(b.x,b.z);
       const quad=(a,e,f,g,c)=>solid.quad(a,e,f,g,tint(c));
       const front=(l,r,y0,y1,d)=>[at(l,y0,d),at(r,y0,d),at(r,y1,d),at(l,y1,d)];
+      if(!lobby){
+        const sheet=shutters.get(b.x,b.z,0);
+        sheet.quad(...front(lo+.10,hi-.10,-.16,face,.15),white);sheet.shopHours(hours);
+      }
       function box(l,r,y0,y1,deep,out,col){
         quad(...front(l,r,y0,y1,out),col);
         quad(at(l,y0,deep),at(l,y0,out),at(l,y1,out),at(l,y1,deep),col);
@@ -338,7 +333,7 @@ window.HKFrontages=(()=>{
       box(lo,hi,face-.015,H,-.08,.13,bg);
       box(lo,hi,H-.07,H+.035,-.12,lip,frame);
       box(lo+.025,hi-.025,face-.10,face,-.15,classic?.26:.42,trim);
-      const fascia=board(zh,en,bg,quiet?'#f3e9cf':ink,trade,false,quiet);
+      const fascia=HKDetails.shopBoard(zh,en,bg,quiet?'#f3e9cf':ink,w-.18,H-face-.115,trade,quiet);
       signs.quad(fascia,front(lo+.09,hi-.09,face+.02,H-.095,.139),hours);
       if(classic&&trade==='cafe'){
         const stripes=Math.max(7,Math.round(w/.28));
@@ -362,11 +357,11 @@ window.HKFrontages=(()=>{
           }
           quad(at(bx,base+h+.13,.085),at(bx,base+h+.20,.085),at(bx,base+h-.08,d1-.18),at(bx,base+h-.12,d1-.18),'#66716a');
           box(bx-th,bx+th,base,base+h,d0,d1,border);
-          const tag=board(vertical?shop[4]:zh,vertical?'':en,bg,ink,trade,vertical,false);
+          const tag=HKDetails.shopBoard(zh,en,bg,ink,d1-d0-.06,h-.07,trade);
           for(const side of [-1,1]){
             const v=bx+side*(th+.008),l=side>0?d1-.03:d0+.03,r=side>0?d0+.03:d1-.03;
             const p=[at(v,base+.035,l),at(v,base+.035,r),at(v,base+h-.035,r),at(v,base+h-.035,l)];
-            signs.quad(tag,vertical?[p[1],p[2],p[3],p[0]]:p,hours);
+            signs.quad(tag,p,hours);
           }
           bladeInfo=[at(bx,base,d0),at(bx,base+h,d1)];
         }
@@ -374,8 +369,9 @@ window.HKFrontages=(()=>{
       records.push({id,name:zh,x:b.x,z:b.z,w,theme:b.theme,blade:bladeInfo});
     }
     bins.build([flatBatch(),HKShopLights.material(interiors.material)],group,true);
+    shutters.build([HKShopLights.shutter],group);
     for(const s of letters.values())s.finish(group);
     group.userData.bays=records;
   }
-  return {context,draw,arcadeTerrain,paintPavement};
+  return {context,draw,interiorAtlas,arcadeTerrain,paintPavement};
 })();

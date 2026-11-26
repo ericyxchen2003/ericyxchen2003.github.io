@@ -21,11 +21,14 @@ window.HKSound=(()=>{
     if(context)master.gain.setTargetAtTime(enabled?1:0,context.currentTime,.055);
     return enabled;
   }
-  function step(speed,throttle,paused){
+  function step(speed,throttle,paused,vehicle){
     if(!enabled||!context)return;const kmh=Math.abs(speed)*3.6,t=context.currentTime;
-    const gear=kmh<20?0:kmh<38?1:2, rev=33+(kmh-[0,13,26][gear])*1.1+(throttle?13:0);
+    const gear=kmh<20?0:kmh<38?1:2;
+    const hybrid=vehicle==='hybrid';
+    const rev=hybrid?32+Math.min(kmh,80)*.48+(throttle?18:0):33+(kmh-[0,13,26][gear])*1.1+(throttle?13:0);
+    const level=hybrid?(throttle?.014+.048*Math.min(1,kmh/28):.004+.019*Math.min(1,kmh/45)):(throttle?.077:.045);
     tone.frequency.setTargetAtTime(rev,t,.12);pulse.frequency.setTargetAtTime(rev*.50,t,.12);engine.frequency.setTargetAtTime(120+rev*(throttle?1.15:.7),t,.13);
-    volume.gain.setTargetAtTime(paused?0:throttle?.077:.045,t,.1);
+    volume.gain.setTargetAtTime(paused?0:level,t,.1);
   }
   function horn(){
     if(!enabled||!context)return;const t=context.currentTime;

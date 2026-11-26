@@ -216,14 +216,14 @@
       signText(b,'TAXI',0,1.61,.095,.024,'#b9362e');
     }
   }
-  function doubleDecker(b,paint) {
-    const cream='#e6d9ba', red=paint||'#b73b36';
+  function doubleDecker(b,paint,city) {
+    const roof=city?'#f4c532':'#e6d9ba',body=paint||(city?'#f3bd24':'#b73b36');
     loft(b,[cabinRing(.39,1.18,-5.81,5.77,.29),cabinRing(.62,1.24,-5.89,5.85,.27),
       cabinRing(3.96,1.24,-5.84,5.8,.26),cabinRing(4.28,1.19,-5.69,5.65,.35),cabinRing(4.35,1.13,-5.60,5.56,.39)],
-      [dark,red,cream,cream],cream);
+      [dark,body,city?'#213d67':roof,roof],roof);
     for(const side of [-1,1]){
       for(const axle of [-3.96,2.65,4.30])wheel(b,side,axle,.51);
-      b.box(side*1.245,2.50,0,.045,.12,11.03,'#e7c784');
+      b.box(side*1.245,2.50,0,.045,.12,11.03,city?'#ffe175':'#e7c784');
       for(let j=0;j<8;j++){
         const z=-4.86+j*1.38;
         b.box(side*1.246,3.35,z,.046,.9,1.27, j%3===1?blueGlass:glass);
@@ -240,6 +240,12 @@
       b.box(side*.91,.77,-5.85,.39,.16,.08,'#ffedbd');
       b.box(side*.95,.82,5.81,.22,.21,.07,'#b82224');
       for(let j=0;j<4;j++)b.box(side*1.249,1.03,4.93,.047,.045,.85,dark);
+      if(city){
+        const p=(z,y)=>[side*1.272,y,z];
+        b.quad(p(-5.43,.72),p(5.45,.72),p(5.45,2.86),p(2.98,1.03),'#193c70');
+        b.quad(p(2.31,1.03),p(2.98,1.03),p(5.45,2.86),p(5.45,3.33),'#c92937');
+        b.box(side*1.24,3.98,0,.048,.14,10.77,'#253b62');
+      }
     }
     for(const end of [-1,1]){
       const z=end*(end<0?5.84:5.8);
@@ -248,24 +254,52 @@
       b.box(0,1.73,z+.035*end,.062,.85,.04,dark);
     }
     b.box(0,2.52,-5.855,1.76,.40,.071,dark);
-    signText(b,'1A',.53,2.52,-5.903,.057,'#ffc65e');
-    for(const q of [-.65,-.38,-.11]) b.box(q,2.51,-5.9,.16,.063,.03,'#ffbb4e');
+    if(!city){
+      signText(b,'1A',.53,2.52,-5.903,.057,'#ffc65e');
+      for(const q of [-.65,-.38,-.11])b.box(q,2.51,-5.9,.16,.063,.03,'#ffbb4e');
+    }
     b.box(0,4.39,3.64,1.82,.13,2.15,'#c9bd9e');
     for(let j=0;j<9;j++)b.box(0,4.465,2.79+j*.20,1.35,.028,.042,'#a19d8e');
   }
+  function citybusLettering(group){
+    function panel(w,h,paint){
+      const c=document.createElement('canvas');c.width=512;c.height=112;
+      paint(c.getContext('2d'));
+      const texture=new T.CanvasTexture(c);texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=4;
+      return new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:texture,toneMapped:false}));
+    }
+    const brand=panel(2.48,.46,c=>{
+      c.fillStyle='#efbd2d';c.fillRect(0,0,512,112);
+      c.fillStyle='#19396a';c.font='italic bold 65px Arial,"PingFang HK",sans-serif';
+      c.textAlign='center';c.fillText('城巴 Citybus',256,77);
+      c.fillStyle='#c42e3b';c.fillRect(63,88,385,5);
+    });
+    for(const side of [-1,1]){
+      const m=brand.clone();m.position.set(side*1.278,2.54,-1.95);m.rotation.y=side*Math.PI/2;group.add(m);
+    }
+    const front=panel(1.79,.40,c=>{
+      c.fillStyle='#172320';c.fillRect(0,0,512,112);
+      c.fillStyle='#ffbc54';c.font='bold 79px "PingFang HK",sans-serif';c.fillText('啟德',8,83);
+      c.font='bold 100px Arial';c.textAlign='right';c.fillText('20A',502,94);
+    });
+    front.position.set(0,2.52,-5.905);front.rotation.y=Math.PI;group.add(front);
+  }
   const vehicleTemplates=new Map();
-  function createVehicle(kind='taxi',paint) {
+  function createVehicle(kind='taxi',paint,operator) {
     if(!['bus','taxi','sedan'].includes(kind))kind='sedan';
-    const key=kind+String(paint||'');
+    const city=kind==='bus'&&operator==='citybus';
+    const key=kind+String(paint||'')+(city?'citybus':'');
     if(!vehicleTemplates.has(key)){
       const b=new Parts();
-      if(kind==='bus')doubleDecker(b,paint);
+      if(kind==='bus')doubleDecker(b,paint,city);
       else saloon(b,kind==='taxi',paint||'#70899b');
       const mesh=b.finish(kind);mesh.material=vehicleMaterial;
+      if(city)citybusLettering(mesh);
       vehicleTemplates.set(key,mesh);
     }
     const group=new T.Group();
     group.name=kind;group.add(vehicleTemplates.get(key).clone());
+    if(kind==='bus')group.userData.operator=city?'citybus':'kmb';
     return group;
   }
 
@@ -965,5 +999,5 @@
     gardens.position.y=groundHeight(-14,292);scene.add(gardens);
     return placed.concat(window.HKDetails?.build(scene,groundHeight,{Parts,facadeFrame,tile,nightWindows,backlitSign,eachEdge,lerp2}) || []);
   }
-  window.HKModels={createVehicle,createPlayerTaxi:()=>HKCrownComfort.create(Parts),addLandmarks,isReplacedBuilding,setNightLighting,dimmable,roomMask,nightMaterial};
+  window.HKModels={createVehicle,createPlayerTaxi:id=>(id==='hybrid'?HKComfortHybrid:HKCrownComfort).create(Parts),addLandmarks,isReplacedBuilding,setNightLighting,dimmable,roomMask,nightMaterial};
 }());

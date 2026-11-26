@@ -30,6 +30,9 @@ window.HKCockpit = (() => {
         (a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2,parent);
       obj.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),diff.normalize());return obj;
     }
+    const classic=new T.Group();classic.name='Crown Comfort · 儀表台';cabin.add(classic);
+    const meterMount=new T.Group();cabin.add(meterMount);
+    function groupSince(index,parent){for(const part of cabin.children.slice(index))parent.add(part);}
     // Cross sections of the dashboard, bonnet and the moulded instrument hood.
     function loft(sections,mat) {
       const positions=[],indices=[];
@@ -63,7 +66,7 @@ window.HKCockpit = (() => {
     const bonnet=new T.BufferGeometry();
     bonnet.setAttribute('position',new T.Float32BufferAttribute(bonnetPositions,3));
     bonnet.setAttribute('color',new T.Float32BufferAttribute(bonnetColors,3));bonnet.setIndex(bonnetIndices);bonnet.computeVertexNormals();
-    red.vertexColors=true;mesh(bonnet,red,0,0,0);
+    red.vertexColors=true;const hood=mesh(bonnet,red,0,0,0);
     for(const side of [-1,1]){
       bar([side*.802,.909,-1.125],[side*.647,1.549,-.435],.029,rubber);
       bar([side*.815,.907,-1.102],[side*.660,1.55,-.416],.028,cloth);
@@ -74,13 +77,14 @@ window.HKCockpit = (() => {
     loft([[-.446,.655,1.581,.034],[-.386,.674,1.592,.052],[.16,.71,1.605,.055],[1.15,.69,1.584,.055]],cloth);
     bar([-.657,1.545,-.449],[.657,1.545,-.449],.012,rubber);
     box(0,.385,-.15,1.6,.10,1.35,rubber);
-    loft([[-1.13,.80,.919,.07],[-.91,.81,.923,.105],[-.72,.80,.815,.23],
-      [-.49,.78,.674,.33]],vinyl);
+    classic.add(loft([[-1.13,.80,.919,.07],[-.91,.81,.923,.105],[-.72,.80,.815,.23],
+      [-.49,.78,.674,.33]],vinyl));
     // Two wipers rest at the base of the windscreen.
     for(const x of [-.46,.29]){
       bar([x+.08,.932,-1.095],[x-.08,.946,-1.045],.006,rubber);
       bar([x-.27,.947,-1.057],[x+.12,.947,-1.051],.007,rubber);
     }
+    let start=cabin.children.length;
     for(const x of [-.65,.679]){
       box(x,.743,-.563,.185,.077,.061,rubber);
       for(let i=0;i<4;i++)box(x,.715+i*.016,-.529,.167,.005,.008,trim);
@@ -106,6 +110,7 @@ window.HKCockpit = (() => {
         g.fillStyle='#959b95';g.fillRect(x+92,73,46,17);
       }
     });
+    groupSince(start,classic);start=cabin.children.length;
     // A mounted meter, payment keys, radio and sprung microphone lead.
     box(-.092,.795,-.563,.228,.086,.094,edge);
     box(-.092,.841,-.568,.238,.010,.102,soft);
@@ -122,6 +127,7 @@ window.HKCockpit = (() => {
       g.textAlign='right';g.fillStyle='#ff785e';g.font='bold 76px monospace';
       g.fillText((cents/100).toFixed(2),485,85,308);g.restore();taximeter.tex.needsUpdate=true;
     }
+    groupSince(start,meterMount);start=cabin.children.length;
     const radioBody=box(-.052,.695,-.503,.253,.110,.112,edge);radioBody.rotation.x=-.16;
     const radioFace=texturePanel(-.052,.702,-.441,.240,.095,(g,w,h)=>{
       g.fillStyle='#252b2e';g.fillRect(0,0,w,h);g.fillStyle='#151d1e';g.fillRect(70,24,340,65);
@@ -134,6 +140,7 @@ window.HKCockpit = (() => {
     for(let i=0;i<5;i++)box(.098,.739+i*.008,-.517,.031,.002,.003,grey);
     const cord=[];for(let i=0;i<=48;i++){const t=i/48,a=t*Math.PI*18;cord.push(new T.Vector3(.096+.006*Math.cos(a)-t*.025,.690-t*.115,-.533+.006*Math.sin(a)));}
     mesh(new T.TubeGeometry(new T.CatmullRomCurve3(cord),55,.0023,5,false),rubber,0,0,0);
+    groupSince(start,classic);
     // Pivoting vacancy flag on the passenger side of the dashboard.
     box(-.373,.929,-.865,.181,.015,.079,rubber);
     const hinge=new T.Group();hinge.position.set(-.373,.935,-.863);cabin.add(hinge);
@@ -148,7 +155,7 @@ window.HKCockpit = (() => {
       const near=s*.785;
       box(near,.695,-.105,.052,.067,.46,soft);box(s*.760,.710,-.02,.045,.039,.17,grain);
       box(near,.785,-.385,.045,.062,.145,edge);box(s*.760,.793,-.383,.014,.017,.093,trim);
-      bar([s*.77,.96,-.864],[s*.87,.99,-.842],.022,rubber);
+      const stalk=bar([s*.77,.96,-.864],[s*.87,.99,-.842],.022,rubber);
       const mount=new T.Group();mount.position.set(s*.903,1.006,-.850);
       mount.rotation.y=s<0?.64:-.42;cabin.add(mount);
       const lens=new T.Shape();lens.moveTo(-.059,-.033);lens.quadraticCurveTo(-.068,-.030,-.068,-.019);
@@ -159,9 +166,10 @@ window.HKCockpit = (() => {
       const pane=new T.ShapeGeometry(lens),uv=pane.attributes.uv;
       for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)/.136+.5,uv.getY(i)/.068+.5);
       const m=mesh(pane,new T.MeshBasicMaterial({color:0xd4dce0,toneMapped:false}),0,0,.035,mount);
-      sideMirrors.push({face:m,side:s});
+      sideMirrors.push({face:m,classicFace:m,side:s,mount,stalk});
       box(s*.35,1.543,-.387,.433,.024,.114,cloth);
     }
+    start=cabin.children.length;
     // The glovebox seam and passenger warning plaque run across the grey dash.
     box(-.476,.704,-.516,.389,.006,.014,edge);box(-.485,.694,-.501,.071,.015,.017,rubber);
     texturePanel(-.480,.763,-.591,.147,.048,(g,w,h)=>{
@@ -233,6 +241,33 @@ window.HKCockpit = (() => {
     bar([.365,.754,-.476],[.459,.805,-.473],.009,rubber);
     bar([.459,.805,-.473],[.487,.811,-.478],.012,soft);
 
+    groupSince(start,classic);
+    const hybridCabinHeight=1.095;
+    let hybridCabin,hybridNose,hybridActive=false;
+    function setVehicle(id){
+      hybridActive=id==='hybrid';
+      if(hybridActive&&!hybridCabin){
+        hybridCabin=HKHybridCabin.create({mesh,box,bar,finish,texturePanel,letter});
+        cabin.add(hybridCabin.root);
+        hybridNose=new T.Group();hybridNose.scale.y=1/hybridCabinHeight;cabin.add(hybridNose);
+        hybridNose.add(HKComfortHybrid.createBonnet());
+        for(const m of sideMirrors){
+          const pod=HKComfortHybrid.createFenderMirror(m.side);
+          hybridNose.add(pod.root);m.hybridFace=pod.face;
+          pod.face.material.color.copy(m.classicFace.material.color);
+          pod.face.material.map=m.target.texture;pod.face.material.needsUpdate=true;
+        }
+      }
+      classic.visible=!hybridActive;
+      if(hybridCabin)hybridCabin.root.visible=hybridNose.visible=hybridActive;
+      cabin.scale.y=hybridActive?hybridCabinHeight:1;
+      hood.visible=!hybridActive;
+      meterMount.position.set(hybridActive?.056:0,hybridActive?-.066:0,hybridActive?.042:0);
+      for(const m of sideMirrors){
+        m.stalk.visible=m.mount.visible=!hybridActive;
+        m.face=hybridActive?m.hybridFace:m.classicFace;m.age=1000;
+      }
+    }
     // A shared budget refreshes one visible mirror at a time.
     const rear=new T.PerspectiveCamera(31,3.2,.25,1050);
     const mx=-.065,my=1.463,mz=-.537;
@@ -248,6 +283,7 @@ window.HKCockpit = (() => {
       m.face.material.map=t;m.face.material.needsUpdate=true;m.age=1000;
     }
     const mirrorPos=new T.Vector3(),eye=new T.Vector3(),forward=new T.Vector3();
+    const mirrorNormal=new T.Vector3(),mirrorRotation=new T.Quaternion();
     const seat=new T.Vector3(.330,1.249,.310);
     let headYaw=0,mirrorAge=Infinity;
 
@@ -256,17 +292,19 @@ window.HKCockpit = (() => {
       const desired=clamp(glance,-1,1)*.94;
       headYaw=snap?0:T.MathUtils.lerp(headYaw,desired,1-Math.exp(-dt*12));
       eye.copy(seat);
+      if(hybridActive){eye.z+=.115;eye.y-=.017;}
       // In portrait, bring the driver's eyes forward so the roof lining and
       // dashboard do not consume the extra vertical space.
       eye.z-=.205*clamp((1-cam.aspect)/.6,0,1);
       eye.applyMatrix4(cabin.matrixWorld);cam.position.copy(eye);
-      forward.set(-Math.sin(headYaw),-.092,-Math.cos(headYaw)).applyQuaternion(cabin.quaternion);
+      forward.set(-Math.sin(headYaw),hybridActive?-.155:-.092,-Math.cos(headYaw)).applyQuaternion(cabin.quaternion);
       cam.lookAt(forward.add(eye));cam.updateMatrixWorld();
       meterDisplay(state.taxi?.fare||0);
       const folded=state.taxi?.phase==='hired'?-1.48:0;
       hinge.rotation.x=snap?folded:T.MathUtils.lerp(hinge.rotation.x,folded,1-Math.exp(-dt*9));
       steering.rotation.z=-state.steer*5.2;
-      tripDisplay(state);speedDial(Math.abs(state.speed)*3.6);revDial(.82+(Math.abs(state.speed)*.17)%2.5);
+      if(hybridActive)hybridCabin.update(state);
+      else{tripDisplay(state);speedDial(Math.abs(state.speed)*3.6);revDial(.82+(Math.abs(state.speed)*.17)%2.5);}
       mirrorAge+=dt;
       let next=null,best=-1;
       for(const m of mirrors){
@@ -276,16 +314,25 @@ window.HKCockpit = (() => {
         if(priority>best){next=m;best=priority;}
       }
       if(next&&(snap||mirrorAge>=.135)){
-        const side=next.side;rear.aspect=side?1.65:3.2;rear.fov=side?42:31;rear.updateProjectionMatrix();
-        rear.position.set(side*.914,side?1.019:1.28,side?-.785:1.13).applyMatrix4(cabin.matrixWorld);
-        forward.set(side*.21,side?-.057:.015,1).applyQuaternion(cabin.quaternion);rear.lookAt(eye.copy(rear.position).add(forward));
+        const side=next.side;rear.aspect=side?(hybridActive?.194/.106:1.65):3.2;rear.fov=side?(hybridActive?34:42):31;rear.updateProjectionMatrix();
+        if(side)rear.position.setFromMatrixPosition(next.face.matrixWorld);
+        else rear.position.set(0,1.28,1.13).applyMatrix4(cabin.matrixWorld);
+        if(side&&hybridActive){
+          next.face.getWorldQuaternion(mirrorRotation);
+          mirrorNormal.set(0,0,1).applyQuaternion(mirrorRotation);
+          forward.subVectors(rear.position,eye).normalize().reflect(mirrorNormal);
+        }else forward.set(side*.21,side?-.057:.015,1).applyQuaternion(cabin.quaternion);
+        rear.up.set(0,1,0).applyQuaternion(cabin.quaternion);
+        rear.lookAt(forward.add(rear.position));
         const previous=renderer.getRenderTarget(),needsShadow=renderer.shadowMap.needsUpdate;
+        const showFlank=side&&hybridActive,wasVisible=car.visible;
         renderer.shadowMap.needsUpdate=false;cabin.visible=false;
+        if(showFlank)car.visible=true;
         renderer.setRenderTarget(next.target);renderer.render(scene,rear);renderer.setRenderTarget(previous);
-        renderer.shadowMap.needsUpdate=needsShadow;cabin.visible=true;next.age=0;mirrorAge=0;
+        car.visible=wasVisible;renderer.shadowMap.needsUpdate=needsShadow;cabin.visible=true;next.age=0;mirrorAge=0;
       }
     }
-    return {cabin,update};
+    return {cabin,update,setVehicle};
   }
   return {create};
 })();

@@ -43,42 +43,65 @@ window.HKDayCycle = (() => {
 // streaming a block back in. Two shared uniforms update the whole district.
 window.HKShopLights=(()=>{
   const time={value:0},day={value:1},materials=new WeakMap();
-  let display;
+  const firstOpening=8*60, lastOpening=firstOpening+90, firstClosing=21*60;
+  let display,shutter;
   function hours(x,z){
     let hash=Math.imul(Math.round(x*10),73856093)^Math.imul(Math.round(z*10),19349663);
     const random=()=>{hash=Math.imul(hash^(hash>>>16),0x45d9f3b);return (hash>>>0)/4294967296;};
-    const start=17*60+random()*114,late=random()<.13;
-    return [start,21*60+(late?158+random()*136:random()*156)];
+    const start=firstOpening+random()*(lastOpening-firstOpening),late=random()<.13;
+    return [start,firstClosing+(late?158+random()*136:random()*156)];
   }
-  function shade(mat,overlay){
+  function shade(mat,kind){
     mat.onBeforeCompile=shader=>{
       Object.assign(shader.uniforms,{shopMinute:time,shopDay:day});
       shader.vertexShader='attribute vec2 shopHours; uniform float shopMinute; varying float shopOn;\n'+
         shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
           shopOn=smoothstep(shopHours.x,shopHours.x+8.0,shopMinute)*
                  (1.0-smoothstep(shopHours.y,shopHours.y+9.0,shopMinute));`);
+      let lighting;
+      if(kind==='shutter'){
+        shader.vertexShader='varying vec2 panelUV;\n'+shader.vertexShader.replace('#include <uv_vertex>','#include <uv_vertex>\npanelUV=uv;');
+        shader.fragmentShader='varying vec2 panelUV;\n'+shader.fragmentShader;
+        lighting=`float sheet=panelUV.y-shopOn;
+          if(shopOn>=1.0 || sheet<0.0) discard;
+          float slats=sheet*29.0;
+          float ridge=cos(slats*6.28318)*(1.0-smoothstep(0.18,0.65,fwidth(slats)));
+          outgoingLight*=sheet<0.028?0.56:0.95+0.16*ridge;`;
+      }else if(kind==='display'){
+        lighting='outgoingLight *= shopOn*mix(1.0,0.30,shopDay);';
+      }else{
+        lighting='outgoingLight *= mix(0.075,0.90,shopDay)+shopOn*mix(1.65,0.16,shopDay);';
+      }
       shader.fragmentShader='varying float shopOn; uniform float shopDay;\n'+
-        shader.fragmentShader.replace('#include <opaque_fragment>',(overlay?
-          'outgoingLight *= shopOn;':'outgoingLight *= mix(0.075,1.0,shopDay)+shopOn*(1.65-0.85*shopDay);')+'\n#include <opaque_fragment>');
+        shader.fragmentShader.replace('#include <opaque_fragment>',lighting+'\n#include <opaque_fragment>');
     };
-    mat.customProgramCacheKey=()=>overlay?'shop-display':'shop-lettering';
+    mat.customProgramCacheKey=()=>'shop-'+kind;
     return mat;
   }
   function material(base){
-    if(!materials.has(base))materials.set(base,shade(base.clone(),false));
+    if(!materials.has(base))materials.set(base,shade(base.clone(),'lettering'));
     return materials.get(base);
   }
   function setTime(minutes,daylight){
-    time.value=minutes<12*60?minutes+1440:minutes;day.value=daylight;
-    if(display)display.visible=time.value>=1020&&time.value<1566;
+    const minute=((minutes%1440)+1440)%1440;
+    time.value=minute<firstOpening?minute+1440:minute;day.value=daylight;
+    if(display)display.visible=time.value<firstClosing+294+9;
+    if(shutter)shutter.visible=time.value<lastOpening+8||time.value>=firstClosing;
   }
   return {hours,material,setTime,get display(){
     if(!display){
       const T=THREE;
       display=shade(new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,transparent:true,
-        depthWrite:false,blending:T.AdditiveBlending,opacity:.93}),true);
-      display.forceSinglePass=true;display.visible=time.value>=1020&&time.value<1566;
+        depthWrite:false,blending:T.AdditiveBlending,opacity:.93}),'display');
+      display.forceSinglePass=true;display.visible=time.value<firstClosing+294+9;
     }
     return display;
+  },get shutter(){
+    if(!shutter){
+      shutter=shade(new THREE.MeshLambertMaterial({color:0xb2b6ad,side:THREE.DoubleSide}),'shutter');
+      shutter.extensions={derivatives:true};
+      shutter.visible=time.value<lastOpening+8||time.value>=firstClosing;
+    }
+    return shutter;
   }};
 })();

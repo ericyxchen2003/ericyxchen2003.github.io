@@ -5,10 +5,11 @@
     const wallet=await HKWallet.open();
     const map=window.HKMAP,height=HKWorld.groundSampler(map.terrain),sim=HKDriving.create(map,height);
     const service=HKTaxiService.create(map,sim),taxi=service.state;
-    sim.state.taxi=taxi;sim.taxiStands=service.stands;
+    sim.state.taxi=taxi;sim.state.vehicle=wallet.vehicle;sim.taxiStands=service.stands;
     const dayClock=HKDayCycle.createClock();
     const hired=()=>taxi.phase==='hired';
-    const signals=HKSignals.create(map),world=HKWorld.create($('world'),map,sim,signals,height);
+    const signals=HKSignals.create(map);
+    let world, preparing, resumePreparation;
     const menu=$('titleMenu'),loading=$('loading');
     const film=$('menuFilm'),motionButton=$('menuMotion'),reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
     let motionOverride=null;
@@ -18,6 +19,7 @@
       motionButton.title=label;motionButton.setAttribute('aria-label',label);
       motionButton.querySelector('use').setAttribute('href',enabled?'#i-pause':'#i-play');
       if(menu.hidden||menu.inert||document.hidden||!enabled){film.pause();return;}
+      if(!film.hasAttribute('src'))film.src=HKScenery.url(film.dataset.src,'video/mp4',film.dataset.src);
       film.play().catch(error=>{
         if(error.name==='NotAllowedError'){motionOverride=false;syncMenuFilm();}
       });
@@ -38,7 +40,12 @@
       $('walletCaption').textContent=wallet.persistent?'餘額':'餘額 · 僅本次';
       $('walletBalance').textContent=HKWallet.format(wallet.balance);
     }
+    function applyVehicle(){
+      sim.state.vehicle=wallet.vehicle;
+      world?.setVehicle(wallet.vehicle.id);
+    }
     function settled(result,fare=0,fareFine=0,redLightFine=0){
+      if(!hired()&&sim.state.vehicle.id!==wallet.vehicle.id)applyVehicle();
       if(result.record.minute>dayClock.totalMinutes)dayClock.startAt(result.record.minute);
       showWallet();
       const messages=[];
@@ -108,6 +115,7 @@
       started=false;savedMinute=null;
       dayClock.startAt(HKDayCycle.defaultStart);
       service.clear();setGuideStand(null);sim.reset();arrived=false;
+      applyVehicle();
       restDialog.close();clearDialog.close();loading.hidden=true;
       showWallet();showMenu();$('saveNotice').textContent=message;
     }
@@ -146,20 +154,75 @@
       $('closePanel').setAttribute('aria-label',name==='map'&&!started?'返回主選單':'關閉');syncMenuFilm();
     }
     function addButton(label,cls,action,parent=$('panelBody')){const el=document.createElement('button');el.textContent=label;el.className=cls;el.onclick=action;parent.append(el);return el;}
-    let guideFromPause=false;
+    let guideFromPause=false,garageSaving=false;
     function dismissPanel(){
-      if(panel==='help'&&guideFromPause){openPause();return;}
+      if(garageSaving)return;
+      if(panel==='garage'||(panel==='help'&&guideFromPause)){openPause();return;}
       closePanel();
     }
     function openPause(){
-      const returningFromGuide=panel==='help';
+      const previousPanel=panel;
       showPanel('pause','HONG KONG TAXI SIMULATOR','駕駛已暫停');
-      const p=document.createElement('p');p.className='panelHint';p.textContent=sim.state.roadName+' · 市區的士';$('panelBody').append(p);
+      const p=document.createElement('p');p.className='panelHint';p.textContent=sim.state.roadName+' · '+sim.state.vehicle.name;$('panelBody').append(p);
       const actions=document.createElement('div');actions.className='panelActions';$('panelBody').append(actions);
       addButton('繼續駕駛','primary',closePanel,actions);
       const guide=addButton('駕駛操作指南','subbtn',openHelp,actions);
-      addButton('街區地圖','subbtn',openMap,actions);addButton('主選單','subbtn',showMenu,actions);
-      if(returningFromGuide)guide.focus({preventScroll:true});
+      addButton('街區地圖','subbtn',openMap,actions);
+      const garage=hired()?null:addButton('車庫','subbtn',openGarage,actions);
+      addButton('主選單','subbtn',showMenu,actions);
+      if(previousPanel==='help')guide.focus({preventScroll:true});
+      if(previousPanel==='garage')garage?.focus();
+    }
+    function openGarage(){
+      if(panel!=='pause'||hired())return;
+      showPanel('garage','HONG KONG TAXI SIMULATOR','車庫');
+      const body=$('panelBody');body.append($('garageScreen').content.cloneNode(true));
+      const find=selector=>body.querySelector(selector),options=find('.garage-options');
+      const confirm=find('.garage-use'),error=find('.garage-error'),portrait=find('.garage-portrait');
+      const close=$('closePanel');close.setAttribute('aria-label','返回暫停選單');
+      let selected=sim.state.vehicle;
+      function preview(vehicle){
+        selected=vehicle;error.hidden=true;
+        for(const button of options.children)button.setAttribute('aria-pressed',String(button.dataset.vehicle===vehicle.id));
+        $('garageName').textContent=vehicle.name;
+        find('.garage-body-type').textContent=vehicle.body;
+        const figures=HKDriving.performanceFigures(vehicle.id);
+        find('.garage-acceleration').textContent=figures.accelerationSeconds.toFixed(1)+' 秒';
+        find('.garage-braking').textContent=figures.brakingMetres.toFixed(1)+' 米';
+        find('.garage-coasting').textContent=figures.coastingSeconds.toFixed(1)+' 秒';
+        const file='garage-'+vehicle.id+'.webp';portrait.src=HKScenery.url(file,'image/webp',file);
+        portrait.alt='豐田 '+vehicle.name+' 市區的士';
+        find('.garage-rent').textContent='HK$'+vehicle.dailyRent/100;
+        const fee=HKTaxiService.luggageRate/100;
+        find('.garage-luggage').textContent=vehicle.luggageChance?'HK$'+fee+'／件':'無附加費';
+        find('.garage-terms').textContent=vehicle.luggageChance?'可在的士站接載攜帶大件行李的乘客，每件行李可額外收取 HK$'+fee+'。':'在的士站候客，按跳錶車資結算。';
+        const active=vehicle.id===sim.state.vehicle.id;
+        confirm.disabled=active||!wallet.canSwitch(dayClock.totalMinutes);
+        confirm.textContent=active?'使用中':confirm.disabled?'下個早上 6 時可換車':'使用這輛的士';
+      }
+      for(const vehicle of HKWallet.vehicles){
+        const button=addButton('','garage-option',()=>preview(vehicle),options);
+        button.dataset.vehicle=vehicle.id;
+        const label=document.createElement('strong'),rent=document.createElement('small');
+        label.textContent=vehicle.name;rent.textContent='HK$'+vehicle.dailyRent/100+'／日'+(vehicle.id===sim.state.vehicle.id?' · 使用中':'');
+        button.append(label,rent);
+      }
+      preview(selected);
+      confirm.onclick=async()=>{
+        if(garageSaving||hired()||panel!=='garage'||confirm.disabled)return;
+        garageSaving=true;confirm.disabled=close.disabled=true;options.inert=true;error.hidden=true;
+        try{
+          const result=await wallet.selectVehicle(selected.id,dayClock.totalMinutes);
+          if(handleExternalReset(result))return;
+          applyVehicle();settled(result);blockedFrames=0;
+          if(result.switchBlocked){openPause();openGarage();return;}
+          openPause();
+        }catch{
+          error.hidden=false;confirm.disabled=false;confirm.focus();
+        }finally{
+          garageSaving=false;close.disabled=false;options.inert=false;
+        }
+      };
     }
     function openSources(){
       showPanel('sources','MAP & MODELS','地圖及模型資料');
@@ -179,27 +242,75 @@
       $('closePanel').setAttribute('aria-label',backLabel);
       addButton(backLabel,'primary',dismissPanel);
     }
-    let guideStand=null;
+    let guideStand=null,rankRetry=0;
     function setGuideStand(stand){
-      guideStand=stand;
-      $('rankGuide').hidden=!stand;
-      if(stand)$('guideStandName').textContent=stand.name;
+      guideStand=stand;rankRetry=0;
     }
-    $('dismissRankGuide').onclick=()=>{setGuideStand(null);$('game').focus({preventScroll:true});};
-    function updateRankGuide(){
-      if(!guideStand)return;
-      const s=sim.state,sameLevel=s.layer===guideStand.layer;
-      const dy=sameLevel?0:height.surface(s.x,s.z,s.layer)-height.surface(guideStand.x,guideStand.z,guideStand.layer,guideStand.anchor.road.id);
-      const distance=Math.hypot(s.x-guideStand.x,s.z-guideStand.z,dy);
-      const metres=Math.round(distance)+' 米';
-      if($('guideStandDistance').textContent!==metres)$('guideStandDistance').textContent=metres;
-      let action='前往此站，駛入 TAXI 候客位停定。';
-      if(service.withinBay(guideStand)){
-        action=taxi.phase==='waiting'&&taxi.origin===guideStand?'請保持停車，等乘客上車再開車。':'請在候客位停定，乘客會自動上車。';
-      }else if(distance<35){
-        action=sameLevel?'對準地上的 TAXI 標記，停定等客。':'請駛往候客位所在的道路層。';
+    $('dismissRankGuide').onclick=()=>{
+      if(hired()||taxi.phase==='receipt'||taxi.phase==='waiting'||(guideStand&&service.withinBay(guideStand)))return;
+      guideStand=null;sim.cancelRoute();arrived=false;
+      hud();$('game').focus({preventScroll:true});
+    };
+    function maintainRankRoute(dt){
+      if(!guideStand||hired()||service.withinBay(guideStand))return;
+      rankRetry=Math.max(0,rankRetry-dt);
+      const r=sim.route,s=sim.state;
+      const leftArrival=s.layer!==guideStand.layer||Math.hypot(s.x-guideStand.x,s.z-guideStand.z)>9;
+      if(!rankRetry&&(!r||r.target!==guideStand||(r.arrived&&leftArrival))){
+        sim.navigate(guideStand);rankRetry=1.5;
       }
-      if($('guideStandAction').textContent!==action)$('guideStandAction').textContent=action;
+    }
+    function turnAdvice(r){
+      if(!r||r.arrived)return '';
+      const turns={'keep-left':'靠左分流','keep-right':'靠右分流','u-turn':'掉頭',right:'右轉',left:'左轉',arrive:'抵達',straight:'直行'};
+      return fmt(r.turnDistance)+' 後'+(turns[r.nextTurn]||'直行');
+    }
+    function updateTask(){
+      const r=sim.route,receipt=taxi.phase==='receipt',waiting=taxi.phase==='waiting';
+      const stand=waiting?taxi.origin:guideStand;
+      const inBay=!!stand&&service.withinBay(stand);
+      let title='',detail='',metric='',estimate='';
+      if(receipt){
+        title='已送達'+taxi.target.name;metric=HKWallet.format(taxi.totalFare);
+        if(taxi.luggage)estimate='含行李費 '+HKWallet.format(taxi.luggageFee);
+        detail=taxi.fine?'超出參考價上限 · 罰款 '+HKWallet.format(taxi.fine):'乘客已下車 · 行程完成';
+      }else if(hired()){
+        title='送乘客前往'+taxi.target.name;
+        if(taxi.luggage)estimate='行李 '+taxi.luggage+' 件 · +'+HKWallet.format(taxi.luggageFee);
+        const near=service.nearDrop(),matching=r?.target===taxi.target;
+        metric=matching?'餘下 '+metres(r.remaining):near?'已到達下客位':'';
+        detail=near?'請靠邊停定，讓乘客下車。':matching&&r.arrived?'請駛入綠色下客位。':turnAdvice(r)||'正在重新規劃行車路線…';
+      }else if(stand){
+        if(inBay){
+          title='在'+stand.name+'停車等待乘客或休息';
+          metric='已等候 '+waitTime(waiting&&stand===taxi.origin?taxi.wait:0);
+          if(waiting)estimate='預計約 '+taxi.expectedWaitSeconds+' 秒';
+          detail=waiting?'請保持停車，等候乘客上車。':'請在 TAXI 候客位停定。';
+        }else{
+          title='前往'+stand.name+'載客或休息';
+          const matching=r?.target===stand;
+          if(matching){
+            // The navigation line ends at the street centre. In the final
+            // approach include the remaining distance into the parking bay.
+            const toBay=sim.state.layer===stand.layer?Math.hypot(sim.state.x-stand.x,sim.state.z-stand.z):Infinity;
+            const remaining=toBay<25?Math.max(r.remaining,toBay):r.remaining;
+            metric='餘下 '+metres(remaining);
+          }
+          detail=matching&&r.arrived?'駛入地上的 TAXI 候客位並停定。':turnAdvice(r)||'正在重新規劃行車路線…';
+        }
+      }else if(r){
+        title='前往'+r.target.name;metric=r.arrived?'已抵達':'餘下 '+metres(r.remaining);detail=turnAdvice(r);
+        if(r.arrived&&!arrived){arrived=true;toast('已抵達 · '+r.target.name,3);}
+      }
+      $('rankGuide').hidden=!title;
+      for(const [id,value] of [['guideStandName',title],['guideStandDistance',metric],['guideStandEstimate',estimate],['guideStandAction',detail]]){
+        if($(id).textContent!==value)$(id).textContent=value;
+      }
+      $('restBtn').hidden=!inBay||hired()||receipt;
+      $('restBtn').disabled=!waiting||taxi.origin!==stand;
+      const dismiss=$('dismissRankGuide');dismiss.hidden=hired()||receipt||inBay;
+      const label=stand?'關閉候客指引':'取消導航';
+      dismiss.title=label;dismiss.setAttribute('aria-label',label);
     }
     async function departStand(stand,shift){
       if(panel!=='map'||!service.stands.includes(stand))return;
@@ -215,12 +326,15 @@
         // A frame between these callbacks lets the browser paint before synchronous 3D work.
         await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
         if(panel!=='departure')return;
+        await ensureWorld();
+        if(panel!=='departure')return;
         if(shift){
           result=await wallet.start(shift.minutes,shift.savedMinute);
           if(handleExternalReset(result))return;
           dayClock.startAt(result.record.minute);savedMinute=Math.floor(dayClock.totalMinutes);
+          applyVehicle();
         }
-        service.clear();sim.reset(stand);setGuideStand(stand);world.resetCamera();arrived=false;
+        service.clear();sim.reset(stand);sim.navigate(stand,stand.anchor);setGuideStand(stand);service.step(0,dayClock.minutes);world.resetCamera();arrived=false;
         $('saveNotice').textContent='';startDrive();
       }catch(error){
         console.error(error);
@@ -243,8 +357,12 @@
       $('closePanel').dataset.back=started?'返回駕駛':'返回主選單';
       districtMap??=HKDistrictMap.create(map,sim,atlas);
       if(!started){
+        resumePreparation?.();resumePreparation=null;
+        // The film is paused here. Let the map paint, then use the player's
+        // selection time for scene preparation, including the larger batches.
+        requestAnimationFrame(()=>setTimeout(()=>ensureWorld().catch(()=>{}),0));
         const savedMinuteOnMap=wallet.minute;
-        districtMap.open($('panelBody'),{savedMinute:savedMinuteOnMap,
+        districtMap.open($('panelBody'),{savedMinute:savedMinuteOnMap,vehicleId:wallet.vehicle.id,peakRent:wallet.peakRent,
           pickStand:(stand,minutes)=>departStand(stand,{minutes,savedMinute:savedMinuteOnMap})});
         return;
       }
@@ -282,7 +400,7 @@
     }
     headlightSelect.onchange=()=>{setHeadlights(headlightSelect.value);$('game').focus({preventScroll:true});};
     function switchView(){toast(world.cameraMode());hud();}
-    $('viewBtn').onclick=switchView;$('cancelNav').onclick=()=>{if(hired())return;sim.cancelRoute();toast('導航已結束');};
+    $('viewBtn').onclick=switchView;
     for(const b of document.querySelectorAll('[data-key]')){
       b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);touch[b.dataset.key]=true;b.classList.add('active');};
       b.onpointerup=b.onpointercancel=b.onlostpointercapture=()=>{touch[b.dataset.key]=false;b.classList.remove('active');};
@@ -302,6 +420,7 @@
       if(!panel&&driveKeys.includes(e.code)){e.preventDefault();keys[e.code]=true;return;}
       if(e.repeat)return;
       if(e.code==='Escape'||e.code==='KeyP'){e.preventDefault();if(panel)dismissPanel();else openPause();return;}
+      if(panel==='garage')return;
       if(e.code==='KeyM'){e.preventDefault();if(panel==='map')closePanel();else openMap();return;}
       if(e.code==='KeyH'){if(panel==='help')dismissPanel();else openHelp();return;}
       if(panel)return;
@@ -333,6 +452,8 @@
     const endLook=e=>{if(e.pointerId===dragId){dragId=null;dragLook=0;}};
     for(const event of ['pointerup','pointercancel','lostpointercapture'])windscreen.addEventListener(event,endLook);
     const fmt=m=>m>=1000?(m/1000).toFixed(1)+' km':Math.round(m)+' m';
+    const distanceNumber=new Intl.NumberFormat('en-HK',{maximumFractionDigits:0});
+    const metres=m=>distanceNumber.format(m)+' m';
     const waitTime=seconds=>Math.floor(seconds/60)+':'+String(Math.floor(seconds)%60).padStart(2,'0');
     let shownPhase,shownFare;
     function hud(){
@@ -345,7 +466,7 @@
       const inTaiKokTsui=window.HKTaiKokTsui && s.x < (s.z < -2850 ? -565 : -615) && s.z < -2085 && s.z > -3350;
       const cultural=window.HKWestKowloon&&s.x< -810&&s.z> -747;
       const westKowloon=window.HKWestKowloon&&s.x< -365&&s.z< -680&&s.z> -1600;
-      const district=window.HKKaiTakGuide?.districtAt(s.x,s.z)??window.HKKowloonTongGuide?.districtAt(s.x,s.z)??window.HKKowloonCityGuide?.districtAt(s.x,s.z)??window.HKHoManTinGuide?.districtAt(s.x,s.z)??window.HKToKwaWanGuide?.districtAt(s.x,s.z)??(window.HKHungGuide?.districtAt(s.x,s.z))??(cultural?['西九文化區','WEST KOWLOON CULTURAL DISTRICT']:westKowloon?['西九龍','WEST KOWLOON']:inTaiKokTsui?['大角咀','TAI KOK TSUI']:s.z>-955?['尖沙咀','TSIM SHA TSUI']:s.z>-1490?['佐敦','JORDAN']:s.z>-2140?['油麻地','YAU MA TEI']:s.z>-2950?['旺角','MONG KOK']:['太子','PRINCE EDWARD']);
+      const district=window.HKCheungShaWanGuide?.districtAt(s.x,s.z)??window.HKShekKipMeiGuide?.districtAt(s.x,s.z)??window.HKShamShuiPoGuide?.districtAt(s.x,s.z)??window.HKKaiTakGuide?.districtAt(s.x,s.z)??window.HKKowloonTongGuide?.districtAt(s.x,s.z)??window.HKKowloonCityGuide?.districtAt(s.x,s.z)??window.HKHoManTinGuide?.districtAt(s.x,s.z)??window.HKToKwaWanGuide?.districtAt(s.x,s.z)??(window.HKHungGuide?.districtAt(s.x,s.z))??(cultural?['西九文化區','WEST KOWLOON CULTURAL DISTRICT']:westKowloon?['西九龍','WEST KOWLOON']:inTaiKokTsui?['大角咀','TAI KOK TSUI']:s.z>-955?['尖沙咀','TSIM SHA TSUI']:s.z>-1490?['佐敦','JORDAN']:s.z>-2140?['油麻地','YAU MA TEI']:s.z>-2950?['旺角','MONG KOK']:['太子','PRINCE EDWARD']);
       document.querySelector('.district b').textContent=district[0];document.querySelector('.district span').textContent=district[1];
       const signal=world.currentSignal;
       $('signalHUD').hidden=!signal;
@@ -355,48 +476,48 @@
         $('signalMetres').textContent=Math.max(0,Math.round(signal.distance));$('signalHUD').dataset.phase=signal.phase;
       }
       if(panel!=='map')drawMiniMap();
-      const waiting=taxi.phase==='waiting',receipt=taxi.phase==='receipt',money='HK$ '+(taxi.fare/100).toFixed(2);
-      updateRankGuide();
-      $('restBtn').hidden=!waiting;
+      const waiting=taxi.phase==='waiting',receipt=taxi.phase==='receipt',money=HKWallet.format(receipt?taxi.totalFare:taxi.fare);
+      updateTask();
       $('taxiBadge').textContent=hired()?'載客':waiting?'候客':'空車';
       $('taxiReadout').hidden=!hired()&&!receipt;
       $('taxiCaption').textContent=receipt?'本程車資':'跳錶車資';
       $('taxiValue').textContent=money;
       $('referenceReadout').hidden=!hired()&&!receipt;
       if(hired()||receipt)$('referenceValue').textContent=HKWallet.formatRange(taxi.minimumFare,taxi.referenceFare);
-      const r=sim.route;$('mission').hidden=!r&&!waiting&&!hired()&&!receipt;
-      $('cancelNav').hidden=hired()||!r;
-      if(waiting||receipt){
-        $('target').textContent=waiting?taxi.origin.name:taxi.target.name;
-        $('navMode').textContent=waiting?'等待時間（預計等待'+taxi.expectedWaitSeconds+'秒）':taxi.fine?'超出參考價上限 · 罰款 '+HKWallet.format(taxi.fine):'乘客已下車 · 行程完成';
-        $('remaining').textContent=waiting?waitTime(taxi.wait):money;
-        arrived=false;return;
-      }
-      if(hired()&&(service.nearDrop()||!r||r.arrived)){
-        $('target').textContent=taxi.target.name;$('remaining').textContent=service.nearDrop()?'停車':fmt(Math.hypot(s.x-taxi.target.x,s.z-taxi.target.z));
-        $('navMode').textContent=service.nearDrop()?'靠邊停定，讓乘客下車':'駛往路邊綠色下客位';return;
-      }
-      if(r){$('target').textContent=r.target.name;$('remaining').textContent=r.arrived?'已抵達':fmt(r.remaining);
-        const turn={'keep-left':'靠左分流','keep-right':'靠右分流','u-turn':'掉頭',right:'右轉',left:'左轉',arrive:'抵達',straight:'直行'};
-        $('navMode').textContent=r.arrived?'目的地':fmt(r.turnDistance)+' 後'+(turn[r.nextTurn]||'直行');if(r.arrived&&!arrived){arrived=true;toast('已抵達 · '+r.target.name,3);}}else arrived=false;
+
     }
     window.addEventListener('resize',()=>{blockedFrames=0;});
-    showWallet();$('loading').hidden=true;showMenu();
+    function ensureWorld(){
+      if(!preparing)preparing=prepareWorld().catch(error=>{preparing=null;throw error;});
+      return preparing;
+    }
+    async function prepareWorld(){
+      window.HK_BASE_GROUNDS=await Promise.all(HK_GROUND_TILES.map(async region=>{
+        const image=new Image();image.src=HKScenery.url(region.base);await image.decode();return image;
+      }));
+      const waitForSelection=()=>panel==='map'||panel==='departure'?undefined:
+        new Promise(resolve=>{resumePreparation=resolve;});
+      const canvas=$('world');
+      const initializeDriver=await HKWorld.prepare(canvas,map,sim,signals,height,waitForSelection);
+      world=HKWorld.create(canvas,map,sim,signals,height,initializeDriver);
+    }
+    showWallet();loading.hidden=true;showMenu();
     function tick(now){
       const elapsed=Math.max(0,(now-prev)/1000),dt=Math.min(.10,elapsed);prev=now;
       if(!panel){
         dayClock.advance(elapsed);world.setTime(dayClock.minutes);
         signals.step(dt);const input=held();sim.step(dt,input);
         const event=service.step(elapsed,dayClock.minutes);
+        maintainRankRoute(elapsed);
         if(event==='pickup'){setGuideStand(null);arrived=false;HKSound.pickup();toast('乘客已上車 · 前往'+taxi.target.name,4);}
         world.frame(dt,true,input.brake||input.handbrake,(keys.KeyQ?1:0)-(keys.KeyE?1:0)+dragLook);blockedFrames=0;
-        const redLightFine=world.redCrossed&&Math.random()<.5?20000:0; // HK cents
+        const redLightFine=world.redCrossed?HKTaxiService.drawFineCents():0;
         if(world.redCrossed&&!redLightFine)toast('已越過紅燈停止線',2.4);
-        if(event==='complete')saveDriving(taxi.fare,taxi.fine,redLightFine);
+        if(event==='complete')saveDriving(taxi.totalFare,taxi.fine,redLightFine);
         else if(redLightFine||Math.floor(dayClock.totalMinutes)!==savedMinute)saveDriving(0,0,redLightFine);
       }
       else if(blockedFrames++<2)world.frame(0,false);
-      uiTimer-=dt;if(uiTimer<=0||taxi.phase!==shownPhase||taxi.fare!==shownFare){uiTimer=.09;hud();HKSound.step(sim.state.speed,held().throttle,!!panel);}
+      uiTimer-=dt;if(uiTimer<=0||taxi.phase!==shownPhase||taxi.fare!==shownFare){uiTimer=.09;hud();HKSound.step(sim.state.speed,held().throttle,!!panel,sim.state.vehicle.id);}
       if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)$('toast').classList.remove('show');}
       if(!panel&&!world.redCrossed&&sim.state.collision&&now-lastCollision>4200){
         const message={traffic:'前方有車 · 請煞車',building:'已碰到建築 · 可倒車調整',water:'已到水邊',boundary:'已到地圖邊界',deck:'已到橋面邊緣',barrier:'已到地道護牆',headroom:'橋下空間不足 · 請倒車'};
@@ -407,11 +528,6 @@
   }
   window.addEventListener('load',()=>requestAnimationFrame(()=>setTimeout(async()=>{
     try{
-      // Small overview textures keep the whole district legible while detailed
-      // tiles stream around the vehicle. Exact road surfaces are already resident.
-      window.HK_BASE_GROUNDS=await Promise.all(HK_GROUND_TILES.map(async region=>{
-        const image=new Image();image.src=HKScenery.url(region.base);await image.decode();return image;
-      }));
       await boot();
     }catch(err){console.error(err);$('loadingText').textContent='無法載入 3D 街景。請使用已開啟 WebGL 的 Chrome、Safari 或 Edge，並保持遊戲檔案在同一資料夾。';}
   },16)));

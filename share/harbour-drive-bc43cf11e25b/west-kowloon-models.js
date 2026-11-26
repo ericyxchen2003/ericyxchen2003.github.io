@@ -399,9 +399,10 @@ window.HKCoastModels=(()=>{
     props.add('box',x,y+1.57,z,.2,3.14,.2,'#778581');
     props.add('box',x,y+2.97,z,w,.88,.25,'#435354');
     const text=[station[0]+' '+ref,station[1]+' · '+ref,fast?'#344f58':'#8c3442'];
+    const tag=fast?sign(text):HKRailMarks.header(station[0],station[1],ref,w,.86);
     for(const side of [-1,1]){
       const q=(dx,dy)=>[x+dx*side,y+2.97+dy,z+side*.132];
-      signs.quad(sign(text),[q(-w/2,-.43),q(w/2,-.43),q(w/2,.43),q(-w/2,.43)]);
+      signs.quad(tag,[q(-w/2,-.43),q(w/2,-.43),q(w/2,.43),q(-w/2,.43)]);
     }
   }
   function landscape(props,height,hasSpace){

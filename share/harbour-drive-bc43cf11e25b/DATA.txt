@@ -73,7 +73,7 @@
 | 歷奇樂園、九龍公園體育館 | 小山丘上舊防禦工事的弧形石圍、梯級和欄杆；體育館西翼場館量體、入口柱列、窗帶及屋面 | [康文署歷奇樂園](https://www.lcsd.gov.hk/en/parks/kp/outdoor/dp.html) · [體育館資料與實景](https://www.lcsd.gov.hk/en/parks/kp/indoor/sports_centre.html) |
 | 香港文物探知館、聖安德烈堂 | 前威菲路軍營 S61、S62 的兩層扁拱柱廊、百葉窗、坡瓦頂。彌敦道東側教堂的紅磚、白色窗框、尖拱、鐘樓和石門 | [古物古蹟辦事處文物探知館圖冊](https://www.amo.gov.hk/filemanager/amo/common/download-area/pamphlet/hdc.pdf) · [古物諮詢委員會教堂實景及位置圖](https://www.aab.gov.hk/filemanager/aab/common/139meeting/AAB139-22-A.pdf) |
 | 港鐵出入口 | 尖沙咀站 A1、A2、C1、C2、D1、D2、E 及尖東站 N2、N5、P1、P2。A1 是獨立的玻璃外殼與升降機模型。其他入口按各自地面輪廓設置雨棚、扶手及雙語編號牌 | [地政總署鐵路出入口點](https://ginfo.cedd.gov.hk/server/rest/services/Basemap/MapServer/377) · [港鐵 A1 水晶屋](https://www.mtr.com.hk/archive/corporate/en/press_release/PR-16-039-E.pdf) |
-| 巴士站 | 九巴站位、雙語站名及路線編號採用運輸署 2026-11-23 公開快照，以站點代碼關聯。每個牌面最多展示五條路線。其餘以 OSM 站名及通用巴士牌表示。候車亭按行人路可用空間簡化放置 | [運輸署及九巴站點和路線資料](https://data.gov.hk/en-data/dataset/hk-td-tis_21-etakmb) · [九巴車站設施資料](https://www.kmb.hk/csr_2024/KMB_SR2024.pdf) |
+| 巴士站 | 九巴站位、雙語站名及路線編號採用運輸署 2026-11-23 公開快照，以站點代碼關聯。每個牌面最多展示五條路線。其餘站點按 OSM 的營辦商和路線標籤顯示城巴、九巴或聯營站牌，缺少營辦商資料的站點使用通用站牌。候車亭按行人路可用空間簡化放置 | [運輸署及九巴站點和路線資料](https://data.gov.hk/en-data/dataset/hk-td-tis_21-etakmb) · [九巴車站設施資料](https://www.kmb.hk/csr_2024/KMB_SR2024.pdf) · [城巴車身色彩](https://www.citybus.com.hk/_common/pdf/Citybus_NWFB_Fuller2023.pdf) |
 
 ## 行人過路標記
 
@@ -216,3 +216,23 @@
 2026 年 11 月整理。範圍包括太子道東南面的北停機坪、承啟道、承豐道、前跑道及郵輪碼頭，接回九龍城和土瓜灣原有街網。路線、通行方向及步徑取自 OpenStreetMap，另以運輸署道路中心線核對承豐道、啟德隧道、承啟道、啟新道、沐寧街和協調道。地面按地政總署五米地形及測量點平滑處理，海岸、避風塘和跑道之間保留水面。立交、洞口及場館平台的標高依接點、車道闊度與通車淨空擬合。郵輪碼頭和沐寧街的士站依運輸署位置配對到行車方向和候客位。[運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)、[運輸署的士站](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html)、[土木工程拓展署跑道基建](https://www.cedd.gov.hk/eng/our-projects/major-projects/index-id-78.html)。
 
 啟德體育園重建主場館外殼、開頂球場、體藝館立面及青年運動場跑道。AIRSIDE 的塔樓、摺紋玻璃及退台、稅務中心的橫向窗帶、工業貿易大樓的垂直綠化帶及郵輪碼頭按測量樓體與外觀資料製作。夜間窗帶、場館外環和步徑燈具採用遊戲燈光。跑道公園設有航空展示。宋皇臺公園以發展計劃的規劃用地標示，宋王臺花園及其石刻保留在現址，兩處可分別搜尋。[啟德體育園建築設計](https://populous.com/kai-tak-sports-park-a-gift-to-hong-kong)、[AIRSIDE 建築設計](https://www.snohetta.com/projects/airside)、[工業貿易大樓設計](https://www.wongtung.com/en/projects/trade-and-industry-tower/)、[稅務中心](https://www.ird.gov.hk/eng/abo/relocate.htm)、[啟德發展計劃](https://www.ktd.gov.hk/tchina/programmeandprogress.html)、[用地位置圖](https://www.districtcouncils.gov.hk/kc/doc/2024_2027/tc/committee_meetings_doc/TTC/29920/42.pdf)。
+
+
+## 深水埗舊區及深旺道
+
+2026 年 11 月整理。遊戲沿用深水埗舊區在旺角及大角咀圖幅內的街道，向北接大埔道、青山道、美荷樓及前北九龍裁判法院，向西接深旺道海達交匯處。欽州街至東京街按過渡街區處理。地面由五米 DTM 平滑取樣並接回舊區，正射影像拼接 T11-NW-A、B、C、D。行車方向及街市行人路段採 OSM；西九龍中心和海達站位以運輸署的士站編號 170、167 定位。西九龍中心地下通道及海達街橋台的淨高與坡度按遊戲的士車身擬合。[運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10) · [運輸署的士站](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html)
+
+高登電腦中心與黃金電腦商場位於同一建築，兩個遊戲目的地分別在欽州街和福華街。通州街玉石市場按臨時街市棚群配置，鴨寮街電子檔保留行人通道。南昌押按南昌街 117 號轉角樓體製作，並補入相鄰騎樓、汝州街 269 及 271 號。北河街市政大廈樓上的體育館採簡化體量，美荷樓、嘉頓鐘面、三組廟宇、警署、醫局及法院採簡化立面。關帝廟（武帝廟）正門及落客點朝海壇街，天后廟朝醫局街。[華人廟宇委員會：深水埗關帝廟](https://www.ctc.org.hk/temple/深水埗關帝廟/)。商舖招牌、攤檔貨品與夜燈按遊戲場景配置。前北九龍裁判法院在遊戲經九龍道落客，可由已開放街網往返。[旅發局電腦商場介紹](https://www.discoverhongkong.com/tc/place-to-go/travel.guide-golden-computer-centre-and-arcade.html) · [旅發局南昌押介紹](https://www.discoverhongkong.com/tc/place-to-go/travel.guide-nam-cheong-pawn-shop.html) · [通州街玉石市場](https://www.gohk.gov.hk/tc/spots/spot_detail.php?spot=Tung+Chau+Street+Jade+Market) · [康文署北河街體育館](https://www.lcsd.gov.hk/clpss/tc/webApp/Facility/Details.do?did=9+&ftid=0)
+
+## 石硤尾、又一村與大窩坪
+
+2026 年 11 月整理。石硤尾涵蓋白田、南山及窩仔街一帶，又一村沿達之路、桃源街及歌和老街接回九龍塘，大窩坪補入白田以北的山腰、屋苑道路及七號幹線交匯處。沿用地政總署五米地形、建築輪廓及正射影像。新圖幅在舊區邊緣 45 米範圍漸變銜接，龍悅道兩段下穿、大埔道下層、龍翔道上層橋台按道路連接及車輛淨空分別擬合。以運輸署同名道路中心線對照遊戲路線，呈祥道、龍翔道、大埔道、歌和老街及南昌街每十米抽樣的水平偏差中位數約 0.5 至 0.9 米。白雲街、大坑西街及九龍塘站多福道沿用已有的士站。[運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10) · [運輸署的士站](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html)
+
+賽馬會創意藝術中心保留工廠翼樓、連廊及中庭，創新中心以達之路玻璃立面和入口招牌辨認，又一居按測量輪廓及樓高配置，並沿用又一城原有天窗及商場模型。石硤尾公園按球場佈局設有足球場、網球場、籃球場及體育館。建築近景、園中燈具及入夜後的亮燈效果為遊戲化重建。[賽馬會創意藝術中心實景](https://fpf.ccidahk.gov.hk/tc/location/detail.php?id=1505) · [創新中心及毗鄰用地圖則](https://www.tpb.gov.hk/uploads/page/meetings/MPC/A_K4_77/A_K4_77_Plans.pdf) · [康文署石硤尾公園](https://www.lcsd.gov.hk/tc/parks/skmp/index.html)
+
+
+## 長沙灣、蘇屋與西部填海區
+
+2026 年 11 月整理。保留深水埗至東京街的過渡街區，由長沙灣道、青山道向西接工廠區，海旁包括海麗邨、深旺道及西九龍幹線。按現代海岸建立陸地範圍，以五米地形格網、測量點及四幅正射影像銜接舊區。高架的分流、橋台及多層交匯處按道路走向和淨空擬合。八條主要道路每十米與運輸署同名中心線對照，中位水平偏差約 0.7 至 3.3 米。海麗邨候客位經公共運輸交匯處的士通道進出，其餘四站位於青山道、長順街、幸祥街及集輝街。[運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10) · [運輸署的士站](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html)
+
+東京街 41 號的李鄭屋漢墓博物館沿用測量展覽館輪廓，另建覆土墓丘、防雨篷及玻璃觀景通道，並按街景補上紅白入口及灰色浮雕飾帶。入口照明、篷面曲度及服裝批發店招牌為遊戲化重建。長沙灣廣場兩幢商廈依樓體外形及高度配置；海麗邨、蘇屋邨和西部屋苑沿用分幢輪廓。副食品批發市場的士落客點在欽州街西。[香港歷史博物館](https://hk.history.museum/tc/web/mh/about-us/lei-cheng-uk-han-tomb-museum.html) · [香港旅遊發展局館外照片](https://www.discoverhongkong.com/eng/place-to-go/lei-cheng-uk-han-tomb-museum.html) · [防雨篷工程](https://www.news.gov.hk/isd/ebulletin/tc/hkforkids/default/html/55099404-d799-413f-aa70-af5e5a9a6ea8.htm) · [副食品批發市場](https://www.afcd.gov.hk/english/agriculture/agr_gov/agr_gov_csw/agr_gov_csw.html)

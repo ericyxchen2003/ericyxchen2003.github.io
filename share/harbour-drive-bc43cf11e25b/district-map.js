@@ -194,7 +194,7 @@ window.HKDistrictMap=(()=>{
             shifts.classList.add('resuming');
           }
           function showDeparture(){
-            const next=HKWallet.departure(savedMinute,startMinutes),fee=HKWallet.feeBetween(savedMinute,next);
+            const next=HKWallet.departure(savedMinute,startMinutes),fee=HKWallet.feeBetween(savedMinute,next,actions.vehicleId,actions.peakRent);
             legend.textContent=fee?'出車時間 · 跨過早上六時，扣日租 '+HKWallet.format(fee):'出車時間';
           }
           showDeparture();

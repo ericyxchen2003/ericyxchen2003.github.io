@@ -4,7 +4,7 @@
 <meta name="robots" content="noindex, nofollow, noarchive">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#182a2a">
 <title>香港的士模拟器 · Hong Kong Taxi Simulator</title>
-<link rel="icon" href="icon.svg?v=8920e182d09a"><link rel="stylesheet" href="style.css?v=06ef7cc4baa0">
+<link rel="icon" href="icon.svg?v=8920e182d09a"><link rel="stylesheet" href="style.css?v=0f18262958f6">
 </head><body>
 <svg aria-hidden="true" class="defs" xmlns="http://www.w3.org/2000/svg"><defs>
 <symbol id="i-mark" viewBox="0 0 40 40"><path d="M6 33V22c0-5 3-8 8-10l18-7v6l-16 6c-3 1-4 3-4 6v10zm12 0V22l6-2v13zm10 0V18l6-3v18z" fill="currentColor"/></symbol>
@@ -26,10 +26,10 @@
 <symbol id="i-brake" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="m6 14 3-4m2 4 3-4m2 4 2-3"/></symbol>
 </defs></svg>
 <main id="game" tabindex="-1" aria-label="九龍第一身駕駛遊戲"><canvas id="world" inert aria-label="油尖旺、紅磡及九龍海岸的三維街景"></canvas>
-<div id="loading" tabindex="-1" aria-labelledby="loadingText"><div class="loadbox"><svg aria-hidden="true" viewBox="0 0 40 40"><use href="#i-mark"/></svg><div><strong>香港的士模拟器</strong><small>HONG KONG TAXI SIMULATOR</small></div></div><p id="loadingText" role="status">正在建立九龍街景…</p></div>
+<div id="loading" tabindex="-1" aria-labelledby="loadingText"><div class="loadbox"><svg aria-hidden="true" viewBox="0 0 40 40"><use href="#i-mark"/></svg><div><strong>香港的士模拟器</strong><small>HONG KONG TAXI SIMULATOR</small></div></div><p id="loadingText" role="status">正在載入主選單…</p></div>
 <section id="titleMenu" aria-label="主選單" hidden>
   <img class="menu-scene" src="menu-scene.webp?v=0d9c1dc87899" alt="">
-  <video id="menuFilm" class="menu-scene" src="menu-drive.mp4?v=25d24e19ea90" muted loop playsinline preload="none" disablepictureinpicture aria-hidden="true"></video>
+  <video id="menuFilm" class="menu-scene" data-src="menu-drive.mp4?v=25d24e19ea90" muted loop playsinline preload="none" disablepictureinpicture aria-hidden="true"></video>
   <div class="menu-layout">
     <div class="menu-content">
       <h1>
@@ -53,7 +53,7 @@
 </section>
 <dialog id="clearSaveDialog" aria-labelledby="clearSaveTitle" aria-describedby="clearSaveMessage">
   <h2 id="clearSaveTitle">清除本機存檔？</h2>
-  <p id="clearSaveMessage">目前行程會結束，餘額會回到 HK$500，遊戲時間也會重設。清除後無法復原。</p>
+  <p id="clearSaveMessage">目前行程會結束，餘額會回到 HK$500，車輛會回到 Crown Comfort，遊戲時間也會重設。清除後無法復原。</p>
   <p id="clearSaveError" role="alert" hidden></p>
   <div class="clear-save-actions">
     <button type="button" id="cancelClear" autofocus>取消</button>
@@ -63,10 +63,12 @@
 <div class="hud" id="hud" hidden>
 <header class="mast"><div class="mark"><svg viewBox="0 0 40 40"><use href="#i-mark"/></svg></div><div class="branding"><b>香港的士模拟器</b><span>HONG KONG TAXI SIMULATOR</span></div><div class="district"><b>尖沙咀</b><span>TSIM SHA TSUI</span></div></header>
 <div class="tools"><button id="viewBtn" aria-label="切換鏡頭 (C)" title="切換鏡頭 (C)"><svg><use href="#i-view"/></svg></button><label id="headlightControl" title="車燈模式 (L)"><svg aria-hidden="true"><use href="#i-headlamp"/></svg><small aria-hidden="true">A</small><select id="headlights" aria-label="車燈模式"><option value="auto">自動車燈</option><option value="on">長開車燈</option><option value="off">關閉車燈</option></select></label><button id="soundBtn" aria-label="關閉聲音 (V)" aria-pressed="true" title="關閉聲音 (V)"><svg><use href="#i-sound"/></svg></button><button id="helpBtn" aria-label="駕駛操作指南 (H)" title="駕駛操作指南 (H)"><svg><use href="#i-help"/></svg></button><button id="pauseBtn" aria-label="暫停 (P)" title="暫停 (P)"><svg><use href="#i-pause"/></svg></button></div>
-<aside class="rank-guide" id="rankGuide" aria-label="的士站候客指引" hidden>
+<aside class="rank-guide" id="rankGuide" aria-label="目前任務" hidden>
   <div class="rank-guide-copy">
-    <div class="rank-guide-location"><strong id="guideStandName"></strong><span id="guideStandDistance" title="距候客位的直線距離"></span></div>
-    <p id="guideStandAction" role="status"></p>
+    <strong id="guideStandName"></strong>
+    <div class="rank-guide-readouts"><span id="guideStandDistance"></span><span id="guideStandEstimate"></span></div>
+    <p id="guideStandAction"></p>
+    <button type="button" id="restBtn" hidden>休息 8 小時</button>
   </div>
   <button type="button" id="dismissRankGuide" aria-label="關閉候客指引" title="關閉候客指引"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
 </aside>
@@ -76,11 +78,11 @@
 </section><div id="toast" role="status"></div>
 <section class="navdock"><button id="miniBtn" title="開啟街區地圖 (M)" aria-label="開啟街區地圖"><canvas id="mini"></canvas><span id="miniPins" aria-hidden="true"></span><span class="miniCredit">© OSM · 地政總署</span><span class="north">N<span>▲</span></span><span class="maplabel"><svg><use href="#i-map"/></svg><span>街區地圖</span></span></button><div class="street"><span class="pin"><svg><use href="#i-pin"/></svg></span><div><b id="streetName">梳士巴利道</b><span lang="en" id="streetEn">Salisbury Road</span></div></div></section>
 <div class="guide"><span><kbd>W</kbd><kbd>S</kbd> 油門 / 煞車</span><span><kbd>A</kbd><kbd>D</kbd> 轉向</span><span class="lookHint"><kbd>Q</kbd><kbd>E</kbd> 望左右</span><span><kbd>M</kbd> 地圖</span></div>
-<section class="dash"><div class="dashhead"><span class="taxi-tag" id="taxiBadge">空車</span><span>市區的士</span><time id="gameTime" aria-label="遊戲時間" title="遊戲時間"></time></div><div class="digits"><strong id="speed">0</strong><span>km/h</span><b id="gear" title="檔位">N</b></div><div class="meter" id="meter"></div><div class="odo taxi-readout" id="taxiReadout" hidden><span id="taxiCaption"></span><b id="taxiValue"></b></div><div class="odo taxi-readout" id="referenceReadout" title="下限為最低預計車資，上限為其 1.5 倍。收錶車資超過上限，有一半機會被罰 HK$200。" hidden><span>參考價</span><b id="referenceValue"></b></div><div class="dash-stats">
+<section class="dash"><div class="dashhead"><span class="taxi-tag" id="taxiBadge">空車</span><span>市區的士</span><time id="gameTime" aria-label="遊戲時間" title="遊戲時間"></time></div><div class="digits"><strong id="speed">0</strong><span>km/h</span><b id="gear" title="檔位">N</b></div><div class="meter" id="meter"></div><div class="odo taxi-readout" id="taxiReadout" hidden><span id="taxiCaption"></span><b id="taxiValue"></b></div><div class="odo taxi-readout" id="referenceReadout" title="下限為最低預計跳錶車資，上限為其 1.5 倍。行李費另計。跳錶車資超過上限，有一半機會被罰 HK$50。" hidden><span>參考價</span><b id="referenceValue"></b></div><div class="dash-stats">
   <div class="odo"><span>里程</span><b id="odo">0.00 <small>km</small></b></div>
   <div class="odo"><span id="walletCaption">餘額</span><b id="walletBalance"></b></div>
 </div></section>
-<div class="mission" id="mission" hidden><svg><use href="#i-route"/></svg><div><small id="navMode">路線導航</small><b id="target"></b></div><strong id="remaining"></strong><button type="button" id="restBtn" hidden>休息 8 小時</button><button id="cancelNav" aria-label="取消導航"><svg><use href="#i-close"/></svg></button></div>
+
 <div class="touch"><div><button data-key="left" aria-label="左轉"><svg><use href="#i-left"/></svg></button><button data-key="right" aria-label="右轉"><svg><use href="#i-right"/></svg></button></div><div><button data-key="brake" aria-label="煞車及倒車"><svg><use href="#i-brake"/></svg></button><button data-key="throttle" class="accelerator" aria-label="加速"><svg><use href="#i-gas"/></svg></button></div></div>
 </div>
 <template id="driverGuide">
@@ -142,11 +144,51 @@
   </div>
   <!-- Local explorer controls -->
   <ol class="guide-tips">
-    <li>在地圖選「的士站」，駛入標示 <b>TAXI</b> 的候客位停定。</li>
-    <li>遊戲內每天早上 <b>6 點</b>會自動扣除 <b>HK$50</b> 的士日租。</li>
+    <li>在地圖選「的士站」後，右上方會顯示行車距離。途中可關閉指引，或跟隨導航駛入 <b>TAXI</b> 候客位。</li>
+    <li>停定後可查看已等候時間和目前時段的預計候客時間，或選「休息 8 小時」。乘客上車後，任務會顯示目的地及剩餘行車距離。</li>
+    <li>空車時可從暫停選單進入<b>車庫</b>換車。每天早上 <b>6 點</b>恢復一次換車機會，並按剛結束的租車日內用過的最高日租扣款。Crown Comfort 為 HK$50，Comfort Hybrid 為 HK$65。</li>
+    <li>駕駛 Comfort Hybrid 可在的士站接載攜帶大件行李的乘客。送達時每件行李另收 HK$6，與跳錶車資分開計算。</li>
   </ol>
+  <details>
+    <summary>本次更新（11 月 26 日）</summary>
+    <ul>
+      <li>更大的地圖。新增深水埗、石硤尾、又一村、大窩坪和長沙灣，的士站由 52 個增至 59 個。</li>
+      <li>新增車庫和 Comfort Hybrid。可比較兩款車的加速和煞停表現，混能的士每件大件行李可多收 HK$6。</li>
+      <li>更熱鬧的街景。舊區有彩色招牌和不同款式的店舖，街上多了城巴、城巴站牌和港鐵標誌。</li>
+      <li>更清楚的任務提示。可查看候客時間和剩餘車程，也可在的士站休息 8 小時。</li>
+      <li>更順暢的行車。改善路口綠燈塞車、窄路迎頭堵塞和橋底誤上橋面的問題。</li>
+      <li>更快進入主選單。部分街景改為開車後按需要載入。</li>
+      <li>更低的罰款。衝紅燈或車資超出參考上限時，若被罰款，每次 HK$50。</li>
+    </ul>
+  </details>
+</template>
+<template id="garageScreen">
+  <div class="garage-layout">
+    <section class="garage-lineup" aria-labelledby="garageLineupTitle">
+      <h2 id="garageLineupTitle">選擇車款</h2>
+      <div class="garage-options"></div>
+    </section>
+    <article class="garage-showroom" aria-labelledby="garageName">
+      <header><span>Toyota</span><h2 id="garageName"></h2><p class="garage-body-type"></p></header>
+      <div class="garage-stage"><img class="garage-portrait" alt=""></div>
+      <footer>
+        <section class="garage-performance" aria-labelledby="garagePerformanceTitle">
+          <h3 id="garagePerformanceTitle">遊戲內平路表現</h3>
+          <dl>
+            <div><dt>起步加速 <small>0 → 50 km/h</small></dt><dd class="garage-acceleration"></dd></div>
+            <div><dt>全力煞停 <small>50 → 0 km/h</small></dt><dd class="garage-braking"></dd></div>
+            <div><dt>鬆油滑行 <small>50 → 30 km/h</small></dt><dd class="garage-coasting"></dd></div>
+          </dl>
+        </section>
+        <dl><div><dt>每日租金</dt><dd class="garage-rent"></dd></div><div><dt>行李收費</dt><dd class="garage-luggage"></dd></div></dl>
+        <p class="garage-terms"></p>
+        <div class="garage-confirm"><small>每日早上 6 時結算最高日租，並恢復一次換車機會</small><button type="button" class="primary garage-use"></button></div>
+        <p class="garage-error" role="alert" hidden>未能儲存選擇，請再試一次。</p>
+      </footer>
+    </article>
+  </div>
 </template>
 <dialog id="restDialog" aria-labelledby="restTitle" aria-describedby="restWake"><h2 id="restTitle" tabindex="-1" autofocus>休息中</h2><p id="restWake"></p><div class="rest-track" aria-hidden="true"></div></dialog>
 <div id="overlay" hidden><section class="panel" role="dialog" aria-modal="true" aria-labelledby="panelTitle"><header><div><small id="panelKicker"></small><h1 id="panelTitle"></h1></div><button id="closePanel" class="iconbtn" aria-label="關閉"><svg><use href="#i-close"/></svg></button></header><div id="panelBody"></div></section></div>
 </main>
-<script src="vendor/three.min.js?v=170c6789f432"></script><script src="map.js?v=8965acfb65ff"></script><script src="crossing-data.js?v=65cf73b24524"></script><script src="north-data.js?v=692deac705c1"></script><script src="mong-kok-data.js?v=5c25097cc371"></script><script src="mong-kok.js?v=ddf28d7525f7"></script><script src="tai-kok-tsui-data.js?v=ea735d545b3e"></script><script src="tai-kok-tsui.js?v=f9f16449dd8b"></script><script src="west-kowloon-data.js?v=44971a7ef08d"></script><script src="west-kowloon.js?v=99a626fd07ff"></script><script src="hung-hom-data.js?v=cb86a4d82f18"></script><script src="hung-hom.js?v=113781a1c490"></script><script src="to-kwa-wan-data.js?v=3b2fd8019679"></script><script src="to-kwa-wan.js?v=c1cfe999d449"></script><script src="kowloon-city-data.js?v=e0f701d19c04"></script><script src="kowloon-city.js?v=c5018aa34461"></script><script src="kowloon-tong-data.js?v=69177eceea00"></script><script src="kowloon-tong.js?v=78824c23ea01"></script><script src="kai-tak-data.js?v=a8e9e3d4ba69"></script><script src="kai-tak.js?v=30b147098f5f"></script><script src="north.js?v=c3c8f7b29ab9"></script><script src="taxi-ranks.js?v=2bd4b44605d8"></script><script src="west-tunnel-data.js?v=f12f66a784ba"></script><script src="west-tunnels.js?v=152abb8fe6d4"></script><script src="crossing-marks.js?v=0e1116b57ce7"></script><script src="detail-data.js?v=8bd5913e2437"></script><script src="heritage-architecture.js?v=cf68690159c3"></script><script src="harbour-places.js?v=29b2443a3d1f"></script><script src="temple-market-data.js?v=74c6f8291e07"></script><script src="yau-ma-tei-places.js?v=95d7cc7df5c1"></script><script src="district-landmarks.js?v=1d3ed6b2001c"></script><script src="crown-comfort.js?v=edb8ea2a3ba6"></script><script src="models.js?v=36f510a09cb0"></script><script src="turns-data.js?v=f1c3de3f520b"></script><script src="hung-hom-guide.js?v=39ad4c954384"></script><script src="to-kwa-wan-guide.js?v=0b114e711264"></script><script src="ho-man-tin-guide.js?v=a37d3e990e1a"></script><script src="kowloon-city-guide.js?v=ea3d6f068abc"></script><script src="kowloon-tong-guide.js?v=b6a8aecce3d2"></script><script src="kai-tak-guide.js?v=0870673a4ee3"></script><script src="driving.js?v=4f7a01ace42b"></script><script src="stops.js?v=b70908196c75"></script><script src="signal-directions.js?v=5f25736275a3"></script><script src="signals.js?v=749a85c3766e"></script><script src="traffic.js?v=2bbb25c80cc0"></script><script src="cockpit.js?v=c592ad68f41b"></script><script src="nathan-data.js?v=d8005e663ab7"></script><script src="nathan-frontages.js?v=87310c509b11"></script><script src="underpass.js?v=195df24f8931"></script><script src="mong-kok-places-data.js?v=f1808a25d2e0"></script><script src="tai-kok-tsui-places.js?v=b42a11197598"></script><script src="tai-kok-tsui-models.js?v=e7dd88dbebec"></script><script src="west-kowloon-places.js?v=618a3dd88387"></script><script src="west-kowloon-models.js?v=7e9396942953"></script><script src="hung-hom-places.js?v=c067b397e841"></script><script src="hung-hom-models.js?v=107db766ed01"></script><script src="to-kwa-wan-places.js?v=5471cfeaa96b"></script><script src="ho-man-tin-data.js?v=071b54c9dabf"></script><script src="to-kwa-wan-models.js?v=ef458b6353d4"></script><script src="ho-man-tin-models.js?v=97f20886e817"></script><script src="kowloon-city-places.js?v=f35f5a5e9821"></script><script src="kowloon-city-models.js?v=e408b3589d2a"></script><script src="kowloon-tong-places.js?v=6512d80f445f"></script><script src="kowloon-tong-models.js?v=cbac22b6e71d"></script><script src="kai-tak-places.js?v=7cdd85b7f293"></script><script src="kai-tak-models.js?v=283130d125ab"></script><script src="footbridge-fit.js?v=98873d467167"></script><script src="mong-kok-streets.js?v=b3d8f61f462d"></script><script src="ground-tiles.js?v=6d0167435156"></script><script src="scenery-stream.js?v=a5523645ff93"></script><script src="day-cycle.js?v=93585ceb2cd2"></script><script src="wallet.js?v=0e7bee082381"></script><script src="street-lights.js?v=9eaac37e04b7"></script><script src="world.js?v=1d625492713a"></script><script src="sources.js?v=ecc3eae22dc4"></script><script src="sound.js?v=a61f5b5602c7"></script><script src="map-cartography.js?v=2670e358d388"></script><script src="district-map.js?v=9c4713d76178"></script><script src="taxi-service.js?v=79aba33c5232"></script><script src="taxi-stands.js?v=6bf72e14931f"></script><script src="game.js?v=fa7b1903866d"></script></body></html>
+<script src="vendor/three.min.js?v=170c6789f432"></script><script src="map.js?v=8965acfb65ff"></script><script src="crossing-data.js?v=65cf73b24524"></script><script src="north-data.js?v=692deac705c1"></script><script src="mong-kok-data.js?v=5c25097cc371"></script><script src="mong-kok.js?v=ddf28d7525f7"></script><script src="tai-kok-tsui-data.js?v=ea735d545b3e"></script><script src="tai-kok-tsui.js?v=f9f16449dd8b"></script><script src="west-kowloon-data.js?v=44971a7ef08d"></script><script src="west-kowloon.js?v=99a626fd07ff"></script><script src="hung-hom-data.js?v=cb86a4d82f18"></script><script src="hung-hom.js?v=113781a1c490"></script><script src="to-kwa-wan-data.js?v=3b2fd8019679"></script><script src="to-kwa-wan.js?v=c1cfe999d449"></script><script src="kowloon-city-data.js?v=e0f701d19c04"></script><script src="kowloon-city.js?v=c5018aa34461"></script><script src="kowloon-tong-data.js?v=69177eceea00"></script><script src="kowloon-tong.js?v=78824c23ea01"></script><script src="kai-tak-data.js?v=a8e9e3d4ba69"></script><script src="kai-tak.js?v=30b147098f5f"></script><script src="sham-shui-po-data.js?v=99d1c31632a2"></script><script src="sham-shui-po.js?v=6b6a674cdb04"></script><script src="shek-kip-mei-data.js?v=1aa91c5aa035"></script><script src="shek-kip-mei.js?v=e640eb9f06e7"></script><script src="cheung-sha-wan-data.js?v=38b4f695a463"></script><script src="cheung-sha-wan.js?v=01a045496db5"></script><script src="north.js?v=2cf6c3a2c126"></script><script src="taxi-ranks.js?v=13a9363d3e50"></script><script src="west-tunnel-data.js?v=f12f66a784ba"></script><script src="west-tunnels.js?v=152abb8fe6d4"></script><script src="crossing-marks.js?v=0e1116b57ce7"></script><script src="detail-data.js?v=8bd5913e2437"></script><script src="heritage-architecture.js?v=cf68690159c3"></script><script src="harbour-places.js?v=29b2443a3d1f"></script><script src="temple-market-data.js?v=74c6f8291e07"></script><script src="yau-ma-tei-places.js?v=5fdf0936f224"></script><script src="rail-marks.js?v=faabb4807052"></script><script src="district-landmarks.js?v=71cc3b3b8335"></script><script src="crown-comfort.js?v=d4dc9bdfc379"></script><script src="comfort-hybrid.js?v=e1a2326c96f9"></script><script src="models.js?v=6c8828dff8cc"></script><script src="turns-data.js?v=24db361aa4e6"></script><script src="hung-hom-guide.js?v=39ad4c954384"></script><script src="to-kwa-wan-guide.js?v=0b114e711264"></script><script src="ho-man-tin-guide.js?v=a37d3e990e1a"></script><script src="kowloon-city-guide.js?v=ea3d6f068abc"></script><script src="kowloon-tong-guide.js?v=b1d7e475dde0"></script><script src="kai-tak-guide.js?v=0870673a4ee3"></script><script src="sham-shui-po-guide.js?v=0d7c5f5f784f"></script><script src="shek-kip-mei-guide.js?v=8ca93d4e4937"></script><script src="cheung-sha-wan-guide.js?v=1d30ea17e172"></script><script src="driving.js?v=2bc4d9de7b2a"></script><script src="stops.js?v=b70908196c75"></script><script src="bus-operator-data.js?v=218515d3c13c"></script><script src="signal-directions.js?v=8dbf3fbc5f24"></script><script src="signals.js?v=749a85c3766e"></script><script src="road-tiles.js?v=d184a6ea2f3a"></script><script src="street-layout.js?v=4b970cc4140d"></script><script src="traffic.js?v=54ec03216b02"></script><script src="hybrid-cabin.js?v=982f093ea1d7"></script><script src="cockpit.js?v=47a2612665ec"></script><script src="nathan-data.js?v=d8005e663ab7"></script><script src="nathan-frontages.js?v=5788c4f70c12"></script><script src="street-shops.js?v=6dc43e91c1e9"></script><script src="underpass.js?v=195df24f8931"></script><script src="mong-kok-places-data.js?v=f1808a25d2e0"></script><script src="tai-kok-tsui-places.js?v=b42a11197598"></script><script src="tai-kok-tsui-models.js?v=e7dd88dbebec"></script><script src="west-kowloon-places.js?v=618a3dd88387"></script><script src="west-kowloon-models.js?v=b65e18f629d5"></script><script src="hung-hom-places.js?v=c067b397e841"></script><script src="hung-hom-models.js?v=107db766ed01"></script><script src="to-kwa-wan-places.js?v=5471cfeaa96b"></script><script src="ho-man-tin-data.js?v=071b54c9dabf"></script><script src="to-kwa-wan-models.js?v=ef458b6353d4"></script><script src="ho-man-tin-models.js?v=97f20886e817"></script><script src="kowloon-city-places.js?v=f35f5a5e9821"></script><script src="kowloon-city-models.js?v=e408b3589d2a"></script><script src="kowloon-tong-places.js?v=6512d80f445f"></script><script src="kowloon-tong-models.js?v=cbac22b6e71d"></script><script src="kai-tak-places.js?v=7cdd85b7f293"></script><script src="kai-tak-models.js?v=283130d125ab"></script><script src="sham-shui-po-places.js?v=9911bf20ba07"></script><script src="sham-shui-po-models.js?v=6fdc2d65a90e"></script><script src="shek-kip-mei-places.js?v=81623d5345ef"></script><script src="shek-kip-mei-park.js?v=286382e93dd8"></script><script src="shek-kip-mei-models.js?v=c5324783f864"></script><script src="cheung-sha-wan-places.js?v=f2f5d521d839"></script><script src="cheung-sha-wan-models.js?v=d21b1442b529"></script><script src="footbridge-fit.js?v=1b88d04dbcff"></script><script src="mong-kok-streets.js?v=c245842934b0"></script><script src="ground-tiles.js?v=ef68d9c30e45"></script><script src="scenery-stream.js?v=90aff9aa26db"></script><script src="day-cycle.js?v=97b5e685faeb"></script><script src="wallet.js?v=5f35c60aa084"></script><script src="street-lights.js?v=b97c4c01126e"></script><script src="world.js?v=b123858868d8"></script><script src="sources.js?v=dc0444b8cf78"></script><script src="sound.js?v=79e07a325e3b"></script><script src="map-cartography.js?v=5b7a4951b5bf"></script><script src="district-map.js?v=256e89b2770f"></script><script src="taxi-service.js?v=43af68b31b49"></script><script src="taxi-stands.js?v=6bf72e14931f"></script><script src="game.js?v=10a5f64190a2"></script></body></html>

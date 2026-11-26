@@ -97,16 +97,72 @@ window.HKDetails=(()=>{
       lettering(c,label,w/2,sub?43:64,'bold '+(sub?65:90)+'px',fg);
       if(sub)lettering(c,sub,w/2,98,'bold 33px',fg);};
   }
+  let shopAtlas;
+  const shopBoards=new Map();
+  function shopBoard(zh,en,bg,ink,width,height,trade='',quiet=false){
+    // Paint in the proportions of the physical face. Round only the aspect
+    // (within about 4%) so neighbouring signs can share atlas entries.
+    const vertical=height>width,ratioKey=Math.round(Math.log2(width/height)*10);
+    const key=JSON.stringify([zh,vertical?'':en,bg,ink,vertical,ratioKey,trade,quiet]);
+    if(shopBoards.has(key))return shopBoards.get(key);
+    shopAtlas??=atlas(.75);
+    const tag=shopAtlas.add((c,w,h)=>{
+      if(vertical){c.translate(w,0);c.rotate(Math.PI/2);[w,h]=[h,w];}
+      const H=160,W=H*2**(ratioKey/10);
+      c.scale(w/W,h/H);c.fillStyle=bg;c.fillRect(0,0,W,H);
+      const inset=Math.min(W,H)*.035;
+      c.strokeStyle=ink;c.globalAlpha=.7;c.lineWidth=inset*.32;
+      c.strokeRect(inset,inset,W-2*inset,H-2*inset);c.globalAlpha=1;
+      const family=trade==='watch'||trade==='books'?'"Songti TC",serif':'"PingFang HK","Heiti TC",sans-serif';
+      c.textAlign='center';c.textBaseline='middle';c.fillStyle=ink;
+      function line(text,x,y,size,space,font){
+        c.font=font(size);
+        const measured=c.measureText(text).width;
+        if(measured>space)c.font=font(size*space/measured);
+        c.fillText(text,x,y);
+      }
+      const title=size=>(quiet?'500 ':'bold ')+size+'px '+family;
+      if(vertical){
+        const chars=Array.from(zh),rows=Math.max(1,chars.length),step=(H-4*inset)/rows;
+        for(const [i,ch] of chars.entries())line(ch,W/2,2*inset+(i+.5)*step,Math.min(step*.81,W*.77),W-4*inset,title);
+        return;
+      }
+      const emblem=W/H>3.6&&!quiet&&['pharmacy','watch','optics','exchange'].includes(trade);
+      const left=emblem?H*.8:2.5*inset,space=W-left-2.5*inset,cx=left+space/2;
+      if(emblem){
+        c.save();c.translate(H*.40,H*.48);c.lineWidth=4;
+        if(trade==='watch'){
+          c.beginPath();c.arc(0,0,29,0,Math.PI*2);c.stroke();c.beginPath();c.moveTo(0,-21);c.lineTo(0,0);c.lineTo(14,8);c.stroke();
+        }else if(trade==='pharmacy'){c.fillRect(-9,-29,18,58);c.fillRect(-29,-9,58,18);}
+        else if(trade==='optics'){
+          for(const x of [-17,17]){c.beginPath();c.ellipse(x,0,14,11,0,0,Math.PI*2);c.stroke();}
+          c.fillRect(-3,-3,6,3);
+        }else line('$',0,0,62,62,title);
+        c.restore();
+      }
+      line(zh,cx,H*(en ? .39 : .5),H*(en ? .54 : .68),space,title);
+      if(en)line(en,cx,H*.78,H*.22,space,size=>'600 '+size+'px Arial,sans-serif');
+    });
+    tag.portrait=vertical;shopBoards.set(key,tag);return tag;
+  }
   function signBatch(){
     const T=THREE,bins=new Map();
     function quad(tag,points,hours){
-      const mat=hours?HKShopLights.material(tag.mat):tag.mat;
+      const mat=tag.timedMaterial??(hours?HKShopLights.material(tag.mat):tag.mat);
       if(!bins.has(mat))bins.set(mat,{p:[],uv:[],hours:[]});
-      const bin=bins.get(mat),[l,b,r,t]=tag.uv,uv=[[l,b],[r,b],[r,t],[l,t]];
+      const bin=bins.get(mat),[l,b,r,t]=tag.uv;
+      const uv=tag.portrait?[[l,t],[l,b],[r,b],[r,t]]:[[l,b],[r,b],[r,t],[l,t]];
       for(const i of [0,1,2,0,2,3]){bin.p.push(...points[i]);bin.uv.push(...uv[i]);if(hours)bin.hours.push(...hours);}
     }
     function finish(group){
-      for(const [mat,bin] of bins){const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(bin.p,3));geo.setAttribute('uv',new T.Float32BufferAttribute(bin.uv,2));if(bin.hours.length)geo.setAttribute('shopHours',new T.Float32BufferAttribute(bin.hours,2));const mesh=new T.Mesh(geo,mat);mesh.name='Site lettering';group.add(mesh);}
+      for(const [mat,bin] of bins){
+        const geo=new T.BufferGeometry();
+        geo.setAttribute('position',new T.Float32BufferAttribute(bin.p,3));
+        geo.setAttribute('uv',new T.Float32BufferAttribute(bin.uv,2));
+        if(bin.hours.length)geo.setAttribute('shopHours',new T.Float32BufferAttribute(bin.hours,2));
+        if(mat.isMeshLambertMaterial)geo.computeVertexNormals();
+        const mesh=new T.Mesh(geo,mat);mesh.name='Site lettering';group.add(mesh);
+      }
     }
     return {quad,finish};
   }
@@ -120,6 +176,12 @@ window.HKDetails=(()=>{
     let b,g,signs;
     const sign=(...args)=>drawSign(false,...args),litSign=(...args)=>drawSign(true,...args);
     function shopSign(hours,f,u,y,d,w,h,label,sub,bg,fg){
+      if(typeof label==='string'||label?.uv){
+        const tag=typeof label==='string'?shopBoard(label,sub,bg,fg||'#fff7df',w,h):label;
+        signs.quad(tag,
+          [f.at(u-w/2,y-h/2,d),f.at(u+w/2,y-h/2,d),f.at(u+w/2,y+h/2,d),f.at(u-w/2,y+h/2,d)],hours);
+        return;
+      }
       drawSign(false,f,u,y,d,w,h,label,sub,bg,fg,hours);
     }
     function drawSign(lit,f,u,y,d,w,h,label,sub,bg,fg,hours){
@@ -640,19 +702,15 @@ window.HKDetails=(()=>{
         b.lights.box(...f.at(L*.5,y+2.64,v),run*.83,.085,.115,'#e0edd8',f.angle);
       }
       const sy=cube?y+3.7:roof-.45;
-      const header=(c,w,h)=>{
-        c.fillStyle='#173e50';c.fillRect(0,0,w,h);
-        c.fillStyle='#be263b';c.beginPath();c.ellipse(57,62,41,49,0,0,TAU);c.fill();
-        c.strokeStyle='#fffcf0';c.lineWidth=6;c.lineCap='round';c.beginPath();c.moveTo(57,24);c.lineTo(57,99);
-        for(const s of [-1,1]){c.moveTo(57+s*15,38);c.bezierCurveTo(57+s*15,64,57-s*15,62,57-s*15,87);}c.stroke();
-        lettering(c,east?'尖東站':'尖沙咀站',218,42,'bold 48px','#ffffed',211);
-        lettering(c,east?'East Tsim Sha Tsui':'Tsim Sha Tsui',218,89,'bold 23px','#f9f9e9',219);
-        c.fillStyle='#eeeddf';c.fillRect(357,13,137,98);lettering(c,code,425,66,'bold 76px','#203543',126);
+      const title=east?'尖東站':'尖沙咀站',english=east?'East Tsim Sha Tsui':'Tsim Sha Tsui';
+      const panel=(face,centerY,w,h)=>{
+        const tag=HKRailMarks.header(title,english,code,w,h),u=face.length/2;
+        signs.quad({...tag,mat:backlitSign(tag.mat)},[face.at(u-w/2,centerY-h/2,.11),face.at(u+w/2,centerY-h/2,.11),
+          face.at(u+w/2,centerY+h/2,.11),face.at(u-w/2,centerY+h/2,.11)]);
       };
-      sign(f,L/2,sy,.09,L*.98,cube?.95:.74,header);
-      for(const s of [sideFrames[0],sideFrames[2]])if(s.length>4.1){
-        sign(s,s.length*.5,cube?y+3.65:roof-.48,.10,Math.min(4.75,s.length*.8),.69,header);
-      }
+      panel(f,sy,L*.98,cube?.95:.74);
+      for(const s of [sideFrames[0],sideFrames[2]])if(s.length>4.1)
+        panel(s,cube?y+3.65:roof-.48,Math.min(4.75,s.length*.8),.69);
     }
     function water(i){
       const source=data.water[i];
@@ -754,5 +812,5 @@ window.HKDetails=(()=>{
     place('play','歷奇樂園',-31,-583,playground);place('parkgate','九龍公園海防道入口',...gate,parkGate);
     return placed;
   }
-  return {prepare,replaces:b=>replaced.has(b),build,parkTerrain,clearPlanting,parkSolids,isPond,atlas,signBatch,lettering};
+  return {prepare,replaces:b=>replaced.has(b),build,parkTerrain,clearPlanting,parkSolids,isPond,atlas,signBatch,shopBoard,lettering};
 })();
