@@ -65,7 +65,7 @@
       }
       if(fareFine)messages.push('車資超出參考價上限，罰款 −'+HKWallet.format(fareFine));
       if(redLightFine)messages.push('衝紅燈，罰款 −'+HKWallet.format(redLightFine));
-      if(result.fee)messages.push('的士日租 −'+HKWallet.format(result.fee));
+      if(result.fee)messages.push('已扣日租 · '+HKWallet.describeRent(result.record.lastRent));
       if(messages.length)toast(messages.join('　·　'),4);
     }
     function saveDriving(fare=0,fareFine=0,redLightFine=0){
@@ -78,8 +78,15 @@
     }
     const restDialog=$('restDialog');
     restDialog.oncancel=event=>event.preventDefault();
+    $('waitBtn').onclick=()=>{
+      if(panel||!menu.hidden)return;
+      if(taxi.phase==='waiting')service.clear();
+      else if(service.startWaiting(dayClock.minutes))setGuideStand(taxi.origin);
+      hud();
+    };
+    $('rankGarage').onclick=()=>{if(!panel&&menu.hidden&&!hired()&&service.parkedStand())openGarage();};
     $('restBtn').onclick=async()=>{
-      if(panel||!menu.hidden||taxi.phase!=='waiting')return;
+      if(panel||!menu.hidden||hired()||taxi.phase==='receipt'||!service.parkedStand())return;
       const wakeMinute=dayClock.totalMinutes+8*60;
       const durationMs=5000;
       panel='rest';
@@ -95,7 +102,6 @@
       settled(result);
       savedMinute=Math.floor(dayClock.totalMinutes);
       service.clear();
-      service.step(0,dayClock.minutes);
       world.setTime(dayClock.minutes);
       hud();
       restDialog.close();
@@ -164,37 +170,43 @@
       $('closePanel').setAttribute('aria-label',name==='map'&&!started?'返回主選單':'關閉');syncMenuFilm();
     }
     function addButton(label,cls,action,parent=$('panelBody')){const el=document.createElement('button');el.textContent=label;el.className=cls;el.onclick=action;parent.append(el);return el;}
-    let guideFromPause=false,garageSaving=false;
+    let guideFromPause=false,garageFromPause=false,garageSaving=false;
     function dismissPanel(){
       if(garageSaving)return;
-      if(panel==='garage'||(panel==='help'&&guideFromPause)){openPause();return;}
+      if((panel==='garage'&&garageFromPause)||(panel==='help'&&guideFromPause)){openPause();return;}
       closePanel();
     }
     function openPause(){
       const previousPanel=panel;
       showPanel('pause','HONG KONG TAXI SIMULATOR','駕駛已暫停');
       const p=document.createElement('p');p.className='panelHint';p.textContent=sim.state.roadName+' · '+sim.state.vehicle.name;$('panelBody').append(p);
+      if(wallet.lastRent){
+        const rent=document.createElement('p');rent.className='panelHint';
+        rent.textContent='上次 06:00 扣租 · '+HKWallet.describeRent(wallet.lastRent);$('panelBody').append(rent);
+      }
       const actions=document.createElement('div');actions.className='panelActions';$('panelBody').append(actions);
       addButton('繼續駕駛','primary',closePanel,actions);
       const guide=addButton('駕駛操作指南','subbtn',openHelp,actions);
       addButton('街區地圖','subbtn',openMap,actions);
-      const garage=hired()?null:addButton('車庫','subbtn',openGarage,actions);
+      const garage=addButton('車庫','subbtn',openGarage,actions);
       addButton('主選單','subbtn',showMenu,actions);
       if(HKScenery.compact){
         const control=qualityControl.cloneNode(true);control.removeAttribute('id');
         bindQuality(control.querySelector('select'));actions.append(control);
       }
       if(previousPanel==='help')guide.focus({preventScroll:true});
-      if(previousPanel==='garage')garage?.focus();
+      if(previousPanel==='garage')garage.focus();
     }
     function openGarage(){
-      if(panel!=='pause'||hired())return;
+      if(panel&&panel!=='pause')return;
+      garageFromPause=panel==='pause';
+      const rank=service.parkedStand();
       showPanel('garage','HONG KONG TAXI SIMULATOR','車庫');
       const body=$('panelBody');body.append($('garageScreen').content.cloneNode(true));
       const find=selector=>body.querySelector(selector),options=find('.garage-options');
       const confirm=find('.garage-use'),error=find('.garage-error'),portrait=find('.garage-portrait');
-      const close=$('closePanel');close.setAttribute('aria-label','返回暫停選單');
-      let selected=sim.state.vehicle;
+      const close=$('closePanel');close.setAttribute('aria-label',garageFromPause?'返回暫停選單':'返回駕駛');
+      let selected=(rank&&rank===guideStand&&guideVehicle)||sim.state.vehicle;
       function preview(vehicle){
         selected=vehicle;error.hidden=true;
         for(const button of options.children)button.setAttribute('aria-pressed',String(button.dataset.vehicle===vehicle.id));
@@ -211,8 +223,12 @@
         find('.garage-luggage').textContent=vehicle.luggageChance?'HK$'+fee+'／件':'無附加費';
         find('.garage-terms').textContent=vehicle.luggageChance?'可在的士站接載攜帶大件行李的乘客，每件行李可額外收取 HK$'+fee+'。':'在的士站候客，按跳錶車資結算。';
         const active=vehicle.id===sim.state.vehicle.id;
-        confirm.disabled=active||!wallet.canSwitch(dayClock.totalMinutes);
-        confirm.textContent=active?'使用中':confirm.disabled?'下個早上 6 時可換車':'使用這輛的士';
+        const dayLocked=!wallet.canSwitch(dayClock.totalMinutes);
+        confirm.disabled=hired()||active||Boolean(rank&&dayLocked);
+        if(hired())confirm.textContent='載客中，暫不能換車';
+        else if(active)confirm.textContent='使用中';
+        else if(!rank)confirm.textContent='前往的士站換車';
+        else confirm.textContent=dayLocked?'下個早上 6 時可換車':'使用這輛的士';
       }
       for(const vehicle of HKWallet.vehicles){
         const button=addButton('','garage-option',()=>preview(vehicle),options);
@@ -224,13 +240,17 @@
       preview(selected);
       confirm.onclick=async()=>{
         if(garageSaving||hired()||panel!=='garage'||confirm.disabled)return;
+        if(!service.parkedStand()){openMap({changeTo:selected});return;}
         garageSaving=true;confirm.disabled=close.disabled=true;options.inert=true;error.hidden=true;
         try{
           const result=await wallet.selectVehicle(selected.id,dayClock.totalMinutes);
           if(handleExternalReset(result))return;
           applyVehicle();settled(result);blockedFrames=0;
-          if(result.switchBlocked){openPause();openGarage();return;}
-          openPause();
+          if(result.switchBlocked){preview(selected);return;}
+          if(taxi.phase==='waiting')service.clear();
+          guideVehicle=null;
+          if(garageFromPause)openPause();
+          else{closePanel();hud();toast('已換用 '+sim.state.vehicle.name);}
         }catch{
           error.hidden=false;confirm.disabled=false;confirm.focus();
         }finally{
@@ -256,13 +276,13 @@
       $('closePanel').setAttribute('aria-label',backLabel);
       addButton(backLabel,'primary',dismissPanel);
     }
-    let guideStand=null,rankRetry=0;
-    function setGuideStand(stand){
-      guideStand=stand;rankRetry=0;
+    let guideStand=null,guideVehicle=null,rankRetry=0;
+    function setGuideStand(stand,vehicle=null){
+      guideStand=stand;guideVehicle=vehicle;rankRetry=0;
     }
     $('dismissRankGuide').onclick=()=>{
       if(hired()||taxi.phase==='receipt'||taxi.phase==='waiting'||(guideStand&&service.withinBay(guideStand)))return;
-      guideStand=null;sim.cancelRoute();arrived=false;
+      setGuideStand(null);sim.cancelRoute();arrived=false;
       hud();$('game').focus({preventScroll:true});
     };
     function maintainRankRoute(dt){
@@ -281,7 +301,8 @@
     }
     function updateTask(){
       const r=sim.route,receipt=taxi.phase==='receipt',waiting=taxi.phase==='waiting';
-      const stand=waiting?taxi.origin:guideStand;
+      const parked=hired()||receipt?null:service.parkedStand();
+      const stand=parked||guideStand;
       const inBay=!!stand&&service.withinBay(stand);
       let title='',detail='',metric='',estimate='';
       if(receipt){
@@ -296,12 +317,14 @@
         detail=near?'請靠邊停定，讓乘客下車。':matching&&r.arrived?'請駛入綠色下客位。':turnAdvice(r)||'正在重新規劃行車路線…';
       }else if(stand){
         if(inBay){
-          title='在'+stand.name+'停車等待乘客或休息';
-          metric='已等候 '+waitTime(waiting&&stand===taxi.origin?taxi.wait:0);
-          if(waiting)estimate='預計約 '+taxi.expectedWaitSeconds+' 秒';
-          detail=waiting?'請保持停車，等候乘客上車。':'請在 TAXI 候客位停定。';
+          title=waiting?'在'+stand.name+'候客':stand.name;
+          if(waiting){
+            metric='已等候 '+waitTime(taxi.wait);estimate='預計約 '+taxi.expectedWaitSeconds+' 秒';
+            detail='請保持停車，等候乘客上車。';
+          }else if(!parked)detail='請在 TAXI 候客位停定。';
+          else if(guideVehicle&&stand===guideStand)detail='選「換車」以使用 '+guideVehicle.name+'。';
         }else{
-          title='前往'+stand.name+'載客或休息';
+          title='前往'+stand.name+(guideVehicle?'換車':'載客或休息');
           const matching=r?.target===stand;
           if(matching){
             // The navigation line ends at the street centre. In the final
@@ -320,13 +343,17 @@
       for(const [id,value] of [['guideStandName',title],['guideStandDistance',metric],['guideStandEstimate',estimate],['guideStandAction',detail]]){
         if($(id).textContent!==value)$(id).textContent=value;
       }
-      $('restBtn').hidden=!inBay||hired()||receipt;
-      $('restBtn').disabled=!waiting||taxi.origin!==stand;
+      $('rankActions').hidden=!parked;
+      const waitBtn=$('waitBtn');
+      if(waitBtn.getAttribute('aria-pressed')!==String(waiting)){
+        waitBtn.setAttribute('aria-pressed',String(waiting));
+        waitBtn.textContent=waiting?'取消候客':'開始候客';
+      }
       const dismiss=$('dismissRankGuide');dismiss.hidden=hired()||receipt||inBay;
       const label=stand?'關閉候客指引':'取消導航';
       dismiss.title=label;dismiss.setAttribute('aria-label',label);
     }
-    async function departStand(stand,shift){
+    async function departStand(stand,shift,changeTo=null){
       if(panel!=='map'||!service.stands.includes(stand))return;
       if(hired()){toast('載客中 · 請先完成行程');return;}
       if(!started)HKSound.activate();
@@ -341,6 +368,7 @@
         await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
         if(panel!=='departure')return;
         await ensureWorld();
+        await world.prepareDeparture(stand.x,stand.z);
         if(panel!=='departure')return;
         if(shift){
           result=await wallet.start(shift.minutes,shift.savedMinute);
@@ -348,7 +376,7 @@
           dayClock.startAt(result.record.minute);savedMinute=Math.floor(dayClock.totalMinutes);
           applyVehicle();
         }
-        service.clear();sim.reset(stand);sim.navigate(stand,stand.anchor);setGuideStand(stand);service.step(0,dayClock.minutes);world.resetCamera();arrived=false;
+        service.clear();sim.reset(stand);sim.navigate(stand,stand.anchor);setGuideStand(stand,changeTo);world.resetCamera();arrived=false;
         $('saveNotice').textContent='';startDrive();
       }catch(error){
         console.error(error);
@@ -366,7 +394,7 @@
     }
     const atlas=HKCartography.create(map,sim);
     const drawMiniMap=HKDistrictMap.createMini($('mini'),$('miniPins'),atlas,sim);
-    function openMap(){
+    function openMap({changeTo=null}={}){
       showPanel('map','',started?'街區地圖':'選擇出發的士站');
       $('closePanel').dataset.back=started?'返回駕駛':'返回主選單';
       districtMap??=HKDistrictMap.create(map,sim,atlas);
@@ -381,11 +409,11 @@
         return;
       }
       const nearest=hired()?null:service.nearestStand();
-      districtMap.open($('panelBody'),{close:closePanel,departStand,hired:hired(),nearest,navigate:place=>{
+      districtMap.open($('panelBody'),{close:closePanel,departStand:stand=>departStand(stand,null,changeTo),forVehicleChange:!!changeTo,hired:hired(),nearest,navigate:place=>{
         if(hired())return false;
         const r=sim.navigate(place);
         if(!r)return false;
-        setGuideStand(service.stands.includes(place)?place:null);
+        setGuideStand(service.stands.includes(place)?place:null,changeTo);
         arrived=false;closePanel();hud();toast(r.arrived?'已在目的地附近':'開始導航 · '+r.target.name);return true;
       }});
     }
@@ -438,7 +466,7 @@
       }
       if(panel==='map'&&e.target instanceof HTMLInputElement&&e.code!=='Escape')return;
       if(e.target===headlightSelect&&['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','Enter','Home','End'].includes(e.code))return;
-      if(e.target===$('dismissRankGuide')&&e.code==='Space')return;
+      if(e.code==='Space'&&e.target.closest?.('#rankGuide button'))return;
       if(!panel&&driveKeys.includes(e.code)){e.preventDefault();keys[e.code]=true;return;}
       if(e.repeat)return;
       if(e.code==='Escape'||e.code==='KeyP'){e.preventDefault();if(panel)dismissPanel();else openPause();return;}
@@ -514,9 +542,7 @@
       return preparing;
     }
     async function prepareWorld(){
-      window.HK_BASE_GROUNDS=await Promise.all(HK_GROUND_TILES.map(async region=>{
-        const image=new Image();image.src=HKScenery.url(region.base);await image.decode();return image;
-      }));
+      window.HK_BASE_GROUNDS=await HKScenery.loadOverviews(HK_GROUND_TILES);
       const waitForSelection=()=>panel==='map'||panel==='departure'?undefined:
         new Promise(resolve=>{resumePreparation=resolve;});
       const canvas=$('world');

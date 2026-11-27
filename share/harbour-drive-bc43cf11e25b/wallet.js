@@ -19,11 +19,27 @@ window.HKWallet = (() => {
     return next < previous ? next + day : next;
   }
   const rentalDay = minute => Math.floor((minute - morning) / day);
-  function feeBetween(previous, next, vehicleId, peakRent = 0) {
-    if (previous === null) return 0;
-    const mornings = rentalDay(next) - rentalDay(previous);
-    const rate = vehicleFor(vehicleId).dailyRent;
-    return mornings > 0 ? Math.max(peakRent, rate) + (mornings - 1) * rate : 0;
+  function dayPeak(record) {
+    // A higher rate than the current car's can only come from switching
+    // down in the same rental day as the saved clock.
+    return record.minute != null && record.lastSwitchDay === rentalDay(record.minute)
+      ? record.peakRent ?? 0 : 0;
+  }
+  function rentBetween(previous, next, vehicleId, peakRent = 0) {
+    const days = previous == null ? 0 : rentalDay(next) - rentalDay(previous);
+    if (days <= 0) return null;
+    const current = vehicleFor(vehicleId);
+    const first = vehicles.find(v => v.dailyRent === peakRent && v.dailyRent > current.dailyRent) ?? current;
+    const lines = [{vehicle:first.id, days:first === current ? days : 1, rate:first.dailyRent}];
+    if (first !== current && days > 1) lines.push({vehicle:current.id, days:days-1, rate:current.dailyRent});
+    return {lines, total:lines.reduce((sum, line) => sum + line.days * line.rate, 0)};
+  }
+  function feeBetween(previous, next, vehicleId, peakRent) {
+    return rentBetween(previous, next, vehicleId, peakRent)?.total ?? 0;
+  }
+  function describeRent(rent) {
+    return rent.lines.map(line => vehicleFor(line.vehicle).name + ' ' + format(line.rate)
+      + (line.days > 1 ? ' × ' + line.days + ' 天' : '')).join(' ＋ ');
   }
   function connect() {
     return new Promise((resolve, reject) => {
@@ -72,19 +88,23 @@ window.HKWallet = (() => {
         if ((record.generation ?? 0) !== generation) return {record, resetElsewhere: true};
         const minute = Math.max(record.minute ?? 0, requestedMinute ?? record.minute ?? HKDayCycle.defaultStart);
         const current = vehicleFor(record.vehicle), period = rentalDay(minute);
-        const fee = feeBetween(record.minute, minute, current.id, record.peakRent);
+        const peak = dayPeak(record);
+        const rent = rentBetween(record.minute, minute, current.id, peak);
+        const fee = rent?.total ?? 0;
         const requestedChange = nextVehicle !== undefined && nextVehicle !== current.id;
         const switchBlocked = requestedChange && record.lastSwitchDay === period;
         const switched = requestedChange && !switchBlocked;
         const vehicle = switched ? nextVehicle : current.id;
-        let peakRent = fee ? 0 : record.peakRent ?? 0;
+        let peakRent = fee ? 0 : peak;
         // Only time spent after this boundary belongs to the new rental day.
         const periodStart = morning + period * day;
         if (record.minute !== null && minute > Math.max(periodStart, record.minute))
           peakRent = Math.max(peakRent, current.dailyRent);
         if (switched) peakRent = Math.max(peakRent, vehicleFor(vehicle).dailyRent);
         const lastSwitchDay = switched ? period : record.lastSwitchDay;
-        return {record: {...record, balance: record.balance + fare - fine - fee, minute, vehicle, lastSwitchDay, peakRent}, fee, switchBlocked};
+        const updated = {...record, balance:record.balance + fare - fine - fee, minute, vehicle, lastSwitchDay, peakRent};
+        if (rent) updated.lastRent = rent;
+        return {record:updated, fee, switchBlocked};
       }, nextVehicle !== undefined);
     }
     async function reset() {
@@ -104,7 +124,8 @@ window.HKWallet = (() => {
       get balance() { return state.balance; },
       get minute() { return state.minute; },
       get vehicle() { return vehicleFor(state.vehicle); },
-      get peakRent() { return state.peakRent ?? 0; },
+      get peakRent() { return dayPeak(state); },
+      get lastRent() { return state.lastRent; },
       canSwitch(minute) { return state.lastSwitchDay !== rentalDay(Math.max(minute, state.minute ?? 0)); },
       get persistent() { return Boolean(db); },
       // Use the departure the driver saw on the map. Another tab passing
@@ -117,5 +138,5 @@ window.HKWallet = (() => {
       settle, reset
     };
   }
-  return {open, departure, feeBetween, format, formatRange, vehicles};
+  return {open, departure, feeBetween, describeRent, format, formatRange, vehicles};
 })();

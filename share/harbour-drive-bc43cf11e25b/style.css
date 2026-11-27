@@ -142,9 +142,11 @@
 .taxi-readout b{color:#ffcf75;font-variant-numeric:tabular-nums}
 #referenceReadout{flex-wrap:wrap;gap:0 4px}
 #referenceValue{margin-left:auto;text-align:right}
-.rank-guide #restBtn{justify-self:start;background:#f3c4590d;border-radius:6px;min-height:36px;padding:6px 13px;border:1px solid #f3c45970;color:var(--gold);font-size:13px;white-space:nowrap}
-.rank-guide #restBtn:hover:not(:disabled){background:#f3c45922}
-.rank-guide #restBtn:disabled{opacity:.6}
+.rank-actions:not([hidden]){display:flex;flex-wrap:wrap;gap:6px}
+.rank-actions button{flex:1 0 auto;background:#f3c4590d;border-radius:6px;min-height:36px;padding:6px 8px;border:1px solid #f3c45970;color:var(--gold);font-size:13px;white-space:nowrap}
+.rank-actions button:hover{background:#f3c45922}
+.rank-actions #waitBtn[aria-pressed=false]{background:var(--gold);color:#192d29;font-weight:700}
+@media(pointer:coarse){.rank-actions button{min-height:44px}}
 #restDialog{width:min(300px,90vw);padding:24px;border:1px solid var(--line);border-radius:14px;background:var(--ink);color:#f6f1df;text-align:center}
 #restDialog::backdrop{background:#0b191be8}
 #restTitle{margin:0;font-size:22px;outline:0}
@@ -354,7 +356,7 @@
 .garage-terms{font-size:14px;line-height:1.5;margin:10px 0;color:#344f48}
 .garage-confirm{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .garage-confirm button{min-height:44px;padding-inline:22px;background:#1b3833;color:#fff6dd;border-color:#1b3833}
-.garage-confirm button:disabled{background:transparent;color:#4c645a;border-color:#a2b2a8;cursor:default}
+.garage-confirm button:disabled{background:#d4d9d5;color:#505b56;border-color:#a2ada6;cursor:default}
 .garage-error{color:#872736;font-weight:650}
 @media(max-width:640px){
   #overlay[data-panel=garage] .panel>header{padding:10px 16px}

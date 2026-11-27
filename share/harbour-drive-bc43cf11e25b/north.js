@@ -65,7 +65,7 @@
   // joins at the same elevation, leaving the merge open to the vehicle.
   function tunnels(scene,height){
     const T=window.THREE,verts=[],colors=[],lanes=north.roads.filter(r=>r.bore&&!window.HKWestTunnels?.ids.has(r.id)),cells=new Map();
-    const fixtureVertices=[];
+    const fixtureVertices=[],cameraWalls=new Map();
     const color=new T.Color(),key=(x,z)=>Math.floor(x/24)+','+Math.floor(z/24);
     for(const r of lanes)for(let i=1;i<r.profile.length;i++){
       const path=r.portal||r.profile,a=path[i-1],b=path[i],margin=Math.max(a[7]||0,b[7]||0,r.w/2)+1,entry={r,a,b};
@@ -87,32 +87,46 @@
     function fixture(a,b,c,d){
       for(const p of [a,b,c,a,c,d])fixtureVertices.push(...p);
     }
+    function indexWall(a,b,topA,topB){
+      const wall={a,b,topA,topB};
+      for(let i=Math.floor(Math.min(a[0],b[0])/24);i<=Math.floor(Math.max(a[0],b[0])/24);i++)
+        for(let j=Math.floor(Math.min(a[2],b[2])/24);j<=Math.floor(Math.max(a[2],b[2])/24);j++){
+          const k=i+','+j;if(!cameraWalls.has(k))cameraWalls.set(k,[]);
+          cameraWalls.get(k).push(wall);
+        }
+    }
     for(const r of lanes){
       const p=r.portal||r.profile,wuhu=r.portal&&r.en==='Wuhu Street underpass';
       let last,distance=0;
-      for(let i=0;i<p.length;i++){
+      const [first,lastRow]=r.liningRange||[0,p.length-1];
+      for(let i=first;i<=lastRow;i++){
         const [x,z,y]=p[i],a=p[Math.max(0,i-1)],b=p[Math.min(p.length-1,i+1)],dx=b[0]-a[0],dz=b[1]-a[1],len=Math.hypot(dx,dz);
         const join=r.liningEnds?.[i],nx=join?join[0]:r.portal?p[i][3]:-dz/len,nz=join?join[1]:r.portal?p[i][4]:dx/len;
         const section=[-1,1].map(sign=>{
           const u=sign*((r.liningWidths?.[i] ?? join?.[2] ?? (r.portal?p[i][7]:r.w/2+.20))+(r.platformWidth?.(x,z,sign)||0)),xx=x+nx*u,zz=z+nz*u;
-          const land=height(xx,zz),floor=r.portal?y+(1-p[i][5])*(land-height(x,z)):y;
+          const land=height(xx,zz),floor=r.tunnelPavement?height.surface(xx,zz,r.l,r.id):r.portal?y+(1-p[i][5])*(land-height(x,z)):y;
           const rail=r.portal?p[i][6]:1;
           const top=r.covered?floor+5.55:Math.max(floor+(y-land>1?.86:.12)*rail,land+.42*rail);
-          return {rail,raised:floor>land+.65,soffit:[xx,floor-.72,zz],pavement:[xx,floor+.012,zz],foot:[xx,floor-.06,zz],cap:[xx,top,zz],rim:[xx+sign*nx*.42,top+.16*rail,zz+sign*nz*.42],band:[xx,y+1.04,zz],stripe:[xx,y+1.15,zz]};
+          const inset=r.tunnelPavement ? .025 : 0;
+          return {rail,raised:floor>land+.65,soffit:[xx,floor-.72,zz],pavement:[xx,floor+(r.tunnelPavement ? .004 : .012),zz],foot:[xx,floor-.06,zz],cap:[xx,top,zz],rim:[xx+sign*nx*.42,top+.16*rail,zz+sign*nz*.42],band:[xx-sign*nx*inset,y+1.04,zz-sign*nz*inset],stripe:[xx-sign*nx*inset,y+1.15,zz-sign*nz*inset]};
         });
         if(last){
           const previousDistance=distance;
           distance+=Math.hypot(x-p[i-1][0],z-p[i-1][1]);
-          if(r.portal)quad(last[0].pavement,last[1].pavement,section[1].pavement,section[0].pavement,'#52595b');
+          if(r.portal||r.tunnelPavement)quad(last[0].pavement,last[1].pavement,section[1].pavement,section[0].pavement,'#52595b');
           if(section.some(q=>q.raised)||last.some(q=>q.raised)){
             quad(last[0].soffit,section[0].soffit,section[1].soffit,last[1].soffit,'#858c86');
             for(const k of [0,1])quad(last[k].soffit,section[k].soffit,section[k].foot,last[k].foot,'#969e95');
           }
           for(const k of [0,1]){
             const q=section[k],v=last[k];
-            if((r.sharedWalls?.[i] & (1<<k)) || (q.rail===0&&v.rail===0))continue;
-            if(overlap((q.foot[0]+v.foot[0])/2,(q.foot[1]+v.foot[1])/2,(q.foot[2]+v.foot[2])/2,r))continue;
+            if(q.rail===0&&v.rail===0)continue;
+            if(!(r.tunnelPavement&&r.covered)){
+              if(r.sharedWalls?.[i] & (1<<k))continue;
+              if(overlap((q.foot[0]+v.foot[0])/2,(q.foot[1]+v.foot[1])/2,(q.foot[2]+v.foot[2])/2,r))continue;
+            }
             quad(v.foot,q.foot,q.cap,v.cap,wuhu?(r.covered?'#626e70':'#92958c'):(r.covered?'#b6bcb1':'#bdb9a9'));
+            if(r.tunnelPavement)indexWall(v.foot,q.foot,v.cap[1],q.cap[1]);
             quad(v.cap,q.cap,q.rim,v.rim,wuhu?'#b2b5aa':'#d6d3c7');
             if(wuhu&&!r.covered){
               // Close the outside of the raised coping down to the actual bank.
@@ -159,6 +173,24 @@
         last=section;
       }
     }
+    const fork=window.HKKaiTak?.tunnelFork;
+    if(fork){
+      const rim=fork.boundary,floor=fork.node[2],at=(p,h)=>[p[0],floor+h,p[1]];
+      const faces=T.ShapeUtils.triangulateShape(rim.map(([x,z])=>new T.Vector2(x,z)),[]);
+      for(const [h,shade] of [[.004,'#52595b'],[5.55,'#737c79'],[5.71,'#a4aaa0']]){
+        color.set(shade);
+        for(const face of faces)for(const i of face){verts.push(...at(rim[i],h));colors.push(color.r,color.g,color.b);}
+      }
+      for(let i=0;i<rim.length;i++){
+        const a=rim[i],b=rim[(i+1)%rim.length];if(!a[2])continue;
+        quad(at(a,-.06),at(b,-.06),at(b,5.71),at(a,5.71),'#b6bcb1');
+        indexWall(at(a,-.06),at(b,-.06),floor+5.71,floor+5.71);
+        // The clockwise outline has the inside of the cut on its right.
+        const dx=b[0]-a[0],dz=b[1]-a[1],n=.025/Math.hypot(dx,dz);
+        const stripe=(p,h)=>[p[0]+dz*n,floor+h,p[1]-dx*n];
+        quad(stripe(a,1.04),stripe(b,1.04),stripe(b,1.15),stripe(a,1.15),'#68958d');
+      }
+    }
     const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(verts,3));geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));geo.computeVertexNormals();
     const mesh=new T.Mesh(geo,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide}));mesh.name='Yau Ma Tei tunnel structures';scene.add(mesh);
     if(fixtureVertices.length){
@@ -168,6 +200,22 @@
       fixtures.name='Wuhu underpass guide lights';scene.add(fixtures);
     }
     window.HKWestTunnels?.draw(scene,height);
+    return function chaseRange(origin,angle,range,rise){
+      const dx=Math.sin(angle),dz=Math.cos(angle),x=origin.x,z=origin.z;
+      const endX=x+dx*range,endZ=z+dz*range;
+      let safe=range;
+      for(let i=Math.floor(Math.min(x,endX)/24);i<=Math.floor(Math.max(x,endX)/24);i++)
+        for(let j=Math.floor(Math.min(z,endZ)/24);j<=Math.floor(Math.max(z,endZ)/24);j++)
+          for(const {a,b,topA,topB} of cameraWalls.get(i+','+j)||[]){
+            const wx=b[0]-a[0],wz=b[2]-a[2],det=dx*wz-dz*wx;
+            if(Math.abs(det)<.00001)continue;
+            const ax=a[0]-x,az=a[2]-z,d=(ax*wz-az*wx)/det,t=(ax*dz-az*dx)/det;
+            if(t<0||t>1||d<0||d>range)continue;
+            const y=origin.y+rise*d/range;
+            if(y>=a[1]+t*(b[1]-a[1])-.2&&y<=topA+t*(topB-topA)+.2)safe=Math.min(safe,Math.max(.25,d-.30));
+          }
+      return safe;
+    };
   }
   window.HKNorthWorks={blocked,excavated,cutTerrain,tunnels,water:north.water};
 })();

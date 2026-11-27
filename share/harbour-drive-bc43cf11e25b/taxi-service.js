@@ -1,8 +1,7 @@
-/* Stand detection, automatic dispatch and the two-rate Hong Kong urban taximeter. */
+/* Stand detection, driver-initiated pickup and the two-rate Hong Kong urban taximeter. */
 window.HKTaxiService=(()=>{
   'use strict';
   const stopped=.12;
-  const earliestPickup=5; // Real seconds continuously stopped in the bay.
   const daytime={mean:10,max:20},overnight={mean:20,max:40};
   const luggageRate=600; // HK cents per piece, separate from the meter.
   function drawFineCents(random=Math.random){
@@ -92,6 +91,9 @@ window.HKTaxiService=(()=>{
       return Math.abs(dx*s.dx+dz*s.dz)<=2.2&&Math.abs(lateral)<=.45&&Math.abs(Math.cos(angle))>.95&&
         bay.offset+lateral-through>=body+1.29+.2;
     }
+    function parkedStand(){
+      return Math.abs(car.speed)<=stopped?stands.find(withinBay)||null:null;
+    }
     function nearestStand(){
       const here=stands.find(withinBay);
       if(here)return {stand:here,metres:0};
@@ -110,6 +112,16 @@ window.HKTaxiService=(()=>{
     }
     function clear(){
       Object.assign(state,vacant);
+    }
+    function startWaiting(gameMinutes){
+      if(state.phase!=='vacant')return false;
+      const rank=parkedStand();
+      if(!rank)return false;
+      state.origin=rank;
+      state.phase='waiting';
+      state.expectedWaitSeconds=(gameMinutes<360?overnight:daytime).mean;
+      arrivalFactor=random();
+      return true;
     }
     function nearDrop(){
       const p=state.target;if(!p||car.layer!==p.layer)return false;
@@ -135,18 +147,12 @@ window.HKTaxiService=(()=>{
         if(retry<=0&&(!sim.route||(sim.route.arrived&&!nearDrop()))){sim.navigate(state.target);retry=3;}
         return;
       }
-      const rank=Math.abs(car.speed)<=stopped&&stands.find(withinBay);
-      if(!rank){if(state.phase==='waiting')clear();return;}
-      if(state.phase!=='waiting'||rank!==state.origin){
-        clear();state.origin=rank;
-        // One Rayleigh draw per visit. Its mean is one before scaling to
-        // real seconds, so a change of shift can reuse the same draw.
-        arrivalFactor=2/Math.sqrt(Math.PI)*Math.sqrt(-Math.log1p(-random()));
-        state.phase='waiting';
-      }
+      if(state.phase!=='waiting')return;
+      const rank=state.origin;
+      if(Math.abs(car.speed)>stopped||!withinBay(rank)){clear();return;}
       const period=gameMinutes<6*60?overnight:daytime;
       state.expectedWaitSeconds=period.mean;
-      const due=Math.min(period.max,earliestPickup+(period.mean-earliestPickup)*arrivalFactor);
+      const due=period.max*arrivalFactor;
       state.wait+=seconds;
       if(state.wait+1e-9>=due){
         if(!dispatch(rank)){clear();return;}
@@ -156,7 +162,7 @@ window.HKTaxiService=(()=>{
         return 'pickup';
       }
     }
-    return {state,stands,step,withinBay,nearDrop,nearestStand,clear};
+    return {state,stands,step,startWaiting,parkedStand,withinBay,nearDrop,nearestStand,clear};
   }
   return {create,fareCents,drawFineCents,luggageRate,maxWaitSeconds:daytime.max,meanWaitSeconds:daytime.mean};
 })();

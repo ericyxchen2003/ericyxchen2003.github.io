@@ -486,7 +486,7 @@
       snaps.set(id, snap);
     }
 
-    let route = null, routeLengths = [], routeProgress = 0, rerouteTime = 0;
+    let route = null, routeLengths = [], routeProgress = 0, routeSegment = 1, rerouteTime = 0;
     let collisionTime = 0, reverseDelay = 0, streetTimer = 0, deckBlockedTime = 0;
     function updateStreet() {
       const hit = roadAtLevel(state.x, state.z, levelBit(state.layer));
@@ -620,7 +620,7 @@
       if(!path){route=null;return null;}
       const target=path.target;
       const { points, layers } = path;
-      routeProgress = 0; rerouteTime = 0; routeLengths = [0];
+      routeProgress = 0; routeSegment = 1; rerouteTime = 0; routeLengths = [0];
       for (let i = 1; i < points.length; i++) {
         routeLengths.push(routeLengths[i - 1] + magnitude(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
       }
@@ -655,7 +655,7 @@
         return;
       }
       rerouteTime = 0;
-      routeProgress = progress;
+      routeProgress = progress;routeSegment = index;
       route.remaining = Math.max(0, route.total - progress);
       route.progress = route.total ? progress / route.total : 1;
       if (magnitude(state.x - target.x, state.z - target.z) < 9 && route.remaining < 16 && state.layer === route.destinationLayer) {
@@ -676,6 +676,22 @@
           break;
         }
       }
+    }
+
+    // Look around the next bend while following guidance. Free driving and a
+    // driver heading against the route keep the normal heading-based lookahead.
+    function routeAhead(distance){
+      if(!route||route.arrived||rerouteTime||!routeSegment||route.remaining<20)return null;
+      const {points}=route;
+      const a=points[routeSegment-1],b=points[routeSegment];
+      if(!b||(b[0]-a[0])*Math.sin(state.yaw)-(b[1]-a[1])*Math.cos(state.yaw)<=0)return null;
+      const along=Math.min(route.total,routeProgress+distance);
+      let i=routeSegment;
+      while(i<points.length-1&&routeLengths[i]<along)i++;
+      const t=(along-routeLengths[i-1])/(routeLengths[i]-routeLengths[i-1]);
+      const x=points[i-1][0]+(points[i][0]-points[i-1][0])*t;
+      const z=points[i-1][1]+(points[i][1]-points[i-1][1])*t;
+      return Math.hypot(x-state.x,z-state.z)<=distance+25?[x,z]:null;
     }
 
     function trafficOverlap(x,z,yaw,layer,other,halfLength=L,halfWidth=W,bodyHeight=1.75){
@@ -769,7 +785,7 @@
       return state;
     }
     reset();
-    return { state, places, step, reset, nearestRoad, currentRoadAnchor, mapPoint, shortestRoadDistance, previewRoute, navigate, trafficOverlap, rules,
+    return { state, places, step, reset, nearestRoad, currentRoadAnchor, mapPoint, shortestRoadDistance, previewRoute, navigate, routeAhead, trafficOverlap, rules,
       // Ambient traffic still follows the carriageway through bends and junctions.
       canOccupy(x, z, yaw, layer = 0, onCarriageway = true) { return !obstructed(x, z, yaw, layer, levelsAt(x,z,layer), onCarriageway || layer !== 0); },
       setTraffic(vehicles) { traffic = vehicles; }, cancelRoute() { route = null; }, get route() { return route; } };

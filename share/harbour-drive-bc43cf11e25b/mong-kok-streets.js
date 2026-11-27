@@ -393,12 +393,6 @@ window.HKMongKokStreets=(()=>{
     function finish(buf,parent){
       const mesh=buf.mesh(material,parent,true);if(mesh)mesh.name='行人天橋及樓梯';
     }
-    if(!window.HKScenery?.compact){
-      const buf=new Batch(),q=buf.quad.bind(buf);
-      for(const way of walks)drawWalk(way,q,props);
-      for(const way of data.subways)drawSubway(way,q);
-      finish(buf,scene);return;
-    }
     // Keep each complete walkway and its supports together when a tile is unloaded.
     const tiles=new Map(),groups=new Map();
     function register(way,draw){
@@ -410,11 +404,19 @@ window.HKMongKokStreets=(()=>{
     }
     for(const way of walks)register(way,drawWalk);
     for(const way of data.subways)register(way,drawSubway);
+    if(!kit.instances||!window.HKScenery){
+      for(const tile of tiles.values()){
+        const buf=new Batch(),q=buf.quad.bind(buf);
+        for(const [way,draw] of tile.ways)draw(way,q,props);
+        finish(buf,scene);
+      }
+      return;
+    }
     return HKRoadTiles.stream([...tiles.values()],function* build(tile,index){
       const parent=new THREE.Group(),buf=new Batch(),q=buf.quad.bind(buf),supports=kit.instances(parent);
       for(const [way,draw] of tile.ways){draw(way,q,supports);yield;}
       finish(buf,parent);supports.flush();groups.set(index,parent);scene.add(parent);
-    },{radius:700,firstRadius:170,release(index){HKScenery.removeGroup(groups.get(index));groups.delete(index);}});
+    },{radius:HKScenery.compact?700:2100,firstRadius:HKScenery.compact?170:320,release(index){HKScenery.removeGroup(groups.get(index));groups.delete(index);}});
   }
   function entrance(signs,x,y,z,ref){
     const entry=label(['港鐵 '+ref,'MTR'],'#9f2637');

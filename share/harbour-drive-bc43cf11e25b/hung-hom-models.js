@@ -392,7 +392,7 @@ window.HKHungModels=(()=>{
     geom.setAttribute('uv',new THREE.Float32BufferAttribute(p.flatMap(([x,z])=>[(x-x0)/(x1-x0),1-(z-z0)/(z1-z0)]),2));
     geom.setAttribute('color',new THREE.Float32BufferAttribute(p.flatMap(()=>[1,1,1]),3));
     geom.setIndex(tris.flatMap(([a,b,c])=>[c,b,a]));geom.computeVertexNormals();
-    mat.userData.load();const roof=new THREE.Mesh(geom,mat);roof.receiveShadow=true;group.add(roof);
+    const roof=new THREE.Mesh(geom,mat);roof.receiveShadow=true;group.add(roof);
   }
   function building(b,props,signs,height,group,mats){
     if(b.foundation)return;
