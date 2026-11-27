@@ -14,6 +14,35 @@
   const priorOpenings=new Set(HKToKwaWan.water);
   north.water=north.water.filter(p=>!priorOpenings.has(p));
   for(const key of ['roads','parks','paths','decks','piers','excavations','barriers','water','marks','diagonals'])north[key].push(...data[key]);
+  // Across both map sheets, the lining is also the pavement. A shared floor
+  // under the covered fork keeps the diverging lanes flush until they separate.
+  const fork=data.tunnelFork,[fx,fz,fy]=fork.node;
+  for(const r of north.roads.filter(r=>r.bore&&r.l===-9)){
+    r.tunnelPavement=true;
+    const deck=north.decks.find(d=>d.id===r.id);
+    if(r.liningWidths)deck.liningHalfWidth=Math.max(...r.liningWidths)+.01;
+    if(fork.sections[r.id]){
+      r.liningRange=fork.sections[r.id];
+      for(const path of new Set([deck.p,r.profile]))for(const p of path){
+        const t=Math.max(0,Math.min(1,(Math.hypot(p[0]-fx,p[1]-fz)-19)/26));
+        p[2]=fy+(p[2]-fy)*t*t*(3-2*t);
+      }
+    }
+    // Where the branches share a surface street, also adopt its crossfall.
+    if(r.id==='tkw37664009')deck.finalTies=[[2115.8,-2773.5,0,0,0,true,30]];
+    if(r.id==='tkw1187954303'||r.id==='tkw1187954302')deck.finalTies=[[2097.3,-3090.8,0,0,0,true,13]];
+  }
+  // Both sides of the sheet seam use exactly the same cross-section.
+  for(const id of [25157049,152359912]){
+    const pair=north.roads.filter(r=>r.osm===id&&r.bore);
+    const ends=pair.map(r=>{
+      const p=r.profile,i=p[0][0]===3000?0:p.length-1,j=i===0?1:i-1;
+      const sign=i===0?1:-1,dx=(p[j][0]-p[i][0])*sign,dz=(p[j][1]-p[i][1])*sign,len=Math.hypot(dx,dz);
+      return {r,i,nx:-dz/len,nz:dx/len};
+    });
+    const [a,b]=ends,nx=a.nx+b.nx,nz=a.nz+b.nz,len=Math.hypot(nx,nz);
+    for(const e of ends)(e.r.liningEnds??={})[e.i]=[nx/len,nz/len,e.r.w/2+.2,(e===a?b:a).r.id,false];
+  }
   for(const [key,rows] of Object.entries(data.nodes))north.nodes[key].push(...rows);
   for(const b of data.buildings){
     if([3335073,3335074,3335075].includes(b.id)){b.n='AIRSIDE';b.en='AIRSIDE';}

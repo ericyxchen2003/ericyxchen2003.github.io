@@ -285,7 +285,7 @@ window.HKCockpit = (() => {
     const mirrorPos=new T.Vector3(),eye=new T.Vector3(),forward=new T.Vector3();
     const mirrorNormal=new T.Vector3(),mirrorRotation=new T.Quaternion();
     const seat=new T.Vector3(.330,1.249,.310);
-    let headYaw=0,mirrorAge=Infinity;
+    let headYaw=0,mirrorAge=Infinity,lastViewYaw=0;
     function resizeMirrors(ratio){
       for(const m of mirrors){
         const w=Math.round((m.side?128:256)*ratio),h=Math.round(80*ratio);
@@ -295,7 +295,7 @@ window.HKCockpit = (() => {
       }
     }
 
-    function update(car,state,cam,dt,glance,snap) {
+    function update(car,state,cam,dt,glance,snap,uploading) {
       cabin.position.copy(car.position);cabin.quaternion.copy(car.quaternion);cabin.updateMatrixWorld();
       const desired=clamp(glance,-1,1)*.94;
       headYaw=snap?0:T.MathUtils.lerp(headYaw,desired,1-Math.exp(-dt*12));
@@ -321,7 +321,12 @@ window.HKCockpit = (() => {
         const priority=m.age/(m.side?.48:.20);
         if(priority>best){next=m;best=priority;}
       }
-      if(next&&(snap||mirrorAge>=(HKScenery.compact ? .26 : .135))){
+      const viewYaw=state.yaw-headYaw,delta=viewYaw-lastViewYaw;
+      const turning=dt>0&&Math.abs(Math.atan2(Math.sin(delta),Math.cos(delta)))>.32*dt;
+      lastViewYaw=viewYaw;
+      const refresh=HKScenery.compact ? .26 : .135;
+      // Leave a busy frame to the windscreen, but keep mirrors live on long bends.
+      if(next&&(snap||mirrorAge>=refresh+((turning||uploading) ? .12 : 0))){
         const side=next.side;rear.aspect=side?(hybridActive?.194/.106:1.65):3.2;rear.fov=side?(hybridActive?34:42):31;rear.updateProjectionMatrix();
         if(side)rear.position.setFromMatrixPosition(next.face.matrixWorld);
         else rear.position.set(0,1.28,1.13).applyMatrix4(cabin.matrixWorld);

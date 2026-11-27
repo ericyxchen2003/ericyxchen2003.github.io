@@ -8,6 +8,19 @@
   for(const key of ['roads','parks','paths','decks','piers','excavations','barriers','water','marks','diagonals'])north[key].push(...data[key]);
   for(const [key,rows] of Object.entries(data.nodes))north.nodes[key].push(...rows);
   north.land=data.land;map.terrain.cheungShaWan=data.terrain;
+  // The northern kerb of the Caldecott Road loop runs just outside the survey sheet.
+  const left=-2010,right=-1965,depth=10,top=data.terrain.z;
+  map.terrain.caldecottBank=data.caldecottBank;
+  for(const ring of [data.outline,...data.land.map(area=>area.p)]){
+    const i=ring.findIndex(([x,z],k)=>{
+      const [nextX,nextZ]=ring[(k+1)%ring.length];
+      return z===top&&nextZ===top&&Math.min(x,nextX)<left&&Math.max(x,nextX)>right;
+    });
+    if(i<0)continue;
+    const points=[[left,top],[left,top-depth],[right,top-depth],[right,top]];
+    ring.splice(i+1,0,...(ring[i][0]<left?points:points.reverse()));
+  }
+  for(const r of data.roads)if(r.p.some(([x,z])=>x>=left&&x<=right&&z-r.w/2-1.45<top))r.edgePavement=true;
 
   const previous=map.outsideExtension,edge=map.extensionEdge,oldWest=north.bounds[0];
   north.bounds[0]=Math.min(oldWest,data.bounds[0]);

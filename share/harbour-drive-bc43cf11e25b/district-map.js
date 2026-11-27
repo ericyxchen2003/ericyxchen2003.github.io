@@ -91,12 +91,13 @@ window.HKDistrictMap=(()=>{
     function open(parent,actions){
       close();
       const picking=Boolean(actions.pickStand);
+      const standsOnly=picking||actions.forVehicleChange;
       const savedMinute=actions.savedMinute??null;
       let startMinutes=savedMinute===null?HKDayCycle.defaultStart:null;
       const v=picking?{...drivingView,k:0}:drivingView;
-      const basePins=atlas.pins.filter(p=>!picking||p.kind==='taxi').sort((a,b)=>b.priority-a.priority);
+      const basePins=atlas.pins.filter(p=>!standsOnly||p.kind==='taxi').sort((a,b)=>b.priority-a.priority);
       const nearest=basePins.find(p=>p.key===actions.nearest?.stand.id);
-      const searchRows=picking?searchable.filter(row=>row.p.kind==='taxi'):searchable;
+      const searchRows=standsOnly?searchable.filter(row=>row.p.kind==='taxi'):searchable;
       const root=$el('div','dm');
       root.innerHTML='<div class="dm-surface"><canvas class="dm-canvas" tabindex="0" aria-label="街區地圖，可用方向鍵平移，加減鍵縮放"></canvas><div class="dm-pins"></div></div>'+
         '<div class="dm-find"><div class="dm-search"><span class="dm-brand" aria-hidden="true">'+icon('map')+'</span><input type="text" role="combobox" aria-label="搜尋地點或街道" aria-autocomplete="list" aria-expanded="false" aria-controls="dm-results" placeholder="搜尋地點或街道" autocomplete="off" spellcheck="false"><button class="dm-search-action" type="button" aria-label="搜尋">'+icon('search')+'</button></div>'+
@@ -107,11 +108,11 @@ window.HKDistrictMap=(()=>{
       const get=sel=>root.querySelector(sel),canvas=get('canvas'),ctx=canvas.getContext('2d'),pinsEl=get('.dm-pins'),find=get('.dm-find'),input=get('input'),results=get('.dm-results'),card=get('.dm-card'),filters=get('.dm-filters'),tools=get('.dm-tools'),scale=get('.dm-scale');
       const controller=new AbortController(),signal=controller.signal;
       const on=(target,event,fn,options={})=>target.addEventListener(event,fn,{...options,signal});
-      if(picking){
+      if(standsOnly){
         root.classList.add('dm-pick');
-        const title=$el('h2','dm-pick-title','選擇出發的士站');
+        const title=$el('h2','dm-pick-title',picking?'選擇出發的士站':'前往的士站以換車');
         find.prepend(title);filters.hidden=true;
-        input.placeholder='搜尋站名或街道';input.setAttribute('aria-label','搜尋出發的士站');
+        input.placeholder='搜尋站名或街道';input.setAttribute('aria-label',picking?'搜尋出發的士站':'搜尋換車的士站');
         get('.dm-brand').innerHTML=icon('taxi');
       }
       const buttons=new Map(),pinNodes=new Map(),pointers=new Map();
@@ -233,13 +234,13 @@ window.HKDistrictMap=(()=>{
       function search(){
         results.replaceChildren();const q=fold(input.value);index=-1;input.removeAttribute('aria-activedescendant');
         const searchAction=get('.dm-search-action');searchAction.innerHTML=icon(q?'close':'search');searchAction.setAttribute('aria-label',q?'清除搜尋':'搜尋');
-        if(!q&&!picking){hideResults();return;}
+        if(!q&&!standsOnly){hideResults();return;}
         const rows=[];
         for(const {p,fields} of searchRows){
           let score=0;for(const f of fields){const at=f.indexOf(q);if(at>=0)score=Math.max(score,at===0?(q===f?100:75):48);}
           if(score)rows.push({p,score:score+(p.priority||0)*.12+(p.kind==='district'?5:0)});
         }
-        matches=rows.sort((a,b)=>b.score-a.score||a.p.name.length-b.p.name.length).slice(0,picking?rows.length:6).map(r=>r.p);
+        matches=rows.sort((a,b)=>b.score-a.score||a.p.name.length-b.p.name.length).slice(0,standsOnly?rows.length:6).map(r=>r.p);
         for(const [i,p] of matches.entries()){
           const item=$el('button','dm-result');item.type='button';item.tabIndex=-1;item.id='dm-result-'+i;item.setAttribute('role','option');item.setAttribute('aria-selected','false');
           const desc=$el('span','dm-result-text');desc.append($el('b','',p.name),$el('small','',p.en&&p.en!==p.name?p.en:cats()[p.kind].name));
@@ -267,7 +268,7 @@ window.HKDistrictMap=(()=>{
       });
       on(get('.dm-search-action'),'click',()=>{input.value='';input.focus();search();});
       on(root,'focusout',e=>{if(!find.contains(e.relatedTarget))hideResults();});
-      if(!picking)for(const [key,label] of [['taxi','的士站'],['sight','地標'],['shop','購物'],['transit','交通'],['park','公園']]){
+      if(!standsOnly)for(const [key,label] of [['taxi','的士站'],['sight','地標'],['shop','購物'],['transit','交通'],['park','公園']]){
         const cat=cats()[key],b=button(label,cat.icon,()=>{input.value='';search();clearSelection();setCategory(category===key?'':key);},'dm-chip');
         b.style.setProperty('--cat',cat.color);b.setAttribute('aria-pressed','false');b.append(label);filters.append(b);buttons.set(key,b);
       }
@@ -289,7 +290,7 @@ window.HKDistrictMap=(()=>{
         if(!picking)drawRoute(ctx,preview||sim.route,project,1,preview&&selection);
         const [carX,carY]=project(sim.state.x,sim.state.z);
         if(!picking&&onScreen(carX,carY,-20))reserve(carX,carY,34,33);
-        const zoomPins=!picking&&v.k>1.48?basePins.concat(atlas.details.filter(p=>{
+        const zoomPins=!standsOnly&&v.k>1.48?basePins.concat(atlas.details.filter(p=>{
           const [x,y]=project(p.x,p.z);return onScreen(x,y,12)&&(!category||category===p.kind);
         }).sort((a,b)=>b.area-a.area)):basePins;
         if(v.k<.3)for(const p of atlas.districts){
