@@ -84,3 +84,6 @@ if(window.HKCheungShaWan)HKTaxiRankRows.push(
   [163,'海麗邨','海麗邨公共運輸交匯處','Hoi Lai Estate Public Transport Interchange',-2318,-4010,'csw104289413',[4,3.1,1,2.97]],
   [169,'集輝街','長沙灣集輝街','Tsap Fai Street',-1783,-4909,'skm151355612',[1,43.1,1,2.97]]
 );
+if(window.HKLaiChiKok)HKTaxiRankRows.push(
+  [165,'美孚・荔灣道','美孚荔灣道市區的士站','Mei Foo, Lai Wan Road',-3273,-4742,'lck1187954292',[5,29.5,1,2.97]]
+);

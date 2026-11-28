@@ -32,7 +32,7 @@ window.HKScenery=(()=>{
     return node?'data:'+mime+';base64,'+node.textContent:fallback;
   };
   async function loadOverviews(pages){
-    const atlas=new Image();atlas.src=url('region-overviews.webp');
+    const atlas=new Image();atlas.src=url('region-overviews.webp','image/webp','scenery/region-overviews.webp?v=fdc95beaa186');
     try{await atlas.decode();}
     catch{
       // Older multi-file installs may still have only the individual sheets.
@@ -48,7 +48,7 @@ window.HKScenery=(()=>{
     });
   }
   const roofs=['ground','north','mong-kok','tai-kok-tsui','west-kowloon','hung-hom','to-kwa-wan',
-    'kowloon-city','kowloon-tong','kai-tak','sham-shui-po','shek-kip-mei','cheung-sha-wan'];
+    'kowloon-city','kowloon-tong','kai-tak','sham-shui-po','shek-kip-mei','cheung-sha-wan','lai-chi-kok','stonecutters','lok-fu','wong-tai-sin','diamond-hill','tsz-wan-shan','ngau-chi-wan'];
   const distanceToCell=(o,x,z)=>Math.hypot(Math.max(0,Math.abs(x-o.x)-o.half),Math.max(0,Math.abs(z-o.z)-o.half));
   function districtPhotos(overviews,prepareTexture){
     const sheets=overviews.map((preview,i)=>{
@@ -149,7 +149,7 @@ window.HKScenery=(()=>{
       },undefined,()=>{textureJobs--;t.pending=false;t.retry=performance.now()+3000;});
     }
     function addSky(c){
-      c.sky=skyline(c.buildings);
+      c.sky=skyline(c.buildings,c);
       if(c.sky){scene.add(c.sky);revision++;}
     }
     async function prepareDeparture(x,z){

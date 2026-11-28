@@ -94,22 +94,29 @@ window.HKFrontages=(()=>{
   }
   function context(map,height){
     const data=window.HK_NATHAN;
+    const byId=new Map(data.parts.map(([id])=>[id,[]]));
+    for(const building of map.buildings)byId.get(building.id)?.push(building);
+    const parts=data.parts.map(([id,x,z])=>
+      byId.get(id).find(b=>b.p[0][0]===x&&b.p[0][1]===z));
     const bays=data.bays.map((b,index)=>{
-      const building=map.buildings[b.b],floor=height(b.x,b.z);
+      const building=parts[b.part];
+      if(!building)return null;
+      const floor=height(b.x,b.z);
       const roof=building.top??floor+building.h;
       const heightM=Math.min(roof-floor-.16,(b.theme==='mall'?4.65:b.theme==='park'?3.75:3.92)+(b.seed%6)*.075);
       return {...b,index,building,floor,roof,height:heightM};
     });
     const cuts=new Map(),owners=new Set();
     for(const [key,spans] of Object.entries(data.cuts)){
-      const [i,j]=key.split('/').map(Number),building=map.buildings[i];
-      const live=spans.filter(s=>bays[s[2]].height>=2.70);
+      const [i,j]=key.split('/').map(Number),building=parts[i];
+      if(!building)continue;
+      const live=spans.filter(s=>bays[s[2]]?.height>=2.70);
       if(!live.length)continue;
       if(!cuts.has(building))cuts.set(building,new Map());
       cuts.get(building).set(j,live);
       owners.add(building.id);
     }
-    return {bays:bays.filter(b=>b.height>=2.70),owners,cuts,head:i=>bays[i].floor+bays[i].height};
+    return {bays:bays.filter(b=>b?.height>=2.70),owners,cuts,head:i=>bays[i].floor+bays[i].height};
   }
 
   let interiors;

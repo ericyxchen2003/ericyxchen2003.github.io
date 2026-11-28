@@ -236,3 +236,59 @@
 2026 年 11 月整理。保留深水埗至東京街的過渡街區，由長沙灣道、青山道向西接工廠區，海旁包括海麗邨、深旺道及西九龍幹線。按現代海岸建立陸地範圍，以五米地形格網、測量點及四幅正射影像銜接舊區。高架的分流、橋台及多層交匯處按道路走向和淨空擬合。八條主要道路每十米與運輸署同名中心線對照，中位水平偏差約 0.7 至 3.3 米。海麗邨候客位經公共運輸交匯處的士通道進出，其餘四站位於青山道、長順街、幸祥街及集輝街。[運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10) · [運輸署的士站](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html)
 
 東京街 41 號的李鄭屋漢墓博物館沿用測量展覽館輪廓，另建覆土墓丘、防雨篷及玻璃觀景通道，並按街景補上紅白入口及灰色浮雕飾帶。入口照明、篷面曲度及服裝批發店招牌為遊戲化重建。長沙灣廣場兩幢商廈依樓體外形及高度配置；海麗邨、蘇屋邨和西部屋苑沿用分幢輪廓。副食品批發市場的士落客點在欽州街西。[香港歷史博物館](https://hk.history.museum/tc/web/mh/about-us/lei-cheng-uk-han-tomb-museum.html) · [香港旅遊發展局館外照片](https://www.discoverhongkong.com/eng/place-to-go/lei-cheng-uk-han-tomb-museum.html) · [防雨篷工程](https://www.news.gov.hk/isd/ebulletin/tc/hkforkids/default/html/55099404-d799-413f-aa70-af5e5a9a6ea8.htm) · [副食品批發市場](https://www.afcd.gov.hk/english/agriculture/agr_gov/agr_gov_csw/agr_gov_csw.html)
+
+## 荔枝角、美孚與荔景山
+
+2026 年 11 月 28 日整理。本圖幅由長沙灣接往美孚、九華徑及荔景山，南至興華街西，東北包括蝴蝶谷交匯處。沿用舊圖幅內的公共道路與建築，另以單獨模型補上饒宗頤文化館及荔枝角收押所臨街外觀。地面取自五米 DTM 和地政總署高程點，橋台、匝道和隧道按相鄰路面的標高與車輛淨空擬合。路網由 OSM 提取，美孚新邨百老匯街的邨內道路亦按 OSM 建模；運輸署中心線僅覆蓋其中部分路段。建築採用地政總署輪廓和頂底標高，正射影像在本機重新投影拼合。[OSM 貢獻者](https://www.openstreetmap.org/copyright) · [五米數碼地形模型](https://www.landsd.gov.hk/tc/spatial-data/open-data/kf_dtm.html) · [地政總署建築物圖層](https://portal.csdi.gov.hk/server/rest/services/common/landsd_rcd_1637211194312_35158/MapServer/0) · [運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)
+
+荔灣道市區的士站採用運輸署編號 165，設候客位置及駛出通道。附近的過海的士站編號 164，可用地圖搜尋；現有派單範圍為九龍。荔枝角（九華徑）巴士總站位於盈暉薈底層，的士落客點設在景荔徑。兩間醫院分別使用瑪嘉烈醫院道及葵涌醫院道的公眾道路落客點。[運輸署的士站](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html) · [葵涌醫院啟用公告](https://www.info.gov.hk/gia/general/202607/24/P2026072400235.htm)
+
+荔枝角公園的球場、園徑和嶺南之風的水面、亭榭、石舫按地圖定位。兩間醫院的病房翼、文化館紅磚建築、政府合署、收押所和巴士總站採用簡化外觀。窗燈、入口燈、簷下照明及夜間亮度屬遊戲視覺設計。[康文署荔枝角公園](https://www.lcsd.gov.hk/en/parks/lckp/index.html) · [嶺南之風園林資料](https://www.gohk.gov.hk/tc/spots/spot_detail.php?spot=Lingnan+Garden+in+Lai+Chi+Kok+Park) · [饒宗頤文化館](https://www.jtia.hk/planyourvisit) · [荔枝角收押所](https://www.csd.gov.hk/sc_chi/facility/facility_ind/ins_kln_lckrc.html) · [荔枝角政府合署](https://tel.directory.gov.hk/0243000593_ENG.html)
+
+## 昂船洲、八號貨櫃碼頭與青衣側橋頭
+
+2026 年 11 月 28 日整理。從荔枝角與長沙灣接入港口外圍道路，沿八號幹線跨藍巴勒海峽，至青衣側交匯處及地面道路。222 段車行路以 OSM 單行、車道及通行資料建立，轉向限制納入既有路網。用運輸署 11 條可對名的道路取樣 1,593 次，與同名中心線的水平距離中位數約 0.90 米，第 90 百分位約 4.24 米。沿海地面採用五米地形及地政總署影像。整幅地表先鋪連續的區域底圖，再疊加民用港區的 127 幅街區級影像。南岸按區域植被色澤混合通用林地材質。橋面按測量高程、相鄰圖幅和匝道淨空擬合。[OSM 貢獻者](https://www.openstreetmap.org/copyright) · [地政總署地圖 API](https://api.portal.hkmapservice.gov.hk/) · [五米數碼地形模型](https://www.landsd.gov.hk/tc/spatial-data/open-data/kf_dtm.html) · [運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)
+
+昂船洲大橋的雙塔、雙向三線橋面、主跨及 224 條斜拉索參考路政署資料。八號貨櫃碼頭的岸吊、貨櫃堆、船塢工場、消防處潛水基地、昂船洲污水處理廠、海上交通控制站及躉船採用從公路觀看的簡化模型。貨櫃模型沿碼頭內側、港池對岸及青衣一側的影像排列，保留排間通道及空置堆位。夜間照明、作業船、箱體顏色和層數及南岸建築輪廓為遊戲美術設計。[路政署大橋資料](https://www.hyd.gov.hk/en/information_corner/hyd_factsheets/doc/e_Stonecutters_Bridge.pdf) · [政府船塢](https://www.mardep.gov.hk/filemanager/en/share/aboutus/pdf/gd_leaflet.pdf) · [渠務署](https://www.dsd.gov.hk/TC/HTML/20524.html) · [葵涌海上交通控制站](https://www.mardep.gov.hk/filemanager/en/share/pub-services/pdf/vts_kccs.pdf)
+
+遊戲讓的士在貨櫃碼頭南路、昂船路及昂運路等公共道路落客。標為「外圍」的位置是按街道、設施地址、停車空間及遊戲路網選定的停靠點。碼頭作業區、船塢及南岸軍事範圍設地面行車邊界。遊戲沿用美孚荔灣道等既有的士站，區內七個新目的地供送客使用。[海事處公眾貨物裝卸區](https://www.mardep.gov.hk/tc/forms/pcwa-contact/index.html) · [運輸署的士站資料](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html)
+
+## 樂富與橫頭磡
+
+2026 年 11 月 28 日整理。新圖幅由聯合道、杏林街及橫頭磡南道接回九龍城與九龍塘，向北到龍翔道，向東連接摩士公園各區。樂富公園西側及部分居屋沿用已建成的九龍塘底圖。本次亦接入東光道跨越舊邊界的單行路段，讓的士可沿公路繞行至摩士一號公園的大同街入口。街區名稱按社區使用範圍劃分。五米數碼地形、測量高程點、正射影像、建築外框和頂底標高來自政府地理資料。鳳舞街跨龍翔道的兩幅橋面按橋台及車道淨空擬合。231 段車行路根據 OSM 編製，36 條可核對同名運輸署道路的 982 個取樣點，與中心線的水平距離中位數為 0.89 米，第 90 百分位為 2.84 米。[OSM 貢獻者](https://www.openstreetmap.org/copyright) · [地政總署地形](https://www.landsd.gov.hk/tc/spatial-data/open-data/kf_dtm.html) · [地政總署建築圖層](https://portal.csdi.gov.hk/server/rest/services/common/landsd_rcd_1637211194312_35158/MapServer/0) · [運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)
+
+橫頭磡南道市區的士站採用運輸署編號 186，供出車、候客和換車。15 個具名地點包括兩個屋邨、四個居屋屋苑、樂富廣場、樂富站、香港佛教醫院、樂富公園及摩士公園設施。樂富廣場兩翼與港鐵出入口按位置分開。各公園的球場、園路和泳池採用地圖位置，摩士公園游泳池另在鳳舞街設落客點。屋邨窗帶、商場招牌、醫院外牆及夜間照明按駕駛距離簡化，行人梯道、車站出入口高度及各處上落客點屬遊戲近似。[運輸署的士站](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html) · [港鐵樂富站街道圖](https://www.mtr.com.hk/archive/ch/services/maps/lof.pdf) · [領展樂富廣場](https://www.linkreit.com/tc/business/properties/lok-fu-place/) · [香港佛教醫院](https://www3.ha.org.hk/hkbh/Images/Documents/HKBH_AdmissionInformation_2025.pdf) · [康文署場地名錄](https://www.lcsd.gov.hk/clpss/tc/webApp/PhoneAddress.do)
+
+## 黃大仙
+
+2026 年 11 月 28 日整理。街區以赤松黃大仙祠、上邨與下邨為中心，涵蓋竹園南北邨、鳳凰新村、天馬苑與龍翔道兩側。已有樂富及九龍塘圖幅內的廟宇、商場、港鐵出入口及屋苑按建築物測繪輪廓細化。新圖幅採用五米數碼地形及地政總署正射影像。新路段按 OSM 單行、車道及轉向記錄編製；運輸署有同名中心線的 29 條道路共 866 處取樣，水平距離中位數為 0.93 米，第 90 百分位為 3.59 米。蒲崗村道天橋和龍翔道匝道按地面及橋面高程點分層，橋台銜接和路肩標高屬遊戲擬合。竹園南邨銀竹里的公路導航止於有閘的入口。[OSM 貢獻者](https://www.openstreetmap.org/copyright) · [地政總署數碼地形](https://www.landsd.gov.hk/tc/spatial-data/open-data/kf_dtm.html) · [運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)
+
+祠內大殿採用金黃重簷、紅柱及彩枋，另有三聖堂、經堂、麟閣、從心苑水池及九龍壁。廟宇裝飾、屋邨立面、商場窗帶及夜燈按駕駛視距簡化。地圖分列黃大仙中心南北館、港鐵黃大仙站、正德街黃大仙巴士總站及竹園邨巴士總站。廟宇及巴士總站以上落客可達的街道作導航終點。正德街、竹園道、黃大仙道、鳴鳳街、環鳳街及盈鳳里設的士站；候客位依現有路側及車身淨空調整。[赤松黃大仙祠大殿歷史建築評估](https://www.aab.gov.hk/filemanager/aab/common/historicbuilding/en/45_Appraisal_En.pdf) · [港鐵黃大仙站及巴士總站平面圖](https://www.mtr.com.hk/archive/corporate/en/operations/TML_RPAP/MTR_AP_739_A.pdf) · [領展黃大仙中心](https://www.linkhk.com/tc/shopCentre/temple) · [運輸署的士站資料](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html)
+
+## 新蒲崗
+
+2026 年 11 月 28 日整理。街區由啟德河至彩虹道及觀塘繞道，南界沿太子道東。採用啟德、樂富及黃大仙圖幅已有的五米地形和正射影像，補齊兩處舊圖幅之間的道路與樓宇。156 段車行路沿用 OSM 的行車方向、路口及限制。22 條有同名運輸署中心線的道路共取樣 402 處，水平距離中位數為 1.12 米，第 90 百分位為 4.62 米。啟新道的敞開引道銜接啟德地下車行段。轉向、橋面層級和行人天橋按遊戲車身復核。候客位依運輸署第 178、179、183、189 號站的路側位置設置。[運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10) · [運輸署的士站](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html)
+
+工廈的裝卸捲閘和水平窗帶、友邦九龍金融中心的玻璃塔樓、Mikiki 商場及上蓋譽・港灣按測繪輪廓和頂底標高建模。采頤花園保留十二座住宅，商場獨立設落客點。彩虹道遊樂場按球場輪廓繪製場線，旁邊另有體育館與街市。商場入口位置、窗格、外牆顏色、夜燈和道路接坡為遊戲近似。[Mikiki 交通資料](https://www.mikiki-mall.com.hk/tc/location/transportation.php) · [友邦九龍金融中心](https://www.aiafinancialcentre.com.hk/en/index.html) · [房委會采頤花園圖則](https://www.housingauthority.gov.hk/hdw/content/static/file/b5/residential/hos/phase6/pdf/rhythmGarden_a.pdf) · [康文署康樂場地](https://www.lcsd.gov.hk/tc/facilities/facilitieslist/facilities.php?did=16&ftid=0)
+
+## 鑽石山
+
+本圖幅由新蒲崗彩虹道與黃大仙鳳德道接入，經龍蟠街、志蓮道和斧山道，向北沿蒲崗村道至殯葬設施。現代山形採用五米數碼地形及正射影像。256 段新車行路採用 OSM 的方向與車道資料。25 條有同名運輸署中心線的道路取樣 940 處，水平距離中位數為 1.36 米，第 90 百分位為 12.35 米。中心線與分隔車道和站內車道的幾何會有差異。鳳德道上方匝道分別參考地面及橋面測量標高，商場上蓋和站內車道分開建模。大老山隧道收錄九龍側雙管洞口至本圖幅北界的一段，出口以內的縱坡為遊戲估算。[OSM 貢獻者](https://www.openstreetmap.org/copyright) · [地政總署數碼地形](https://www.landsd.gov.hk/tc/spatial-data/open-data/kf_dtm.html) · [運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10) · [香港工程師學會大老山隧道資料](https://hkie.org.hk/ea/en/project/28)
+
+荷里活廣場、星河明居、志蓮淨苑、南蓮園池、斧山公園、鳳德公園及斧山道運動場按場地位置建模。志蓮淨苑設木色佛殿、灰瓦和蓮池，南蓮園池另設金色八角亭、朱橋和水池。蒲崗村道沿線分設殯儀館、火葬場與金塔墳場落客點。立面、園亭、墓園梯田、照明及落客位置按駕駛視角簡化。[荷里活廣場](https://www.gohk.gov.hk/en/spots/spot_detail.php?spot=Plaza+Hollywood) · [志蓮淨苑](https://en.chilin.org/tour/nunnery/index.html) · [南蓮園池](https://en.chilin.org/tour/garden/index.html) · [康文署場地資料](https://www.lcsd.gov.hk/clpss/en/webApp/Facility/Details.do?did=16+&ftid=38) · [東華三院鑽石山殯儀館](https://funeralservices.tungwahcsd.org/diamond-hill-funeral-parlour?_fsize=m) · [食環署墳場及火葬場](https://www.fehd.gov.hk/english/cc/introduction.html)
+
+港鐵站公共運輸交匯處（荷里活廣場下方）、彩虹道公共運輸交匯處及龍蟠街的的士站採用運輸署第 175、176、180 號記錄。兩個交匯處各自使用其獲准通行的的士車道。[運輸署的士站資料](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html) · [鑽石山站周邊地圖](https://www.emsd.gov.hk/filemanager/en/content_738/ssmap_dih1_2022A.pdf)
+
+## 慈雲山
+
+2026 年 11 月 28 日整理。由黃大仙和鑽石山接入慈雲山道、惠華街及沙田坳道，山體涵蓋慈雲山發射站和沙田坳道沿線。圖幅沿用兩個鄰區的已建街段，新增 28 段車行路，按 OSM 的單行、禁轉及通行資料接駁。地面及建築按地政總署五米數碼地形、正射影像、測量高程及建築輪廓製作。道路接坡和天橋高度依遊戲車輪、車頂及相鄰街段擬合。[OSM 貢獻者](https://www.openstreetmap.org/copyright) · [地政總署數碼地形](https://www.landsd.gov.hk/tc/spatial-data/open-data/kf_dtm.html) · [運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)
+
+惠華街的士站採用運輸署第 184 號記錄。地圖可導航至慈雲山中心、六個慈字頭屋苑、沙田坳邨、慈雲山邨中央遊樂場、蒲崗村道公園和法藏寺旁的行山入口。公園兩個人造草球場、單車徑及其架空段依場地位置建模。麥理浩徑第五段及衛奕信徑第五段在本圖幅內的山徑供觀景；的士在山下的行山入口落客。山頂的數碼電視發射塔、屋邨配色、商場入口和夜間照明均為遊戲簡化外觀。[運輸署的士站](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html) · [康文署蒲崗村道公園](https://www.lcsd.gov.hk/tc/parks/pkvrp/) · [沙田坳道行山徑](https://www.gohk.gov.hk/en/spots/spot_detail.php?spot=Shatin+Pass+Road+%28Hiking+Trail%29) · [通訊辦數碼電視發射站資料](https://www.ofca.gov.hk/filemanager/ofca/en/content_1087/tv_frequency_digital_en.pdf)
+
+## 牛池灣
+
+2026 年 11 月 29 日整理。圖幅接駁鑽石山、新蒲崗及啟德，涵蓋彩虹邨、牛池灣鄉、坪石邨及彩雲邨。街區標籤採用「牛池灣」，地圖保留「彩虹」作搜尋別名，並收錄作為交通接點的坪石邨。新增 207 段車行道路，包括 17 段分層車道。地形及建築按地政總署五米地形、測量高程、正射影像和建築輪廓製作。雙向分隔道路逐條採用 OSM 車行線位，交通方向及轉向另與道路中心線交叉核對。橋面縱坡、淨空及天橋接駁高度按遊戲車身校正。[OSM 貢獻者](https://www.openstreetmap.org/copyright) · [地政總署數碼地形](https://www.landsd.gov.hk/tc/spatial-data/open-data/kf_dtm.html) · [運輸署道路中心線](https://portal.csdi.gov.hk/server/rest/services/common/td_rcd_1638949160594_2844/MapServer/10)
+
+彩虹邨的彩色立面及停車場天台球場、坪石邨各色屋邨大樓、彩雲邨的山坡樓群，均疊合測量輪廓。牛池灣市政大廈的街市及文娛中心分層建模，彩虹站保留地面的出入口。聖若瑟安老院採用舊址的拱廊及低層建築意象，牛池灣鄉牌坊設於行人入口，從龍池徑落客。屋邨配色、牌坊位置及造型、歷史建築立面和夜間照明按駕駛視角簡化。[康文署牛池灣文娛中心](https://www.lcsd.gov.hk/tc/ncwcc/aboutus/locationmapandtransportation.html) · [古物諮詢委員會歷史建築評估](https://www.aab.gov.hk/filemanager/aab/common/historicbuilding/en/467_Appraisal_En.pdf) · [房委會彩虹邨資料](https://www.housingauthority.gov.hk/mini-site/haar2324/common/flipbook/en/files/basic-html/page73.html)
+
+七個候客位對應運輸署第 109、126、142、173、174、177 及 182 號資料。坪石邨地面站和坪石公共運輸交匯處一樓站各自有出入路線。彩虹邨藍鐘路經金碧樓底層接回太子道東，建築上層在通道上方連續。[運輸署的士站資料](https://portal.csdi.gov.hk/csdi-webpage/metadata/td_rcd_1697081907714_17556/html)

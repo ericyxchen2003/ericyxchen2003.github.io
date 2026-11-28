@@ -102,7 +102,7 @@ window.HKStreetLights=(()=>{
         if(head){heads.push(head);const key=cell(head.x,head.z);if(!cells.has(key))cells.set(key,[]);cells.get(key).push(head);}
       }
     }
-    for(const [x,z] of [...(window.HKHoManTin?.parkLamps||[]),...(window.HKKowloonGarden?.lamps||[]),...(window.HKTongParkLamps||[]),...(window.HKKaiTakParks?.lamps||[]),...(window.HKShamShuiPoParks?.lamps||[]),...(window.HKShekKipMeiParks?.lamps||[]),...(window.HKCheungShaWanParks?.lamps||[])]){
+    for(const [x,z] of [...(window.HKHoManTin?.parkLamps||[]),...(window.HKKowloonGarden?.lamps||[]),...(window.HKTongParkLamps||[]),...(window.HKKaiTakParks?.lamps||[]),...(window.HKShamShuiPoParks?.lamps||[]),...(window.HKShekKipMeiParks?.lamps||[]),...(window.HKCheungShaWanParks?.lamps||[]),...(window.HKLaiChiKokParks?.lamps||[]),...(window.HKLokFuSites?.lamps||[])]){
       if(!hasSpace(x,z))continue;
       const base=height(x,z);
       if((height.overhead(x,z)??Infinity)-base<5)continue;
@@ -117,6 +117,11 @@ window.HKStreetLights=(()=>{
       cells.get(key).push(head);
     }
     window.HKShekKipMeiParks?.furnish?.(height,props,heads);
+    window.HKTszWanShanSites?.furnish?.(height,props,heads);
+    window.HKDiamondHillSites?.furnish?.(height,props,heads);
+    window.HKSanPoKongSites?.furnish?.(height,props,heads);
+    window.HKLokFuSites?.furnish?.(height,props,heads);
+    window.HKLaiChiKokParks?.furnish?.(height,props,heads);
     return {heads,nearby,...lightField(heads)};
   }
 

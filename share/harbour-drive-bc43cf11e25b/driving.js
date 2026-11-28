@@ -58,6 +58,14 @@
   const corners = [[L, W], [L, -W], [-L, W], [-L, -W], [L, 0], [-L, 0], [0, W], [0, -W], [0, 0]];
   const locations = [
     ...(window.HKHungGuide?.places||[]),
+    ...(window.HKNgauChiWanGuide?.places||[]),
+    ...(window.HKTszWanShanGuide?.places||[]),
+    ...(window.HKDiamondHillGuide?.places||[]),
+    ...(window.HKSanPoKongGuide?.places||[]),
+    ...(window.HKWongTaiSinGuide?.places||[]),
+    ...(window.HKLokFuGuide?.places||[]),
+    ...(window.HKStonecuttersGuide?.places||[]),
+    ...(window.HKLaiChiKokGuide?.places||[]),
     ...(window.HKCheungShaWanGuide?.places||[]),
     ...(window.HKShekKipMeiGuide?.places||[]),
     ...(window.HKShamShuiPoGuide?.places||[]),
@@ -482,7 +490,7 @@
     for (const [id, name, en, lng, lat, street] of locations) {
       const x = (lng - 114.17) * 103055, z = (22.296 - lat) * 110741;
       const snap = nearestRoad(x, z, s => (s.forward || s.reverse) && (s.road.en || s.road.n) === street) || nearestRoad(x, z);
-      places.push({ id, name, en, x: snap.x, z: snap.z });
+      places.push({ id, name, en, street, x: snap.x, z: snap.z });
       snaps.set(id, snap);
     }
 
@@ -556,7 +564,7 @@
         }
         for (const edge of outgoing) {
           // Shape vertices are not turning facilities. Allow reversal at a dead end.
-          if (prev && prev.segment === edge.segment && outgoing.length > 1) continue;
+          if (prev && prev.segment === edge.segment && (outgoing.length > 1 || edge.segment.road.noTurnaround)) continue;
           const nextState = rules.advance(state, edge.token, 1);
           if (nextState < 0) continue;
           if (edge.segment === t) {

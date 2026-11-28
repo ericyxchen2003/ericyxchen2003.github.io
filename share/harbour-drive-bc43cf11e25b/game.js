@@ -49,6 +49,7 @@
     function showWallet(){
       $('walletCaption').textContent=wallet.persistent?'餘額':'餘額 · 僅本次';
       $('walletBalance').textContent=HKWallet.format(wallet.balance);
+      districtMap?.refreshWallet();
     }
     function applyVehicle(){
       sim.state.vehicle=wallet.vehicle;
@@ -61,18 +62,19 @@
       const messages=[];
       if(fare){
         HKSound.payment();
-        messages.push('車資入帳 +'+HKWallet.format(fare));
+        messages.push('車資入帳 +'+HKWallet.format(fare),'可在地圖上免費傳送至最近的的士站。');
       }
+      if(result.transferCents)messages.push('已扣傳送費 '+HKWallet.format(result.transferCents));
       if(fareFine)messages.push('車資超出參考價上限，罰款 −'+HKWallet.format(fareFine));
       if(redLightFine)messages.push('衝紅燈，罰款 −'+HKWallet.format(redLightFine));
       if(result.fee)messages.push('已扣日租 · '+HKWallet.describeRent(result.record.lastRent));
       if(messages.length)toast(messages.join('　·　'),4);
     }
-    function saveDriving(fare=0,fareFine=0,redLightFine=0){
+    function saveDriving(fare=0,fareFine=0,redLightFine=0,checkpointStandId){
       if(!started||confirmClear.disabled)return;
       const minute=dayClock.totalMinutes;
       savedMinute=Math.floor(minute);
-      wallet.settle(minute,fare,fareFine+redLightFine).then(result=>{
+      wallet.settle(minute,fare,fareFine+redLightFine,{checkpointStandId}).then(result=>{
         if(!handleExternalReset(result))settled(result,fare,fareFine,redLightFine);
       });
     }
@@ -353,8 +355,9 @@
       const label=stand?'關閉候客指引':'取消導航';
       dismiss.title=label;dismiss.setAttribute('aria-label',label);
     }
-    async function departStand(stand,shift,changeTo=null){
+    async function departStand(stand,transferCents,shift,changeTo=null){
       if(panel!=='map'||!service.stands.includes(stand))return;
+      if(transferCents===null)return;
       if(hired()){toast('載客中 · 請先完成行程');return;}
       if(!started)HKSound.activate();
       panel='departure';cancelAnimationFrame(frameId);clearInputs();HKSound.step(0,false,true);
@@ -370,14 +373,10 @@
         await ensureWorld();
         await world.prepareDeparture(stand.x,stand.z);
         if(panel!=='departure')return;
-        if(shift){
-          result=await wallet.start(shift.minutes,shift.savedMinute);
-          if(handleExternalReset(result))return;
-          dayClock.startAt(result.record.minute);savedMinute=Math.floor(dayClock.totalMinutes);
-          applyVehicle();
-        }
-        service.clear();sim.reset(stand);sim.navigate(stand,stand.anchor);setGuideStand(stand,changeTo);world.resetCamera();arrived=false;
-        $('saveNotice').textContent='';startDrive();
+        result=shift
+          ?await wallet.start(shift.minutes,shift.savedMinute,transferCents,shift.checkpoint)
+          :await wallet.settle(dayClock.totalMinutes,0,0,{transferCents});
+        if(handleExternalReset(result))return;
       }catch(error){
         console.error(error);
         panel='map';menu.hidden=started;$('hud').hidden=!started;$('world').inert=!started;
@@ -389,8 +388,21 @@
         if(started){blockedFrames=2;prev=performance.now();frameId=requestAnimationFrame(tick);}
         return;
       }
+      if(result.insufficientFunds||result.checkpointChanged){
+        loading.hidden=true;menu.hidden=started;$('hud').hidden=!started;$('world').inert=!started;
+        showWallet();openMap({changeTo});
+        const notice=document.createElement('p');notice.className='dm-transfer-note';notice.setAttribute('role','alert');
+        notice.textContent=result.checkpointChanged?'另一分頁已完成行程，出發站已更新。':'餘額不足，可免費傳送至最近的士站。';
+        $('panelBody').querySelector('.dm-find').append(notice);
+        if(started){blockedFrames=2;prev=performance.now();frameId=requestAnimationFrame(tick);}
+        return;
+      }
+      dayClock.startAt(result.record.minute);savedMinute=Math.floor(dayClock.totalMinutes);
+      applyVehicle();
+      service.clear();sim.reset(stand);sim.navigate(stand,stand.anchor);setGuideStand(stand,changeTo);world.resetCamera();arrived=false;
+      $('saveNotice').textContent='';startDrive();
       toast('已抵達起點 · '+stand.name);
-      if(result)settled(result);
+      settled(result);
     }
     const atlas=HKCartography.create(map,sim);
     const drawMiniMap=HKDistrictMap.createMini($('mini'),$('miniPins'),atlas,sim);
@@ -403,13 +415,17 @@
         // The film is paused here. Let the map paint, then use the player's
         // selection time for scene preparation, including the larger batches.
         if(!HKScenery.compact)requestAnimationFrame(()=>setTimeout(()=>ensureWorld().catch(()=>{}),0));
-        const savedMinuteOnMap=wallet.minute;
+        const savedMinuteOnMap=wallet.minute,checkpoint=wallet.checkpointStandId;
+        const current=service.stands.find(s=>s.id===checkpoint)||service.nearestStand()?.stand;
+        const transfers=service.standTransfers(current);
         districtMap.open($('panelBody'),{savedMinute:savedMinuteOnMap,vehicleId:wallet.vehicle.id,peakRent:wallet.peakRent,
-          pickStand:(stand,minutes)=>departStand(stand,{minutes,savedMinute:savedMinuteOnMap})});
+          nearest:transfers.nearest,price:transfers.price,balance:()=>wallet.balance,
+          pickStand:(stand,minutes)=>departStand(stand,transfers.price(stand),{minutes,savedMinute:savedMinuteOnMap,checkpoint})});
         return;
       }
-      const nearest=hired()?null:service.nearestStand();
-      districtMap.open($('panelBody'),{close:closePanel,departStand:stand=>departStand(stand,null,changeTo),forVehicleChange:!!changeTo,hired:hired(),nearest,navigate:place=>{
+      const transfers=hired()?null:service.standTransfers();
+      districtMap.open($('panelBody'),{close:closePanel,departStand:stand=>departStand(stand,transfers?.price(stand)??null,null,changeTo),
+        forVehicleChange:!!changeTo,hired:hired(),nearest:transfers?.nearest,price:transfers?.price,balance:()=>wallet.balance,navigate:place=>{
         if(hired())return false;
         const r=sim.navigate(place);
         if(!r)return false;
@@ -516,7 +532,7 @@
       const inTaiKokTsui=window.HKTaiKokTsui && s.x < (s.z < -2850 ? -565 : -615) && s.z < -2085 && s.z > -3350;
       const cultural=window.HKWestKowloon&&s.x< -810&&s.z> -747;
       const westKowloon=window.HKWestKowloon&&s.x< -365&&s.z< -680&&s.z> -1600;
-      const district=window.HKCheungShaWanGuide?.districtAt(s.x,s.z)??window.HKShekKipMeiGuide?.districtAt(s.x,s.z)??window.HKShamShuiPoGuide?.districtAt(s.x,s.z)??window.HKKaiTakGuide?.districtAt(s.x,s.z)??window.HKKowloonTongGuide?.districtAt(s.x,s.z)??window.HKKowloonCityGuide?.districtAt(s.x,s.z)??window.HKHoManTinGuide?.districtAt(s.x,s.z)??window.HKToKwaWanGuide?.districtAt(s.x,s.z)??(window.HKHungGuide?.districtAt(s.x,s.z))??(cultural?['西九文化區','WEST KOWLOON CULTURAL DISTRICT']:westKowloon?['西九龍','WEST KOWLOON']:inTaiKokTsui?['大角咀','TAI KOK TSUI']:s.z>-955?['尖沙咀','TSIM SHA TSUI']:s.z>-1490?['佐敦','JORDAN']:s.z>-2140?['油麻地','YAU MA TEI']:s.z>-2950?['旺角','MONG KOK']:['太子','PRINCE EDWARD']);
+      const district=window.HKNgauChiWanGuide?.districtAt(s.x,s.z)??window.HKTszWanShanGuide?.districtAt(s.x,s.z)??window.HKDiamondHillGuide?.districtAt(s.x,s.z)??window.HKSanPoKongGuide?.districtAt(s.x,s.z)??window.HKWongTaiSinGuide?.districtAt(s.x,s.z)??window.HKLokFuGuide?.districtAt(s.x,s.z)??window.HKStonecuttersGuide?.districtAt(s.x,s.z)??window.HKLaiChiKokGuide?.districtAt(s.x,s.z)??window.HKCheungShaWanGuide?.districtAt(s.x,s.z)??window.HKShekKipMeiGuide?.districtAt(s.x,s.z)??window.HKShamShuiPoGuide?.districtAt(s.x,s.z)??window.HKKaiTakGuide?.districtAt(s.x,s.z)??window.HKKowloonTongGuide?.districtAt(s.x,s.z)??window.HKKowloonCityGuide?.districtAt(s.x,s.z)??window.HKHoManTinGuide?.districtAt(s.x,s.z)??window.HKToKwaWanGuide?.districtAt(s.x,s.z)??(window.HKHungGuide?.districtAt(s.x,s.z))??(cultural?['西九文化區','WEST KOWLOON CULTURAL DISTRICT']:westKowloon?['西九龍','WEST KOWLOON']:inTaiKokTsui?['大角咀','TAI KOK TSUI']:s.z>-955?['尖沙咀','TSIM SHA TSUI']:s.z>-1490?['佐敦','JORDAN']:s.z>-2140?['油麻地','YAU MA TEI']:s.z>-2950?['旺角','MONG KOK']:['太子','PRINCE EDWARD']);
       document.querySelector('.district b').textContent=district[0];document.querySelector('.district span').textContent=district[1];
       const signal=world.currentSignal;
       $('signalHUD').hidden=!signal;
@@ -561,7 +577,7 @@
         world.frame(dt,true,input.brake||input.handbrake,(keys.KeyQ?1:0)-(keys.KeyE?1:0)+dragLook);blockedFrames=0;
         const redLightFine=world.redCrossed?HKTaxiService.drawFineCents():0;
         if(world.redCrossed&&!redLightFine)toast('已越過紅燈停止線',2.4);
-        if(event==='complete')saveDriving(taxi.totalFare,taxi.fine,redLightFine);
+        if(event==='complete')saveDriving(taxi.totalFare,taxi.fine,redLightFine,taxi.returnStand?.id);
         else if(redLightFine||Math.floor(dayClock.totalMinutes)!==savedMinute)saveDriving(0,0,redLightFine);
       }
       else if(blockedFrames++<2)world.frame(0,false);
