@@ -86,8 +86,8 @@ window.HKDistrictMap=(()=>{
     const bounds=map.bounds;
     const searchable=atlas.entries.map(p=>({p,fields:[p.name,p.en,p.alias].filter(Boolean).map(fold)}));
     const drivingView={w:0,h:0,dpr:1,x:0,z:0,k:0};
-    let teardown=null,lastCar=null;
-    function close(){if(teardown){teardown();teardown=null;}}
+    let teardown=null,lastCar=null,refreshWallet=null;
+    function close(){if(teardown){teardown();teardown=null;refreshWallet=null;}}
     function open(parent,actions){
       close();
       const picking=Boolean(actions.pickStand);
@@ -103,7 +103,7 @@ window.HKDistrictMap=(()=>{
         '<div class="dm-find"><div class="dm-search"><span class="dm-brand" aria-hidden="true">'+icon('map')+'</span><input type="text" role="combobox" aria-label="搜尋地點或街道" aria-autocomplete="list" aria-expanded="false" aria-controls="dm-results" placeholder="搜尋地點或街道" autocomplete="off" spellcheck="false"><button class="dm-search-action" type="button" aria-label="搜尋">'+icon('search')+'</button></div>'+
         '<div id="dm-results" class="dm-results" role="listbox" aria-label="搜尋結果" hidden></div><div class="dm-filters" aria-label="地點類別"></div></div>'+
         '<div class="dm-card" hidden></div><div class="dm-tools"></div>'+
-        '<div class="dm-caption"><b>街區地圖</b><span class="dm-scale"></span></div><span class="dm-credit">© OpenStreetMap · 香港地政總署</span>';
+        '<div class="dm-caption"><span class="dm-wallet">餘額 <strong></strong></span><span class="dm-scale"></span><span class="dm-credit">© OpenStreetMap · 香港地政總署</span></div>';
       parent.append(root);
       const get=sel=>root.querySelector(sel),canvas=get('canvas'),ctx=canvas.getContext('2d'),pinsEl=get('.dm-pins'),find=get('.dm-find'),input=get('input'),results=get('.dm-results'),card=get('.dm-card'),filters=get('.dm-filters'),tools=get('.dm-tools'),scale=get('.dm-scale');
       const controller=new AbortController(),signal=controller.signal;
@@ -117,6 +117,13 @@ window.HKDistrictMap=(()=>{
       }
       const buttons=new Map(),pinNodes=new Map(),pointers=new Map();
       let selection=null,destination=null,preview=null,category='',matches=[],index=-1,frame=0;
+      const walletValue=get('.dm-wallet strong');
+      let refreshQuote=null;
+      refreshWallet=()=>{
+        walletValue.textContent=HKWallet.format(actions.balance());
+        refreshQuote?.();
+      };
+      refreshWallet();
       const project=(x,z)=>[(x-v.x)*v.k+v.w/2,(z-v.z)*v.k+v.h/2];
       const minZoom=()=>Math.min(.25,(v.w-30)/(bounds[2]-bounds[0]),(v.h-50)/(bounds[3]-bounds[1]));
       function constrain(){v.x=clamp(v.x,bounds[0],bounds[2]);v.z=clamp(v.z,bounds[1],bounds[3]);}
@@ -146,11 +153,13 @@ window.HKDistrictMap=(()=>{
         v.w=root.clientWidth;v.h=root.clientHeight;v.dpr=Math.min(window.devicePixelRatio||1,2);
         if(!v.w||!v.h)return;
         canvas.width=Math.round(v.w*v.dpr);canvas.height=Math.round(v.h*v.dpr);
-        if(picking&&!v.k)fit();
+        if(picking&&!v.k&&nearest){
+          v.k=Math.max(minZoom(),.62);v.x=nearest.x;v.z=nearest.z;constrain();
+        }else if(picking&&!v.k)fit();
         else if(!picking&&(!v.k||!lastCar||Math.hypot(sim.state.x-lastCar.x,sim.state.z-lastCar.z)>110)){v.k=0;relocate(true);}
         else v.k=clamp(v.k,minZoom(),4.8);
         if(firstLayout && nearest){
-          const car=sim.state,top=Math.min(166,v.h*.42),bottom=48,side=52;
+          const car=picking?nearest:sim.state,top=Math.min(166,v.h*.42),bottom=48,side=52;
           const visible=p=>{const [x,y]=project(p.x,p.z);return x>=side&&x<=v.w-side&&y>=top&&y<=v.h-bottom;};
           if(!visible(nearest)||!visible(car)){
             v.k=clamp(Math.min(v.k,(v.w-side*2)/Math.max(1,Math.abs(car.x-nearest.x)),
@@ -165,7 +174,7 @@ window.HKDistrictMap=(()=>{
         const b=$el('button',cls);b.type='button';b.title=label;b.setAttribute('aria-label',label);b.innerHTML=icon(iconId);on(b,'click',fn);return b;
       }
       function hideResults(){results.hidden=true;input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');index=-1;}
-      function clearSelection(){selection=destination=preview=null;card.hidden=true;card.replaceChildren();refresh();}
+      function clearSelection(){selection=destination=preview=null;refreshQuote=null;card.hidden=true;card.replaceChildren();refresh();}
       function streetLocation(p){
         if(!p.parts)return p;
         const best=p.parts.reduce((a,b)=>Math.hypot(b.x-v.x,b.z-v.z)<Math.hypot(a.x-v.x,a.z-v.z)?b:a);
@@ -179,7 +188,7 @@ window.HKDistrictMap=(()=>{
       function select(raw,recenter=true){
         const p=streetLocation(raw);hideResults();input.blur();clearSelection();
         if(p.kind==='district'){focusPoint(p);canvas.focus({preventScroll:true});return;}
-        selection=p;destination=p.destination||sim.mapPoint(p.x,p.z,p.name,p.en,p.street);
+        selection=p;destination=p.scenicOnly?null:p.destination||sim.mapPoint(p.x,p.z,p.name,p.en,p.street);
         preview=!picking&&destination&&sim.previewRoute(destination);
         if(recenter)focusPoint(p);
         card.hidden=false;
@@ -187,6 +196,17 @@ window.HKDistrictMap=(()=>{
         const dismiss=button('關閉地點資料','close',()=>{clearSelection();canvas.focus();},'dm-dismiss');
         const title=$el('h2','',p.name),sub=$el('div','dm-en',p.en&&p.en!==p.name?p.en:'');
         const row=$el('div','dm-actions');
+        const transfer=p.kind==='taxi'&&!actions.hired?actions.price(destination):null;
+        const note=$el('p','dm-transfer-note');
+        function showTransfer(control,rent=0){
+          const insufficient=transfer>0&&transfer>actions.balance()-rent;
+          control.disabled=transfer===null||insufficient;
+          note.id='dm-transfer-price';control.setAttribute('aria-describedby',note.id);
+          note.textContent=transfer===null?'目前位置無法行車到此站':transfer===0
+            ?(picking?'目前所在 · 免費出車':'最近的士站 · 免費傳送')
+            :'傳送費 '+HKWallet.format(transfer)+(insufficient?' · 餘額不足':'');
+        }
+        if(p.scenicOnly){card.append(meta,dismiss,title,sub,$el('p','dm-distance',p.notice));refresh();return;}
         if(picking){
           const shifts=$el('fieldset','dm-shifts'),legend=$el('legend');shifts.append(legend);
           const options=HKDayCycle.shifts.map(s=>({value:s.minutes,label:s.label+' '+HKDayCycle.format(s.minutes)}));
@@ -194,21 +214,22 @@ window.HKDistrictMap=(()=>{
             options.unshift({value:null,label:'繼續 '+HKDayCycle.format(savedMinute%1440)});
             shifts.classList.add('resuming');
           }
+          const confirm=button('從這個的士站出發','flag',()=>actions.pickStand(destination,startMinutes),'dm-nav');
           function showDeparture(){
             const next=HKWallet.departure(savedMinute,startMinutes),fee=HKWallet.feeBetween(savedMinute,next,actions.vehicleId,actions.peakRent);
             legend.textContent=fee?'出車時間 · 跨過早上六時，扣日租 '+HKWallet.format(fee):'出車時間';
+            showTransfer(confirm,fee);
           }
-          showDeparture();
+          refreshQuote=showDeparture;refreshWallet();
           for(const shift of options){
             const label=$el('label'),radio=$el('input');
             radio.type='radio';radio.name='shift';radio.checked=shift.value===startMinutes;
             radio.onchange=()=>{if(radio.checked){startMinutes=shift.value;showDeparture();}};
             label.append(radio,$el('span','',shift.label));shifts.append(label);
           }
-          const confirm=button('從這個的士站出發','flag',()=>actions.pickStand(destination,startMinutes),'dm-nav');
           confirm.append('從這個的士站出發');row.append(confirm);
           const address=$el('p','dm-distance',destination.alias);
-          card.append(meta,dismiss,title,sub,address,shifts,row);confirm.focus({preventScroll:true});refresh();return;
+          card.append(meta,dismiss,title,sub,address,shifts,note,row);confirm.focus({preventScroll:true});refresh();return;
         }
         const length=preview?.points.reduce((a,pt,i,path)=>a+(i?Math.hypot(pt[0]-path[i-1][0],pt[1]-path[i-1][1]):0),0);
         const routeLabel=p===nearest?'最快路線　':'駕駛路程　';
@@ -225,11 +246,12 @@ window.HKDistrictMap=(()=>{
         const nav=button('導航到此','route',()=>{if(!actions.navigate(destination))stat.textContent='目前位置未有可達路線';},'dm-nav');
         nav.append('導航到此');nav.disabled=!preview||actions.hired;row.append(nav);
         if(p.kind==='taxi'){
-          const depart=button('從這裏出發','flag',()=>actions.departStand(p.destination),'dm-depart');
-          depart.append('從這裏出發');depart.disabled=actions.hired;row.append(depart);
+          const depart=button('傳送到此站','flag',()=>actions.departStand(p.destination),'dm-depart');
+          depart.append('傳送到此站');depart.disabled=actions.hired;row.append(depart);
+          if(!actions.hired){refreshQuote=()=>showTransfer(depart);refreshWallet();}
         }
         if(actions.hired)stat.textContent='載客中 · 請先送乘客到目的地';
-        card.append(meta,dismiss,title,sub,stat,row);refresh();
+        card.append(meta,dismiss,title,sub,stat);if(note.textContent)card.append(note);card.append(row);refresh();
       }
       function search(){
         results.replaceChildren();const q=fold(input.value);index=-1;input.removeAttribute('aria-activedescendant');
@@ -276,7 +298,8 @@ window.HKDistrictMap=(()=>{
       if(nearest){
         nearestButton=$el('button','dm-nearest');nearestButton.type='button';
         const info=$el('span','dm-nearest-info');
-        info.append($el('small','','最近的士站 · 最短路程 '+metric(actions.nearest.metres)),$el('b','',nearest.name));
+        const distance=(actions.nearest.offNetwork?'直線 ':'')+metric(actions.nearest.metres);
+        info.append($el('small','',picking?'目前所在 · 免費出車':'最近的士站 · '+distance+' · 免費傳送'),$el('b','',nearest.name));
         nearestButton.append(categorySymbol(nearest),info);find.append(nearestButton);
         on(nearestButton,'click',()=>{select(nearest);card.querySelector('.dm-nav').focus({preventScroll:true});});
       }
@@ -306,7 +329,7 @@ window.HKDistrictMap=(()=>{
           const [x,y]=project(p.x,p.z),selected=selection?.key===p.key,recommended=p===nearest;
           if(!onScreen(x,y,10))continue;
           const font='600 12px -apple-system, BlinkMacSystemFont, sans-serif';ctx.font=font;
-          const label=recommended?'最近 · '+p.name:p.name;
+          const label=recommended?(picking?'目前所在 · ':'最近 · ')+p.name:p.name;
           const tw=Math.ceil(ctx.measureText(label).width),space=v.k<.23?18:v.k<.45?9:4;
           const leftLabel=recommended&&x+tw+24>v.w&&x-tw-24>=0;
           const labelX=x+(leftLabel?-1:1)*(tw+5)/2;
@@ -388,7 +411,7 @@ window.HKDistrictMap=(()=>{
       canvas.focus({preventScroll:true});
       teardown=()=>{controller.abort();observer.disconnect();cancelAnimationFrame(frame);root.remove();};
     }
-    return {open,close};
+    return {open,close,refreshWallet:()=>refreshWallet?.()};
   }
   function createMini(canvas,pinsEl,atlas,sim){
     const ctx=canvas.getContext('2d'),buffer=document.createElement('canvas'),base=buffer.getContext('2d');

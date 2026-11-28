@@ -81,16 +81,20 @@ window.HKWallet = (() => {
       });
     }
     await write(record => ({record}));
-    function settle(requestedMinute, fare = 0, fine = 0, nextVehicle) {
+    function settle(requestedMinute, fare = 0, fine = 0, {nextVehicle, transferCents=0, checkpointStandId, expectedCheckpoint}={}) {
+      if(!Number.isSafeInteger(transferCents)||transferCents<0)throw new RangeError('Invalid station transfer fare');
       const generation = state.generation ?? 0;
       return write(record => {
         // A drive from before a reset cannot restore its clock or collect fares.
         if ((record.generation ?? 0) !== generation) return {record, resetElsewhere: true};
+        if(expectedCheckpoint!==undefined && expectedCheckpoint!==(record.checkpointStandId??null))
+          return {record, checkpointChanged:true};
         const minute = Math.max(record.minute ?? 0, requestedMinute ?? record.minute ?? HKDayCycle.defaultStart);
         const current = vehicleFor(record.vehicle), period = rentalDay(minute);
         const peak = dayPeak(record);
         const rent = rentBetween(record.minute, minute, current.id, peak);
         const fee = rent?.total ?? 0;
+        if(transferCents>0 && record.balance-fee<transferCents)return {record, insufficientFunds:true};
         const requestedChange = nextVehicle !== undefined && nextVehicle !== current.id;
         const switchBlocked = requestedChange && record.lastSwitchDay === period;
         const switched = requestedChange && !switchBlocked;
@@ -102,10 +106,11 @@ window.HKWallet = (() => {
           peakRent = Math.max(peakRent, current.dailyRent);
         if (switched) peakRent = Math.max(peakRent, vehicleFor(vehicle).dailyRent);
         const lastSwitchDay = switched ? period : record.lastSwitchDay;
-        const updated = {...record, balance:record.balance + fare - fine - fee, minute, vehicle, lastSwitchDay, peakRent};
+        const updated = {...record, balance:record.balance + fare - fine - fee - transferCents, minute, vehicle, lastSwitchDay, peakRent};
+        if(checkpointStandId)updated.checkpointStandId=checkpointStandId;
         if (rent) updated.lastRent = rent;
-        return {record:updated, fee, switchBlocked};
-      }, nextVehicle !== undefined);
+        return {record:updated, fee, transferCents, switchBlocked};
+      }, nextVehicle !== undefined || transferCents>0);
     }
     async function reset() {
       if (!db) {
@@ -123,6 +128,7 @@ window.HKWallet = (() => {
     return {
       get balance() { return state.balance; },
       get minute() { return state.minute; },
+      get checkpointStandId() { return state.checkpointStandId ?? null; },
       get vehicle() { return vehicleFor(state.vehicle); },
       get peakRent() { return dayPeak(state); },
       get lastRent() { return state.lastRent; },
@@ -130,10 +136,12 @@ window.HKWallet = (() => {
       get persistent() { return Boolean(db); },
       // Use the departure the driver saw on the map. Another tab passing
       // that time while the map is open must not roll this choice to tomorrow.
-      start(shift, shownMinute = state.minute) { return settle(departure(shownMinute, shift)); },
+      start(shift, shownMinute = state.minute, transferCents=0, expectedCheckpoint) {
+        return settle(departure(shownMinute, shift),0,0,{transferCents,expectedCheckpoint});
+      },
       selectVehicle(id, minute) {
         if (!vehicles.some(v => v.id === id)) throw new RangeError('Unknown taxi');
-        return settle(minute, 0, 0, id);
+        return settle(minute, 0, 0, {nextVehicle:id});
       },
       settle, reset
     };

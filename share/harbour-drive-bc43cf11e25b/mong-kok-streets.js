@@ -368,7 +368,8 @@ window.HKMongKokStreets=(()=>{
         const a=p[i-1],e=p[i],dx=e[0]-a[0],dz=e[1]-a[1],l=dist[i]-dist[i-1];if(l<.04)continue;
         const point=(t,u,h)=>{
           const x=a[0]+dx*t-dz/l*u,z=a[1]+dz*t+dx/l*u,k=(dist[i-1]+l*t)/len;
-          return [x,height(x,z)+tunnel.ends[0]*(1-k)+tunnel.ends[1]*k+h,z];
+          const y=tunnel.levels?tunnel.levels[i-1]*(1-t)+tunnel.levels[i]*t:height(x,z)+tunnel.ends[0]*(1-k)+tunnel.ends[1]*k;
+          return [x,y+h,z];
         };
         q(point(0,-w,0),point(1,-w,0),point(1,w,0),point(0,w,0),slab);
         for(const side of [-1,1]){

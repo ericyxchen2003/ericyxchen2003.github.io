@@ -36,11 +36,22 @@ window.HKTaxiService=(()=>{
       if(b.foundation||!b.p?.length||!name||seen.has(name)||/^(第?[\dA-Z]+[座號]?|BLOCK\s+[A-Z\d]+)$/i.test(name))continue;
       seen.add(name);buildings.push(b);
     }
+    for(const place of sim.places||[]){
+      if(place.id.startsWith('sci-')||place.id.startsWith('lf-')||place.id.startsWith('wts-')||place.id.startsWith('spk-')||place.id.startsWith('dh-')||place.id.startsWith('tws-')||place.id.startsWith('ncw-'))buildings.push({p:[[place.x,place.z]],publicStop:place});
+    }
     // Resolve frontage lazily. Footprint edge midpoints pick the side of the
     // building adjoining a street. Parking and routing use the same road anchor.
     const frontages=new Map();
     function frontage(b){
       if(frontages.has(b))return frontages.get(b);
+      if(b.publicStop){
+        const place=b.publicStop,hit=sim.mapPoint(place.x,place.z,place.name,place.en,place.street);
+        if(!hit)return null;
+        const a=hit.anchor,s=a.segment,dir=s.one||1,yaw=Math.atan2(dir*s.dx,-dir*s.dz),offset=dir*Math.max(0,s.half-1.1);
+        const x=a.x+s.dz*offset,z=a.z-s.dx*offset;
+        const stop=sim.canOccupy(x,z,yaw,s.layer)?{...hit,x,z,yaw,layer:s.layer,buildingId:place.id}:null;
+        frontages.set(b,stop);return stop;
+      }
       const edges=b.p.map((a,i)=>{const e=b.p[(i+1)%b.p.length];return {x:(a[0]+e[0])/2,z:(a[1]+e[1])/2,len:Math.hypot(a[0]-e[0],a[1]-e[1])};});
       const options=[];
       for(const edge of edges.sort((a,b)=>b.len-a.len).slice(0,4)){
@@ -59,7 +70,7 @@ window.HKTaxiService=(()=>{
       const best=options.sort((a,b)=>a.score-b.score)[0]||null;
       frontages.set(b,best);return best;
     }
-    const vacant={phase:'vacant',origin:null,target:null,wait:0,expectedWaitSeconds:0,fare:0,minimumFare:0,referenceFare:0,fine:0,metres:0,slow:0,fast:0,luggage:0};
+    const vacant={phase:'vacant',origin:null,target:null,returnStand:null,wait:0,expectedWaitSeconds:0,fare:0,minimumFare:0,referenceFare:0,fine:0,metres:0,slow:0,fast:0,luggage:0};
     const state={...vacant,
       get luggageFee(){return this.luggage*luggageRate;},
       get totalFare(){return this.fare+this.luggageFee;}
@@ -94,21 +105,45 @@ window.HKTaxiService=(()=>{
     function parkedStand(){
       return Math.abs(car.speed)<=stopped?stands.find(withinBay)||null:null;
     }
-    function nearestStand(){
-      const here=stands.find(withinBay);
-      if(here)return {stand:here,metres:0};
-      const from=sim.currentRoadAnchor();
-      if(!from)return null;
-      const candidates=stands.map(stand=>({stand,lowerBound:Math.hypot(stand.anchor.x-from.x,stand.anchor.z-from.z)}))
+    function nearestStand(from){
+      if(!from){
+        const here=stands.find(withinBay);
+        if(here)return {stand:here,metres:0};
+        from=sim.currentRoadAnchor();
+      }
+      const origin=from||car;
+      const candidates=stands.map(stand=>({stand,lowerBound:Math.hypot(stand.anchor.x-origin.x,stand.anchor.z-origin.z)}))
         .sort((a,b)=>a.lowerBound-b.lowerBound);
       let best=null;
       for(const {stand,lowerBound} of candidates){
         // The road distance cannot be shorter than the straight line between anchors.
-        if(best && lowerBound>=best.metres)break;
+        if(!from||(best&&lowerBound>=best.metres))break;
         const metres=sim.shortestRoadDistance(from,stand.anchor);
         if(metres!==null && (!best || metres<best.metres))best={stand,metres};
       }
-      return best;
+      if(best)return best;
+      // A disconnected stretch still has one free recovery station, even
+      // though there is no road fare to quote from it.
+      const closest=candidates[0];
+      return closest?{stand:closest.stand,metres:closest.lowerBound,offNetwork:true}:null;
+    }
+    // Snapshot the origin while the map is paused. Quote only opened station
+    // cards, using the same directed distance and meter as passenger quotes.
+    function standTransfers(currentStand){
+      const here=currentStand||stands.find(withinBay);
+      const from=here?.anchor||sim.currentRoadAnchor();
+      const nearest=here?{stand:here,metres:0}:nearestStand(from);
+      const prices=new Map();
+      function price(stand){
+        if(stand===nearest?.stand)return 0;
+        if(!from||!stand)return null;
+        if(!prices.has(stand)){
+          const metres=sim.shortestRoadDistance(from,stand.anchor);
+          prices.set(stand,metres===null?null:fareCents(metres,0));
+        }
+        return prices.get(stand);
+      }
+      return {nearest,price};
     }
     function clear(){
       Object.assign(state,vacant);
@@ -140,6 +175,7 @@ window.HKTaxiService=(()=>{
         else state.fast+=delta;
         state.fare=fareCents(state.fast,state.slow);
         if(nearDrop()&&Math.abs(car.speed)<=stopped){
+          state.returnStand=nearestStand(state.target.anchor)?.stand;
           if(state.fare>state.referenceFare)state.fine=drawFineCents(random);
           state.phase='receipt';receiptAge=0;sim.cancelRoute();return 'complete';
         }
@@ -162,7 +198,7 @@ window.HKTaxiService=(()=>{
         return 'pickup';
       }
     }
-    return {state,stands,step,startWaiting,parkedStand,withinBay,nearDrop,nearestStand,clear};
+    return {state,stands,step,startWaiting,parkedStand,withinBay,nearDrop,nearestStand,standTransfers,clear};
   }
   return {create,fareCents,drawFineCents,luggageRate,maxWaitSeconds:daytime.max,meanWaitSeconds:daytime.mean};
 })();

@@ -153,7 +153,7 @@
             }
           }
         }
-        if(join?.[4] || (wuhu&&r.covered&&(i===0||i===p.length-1))){
+        if(i===r.hillMouth || join?.[4] || (wuhu&&r.covered&&(i===0||i===p.length-1))){
           // Face the exposed fill between the soffit and hillside. The entire
           // opening below the beam stays clear, including both shoulder strips.
           const [left,right]=section,head=q=>[q.rim[0],Math.max(q.cap[1]+1.05,height(q.rim[0],q.rim[2])+.35),q.rim[2]];
